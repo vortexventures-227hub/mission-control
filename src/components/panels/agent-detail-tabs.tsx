@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { createClientLogger } from '@/lib/client-logger'
 import Link from 'next/link'
+import { getAgentProfile } from '@/lib/agent-roster'
 
 const log = createClientLogger('AgentDetailTabs')
 
@@ -95,6 +96,7 @@ export function OverviewTab({
   onPerformHeartbeat: () => Promise<void>
 }) {
   const t = useTranslations('agentDetail')
+  const profile = getAgentProfile(agent.name)
   const [messageFrom, setMessageFrom] = useState('system')
   const [directMessage, setDirectMessage] = useState('')
   const [messageStatus, setMessageStatus] = useState<string | null>(null)
@@ -195,7 +197,7 @@ export function OverviewTab({
                   className="bg-surface-1 text-foreground border border-border rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
                 />
               ) : (
-                <span className="text-foreground">{agent.role}</span>
+                <span className="text-foreground">{profile.role}</span>
               )}
             </div>
 
@@ -339,6 +341,7 @@ export function SoulTab({
   onSave: (content: string, templateName?: string) => Promise<void>
 }) {
   const t = useTranslations('agentDetail')
+  const profile = getAgentProfile(agent.name)
   const [editing, setEditing] = useState(false)
   const [content, setContent] = useState(soulContent)
   const [selectedTemplate, setSelectedTemplate] = useState<string>('')
@@ -471,6 +474,7 @@ export function MemoryTab({
   onSave: (content: string, append?: boolean) => Promise<void>
 }) {
   const t = useTranslations('agentDetail')
+  const profile = getAgentProfile(agent.name)
   const [editing, setEditing] = useState(false)
   const [content, setContent] = useState(workingMemory)
   const [appendMode, setAppendMode] = useState(false)
@@ -1380,6 +1384,7 @@ export function ConfigTab({
   onSave: () => void
 }) {
   const t = useTranslations('agentDetail')
+  const profile = getAgentProfile(agent.name)
   const [config, setConfig] = useState<any>(agent.config || {})
   const [editing, setEditing] = useState(false)
   const [showJson, setShowJson] = useState(false)

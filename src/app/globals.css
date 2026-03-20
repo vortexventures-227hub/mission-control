@@ -808,3 +808,8 @@
     repeating-linear-gradient(90deg, transparent 0px, transparent 19px, hsl(120 100% 50% / 0.02) 20px);
   background-size: 100% 100%, 20px 20px, 20px 20px;
 }
+
+/* Ensure nav tooltips escape overflow containers */
+.group:hover > [class*="absolute"][class*="left-full"] {
+  visibility: visible;
+}

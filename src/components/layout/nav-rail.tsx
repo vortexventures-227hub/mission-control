@@ -275,7 +275,7 @@ export function NavRail() {
         </div>
 
         {/* Nav groups */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden py-1">
+        <div className="flex-1 overflow-y-auto py-1">
           {filteredGroups.map((group, groupIndex) => (
             <div key={group.id}>
               {/* Divider between groups (not before first) */}

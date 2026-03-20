@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { createClientLogger } from '@/lib/client-logger'
+import { getAgentProfile } from '@/lib/agent-roster'
 
 const log = createClientLogger('AgentSquadPanel')
 
@@ -208,17 +209,20 @@ export function AgentSquadPanel() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {agents.map(agent => (
+            {agents.map(agent => {
+              const profile = getAgentProfile(agent.name)
+              return (
               <div
                 key={agent.id}
-                className="bg-gray-800 rounded-lg p-4 border-l-4 border-gray-600 hover:bg-gray-750 transition-colors cursor-pointer"
+                className="bg-gray-800 rounded-lg p-4 border-l-4 hover:bg-gray-750 transition-colors cursor-pointer"
+                style={{ borderLeftColor: profile.color || "#4b5563" }}
                 onClick={() => setSelectedAgent(agent)}
               >
                 {/* Agent Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-semibold text-white text-lg">{agent.name}</h3>
-                    <p className="text-gray-400 text-sm">{agent.role}</p>
+                    <h3 className="font-semibold text-white text-lg flex items-center gap-1.5">{profile.emoji && <span>{profile.emoji}</span>}{profile.displayName}</h3>
+                    <p className="text-gray-400 text-sm">{profile.role}</p>
                   </div>
                   
                   <div className="flex items-center gap-2">
@@ -299,7 +303,7 @@ export function AgentSquadPanel() {
                   </Button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>
@@ -338,6 +342,7 @@ function AgentDetailModal({
   onStatusUpdate: (name: string, status: Agent['status'], activity?: string) => Promise<void>
 }) {
   const t = useTranslations('agentSquad')
+  const profile = getAgentProfile(agent.name)
   const [editing, setEditing] = useState(false)
   const [formData, setFormData] = useState({
     role: agent.role,
@@ -371,8 +376,8 @@ function AgentDetailModal({
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="text-xl font-bold text-white">{agent.name}</h3>
-              <p className="text-gray-400">{agent.role}</p>
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">{profile.emoji && <span>{profile.emoji}</span>}{profile.displayName}</h3>
+              <p className="text-gray-400">{profile.role}</p>
             </div>
             <div className="flex items-center gap-3">
               <div className={`w-4 h-4 rounded-full ${statusColors[agent.status]}`}></div>
