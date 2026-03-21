@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       }
     })
   } catch (error) {
-    log.error('Failed to create research intake task', error)
+    log.error('Failed to create research intake task')
     return NextResponse.json(
       { error: 'Failed to create research request' },
       { status: 500 }
@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ jobs })
   } catch (error) {
-    log.error('Failed to fetch research jobs', error)
+    log.error('Failed to fetch research jobs')
     return NextResponse.json(
       { error: 'Failed to fetch research jobs' },
       { status: 500 }
