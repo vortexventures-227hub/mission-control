@@ -84,6 +84,7 @@
     "costTracker": "Cost Tracker",
     "nodes": "Nodes",
     "approvals": "Approvals",
+    "contentResearch": "Content",
     "office": "Office",
     "cron": "Cron",
     "webhooks": "Webhooks",

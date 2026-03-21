@@ -10,6 +10,7 @@ import { LogViewerPanel } from '@/components/panels/log-viewer-panel'
 import { CronManagementPanel } from '@/components/panels/cron-management-panel'
 import { MemoryBrowserPanel } from '@/components/panels/memory-browser-panel'
 import { ResearchIntakePanel } from '@/components/panels/research-intake-panel'
+import { ContentResearchPanel } from '@/components/panels/content-research-panel'
 import { CostTrackerPanel } from '@/components/panels/cost-tracker-panel'
 import { TaskBoardPanel } from '@/components/panels/task-board-panel'
 import { ActivityFeedPanel } from '@/components/panels/activity-feed-panel'
@@ -527,6 +528,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <CronManagementPanel />
     case 'memory':
       return <MemoryBrowserPanel />
+    case 'content-research':
+      return <ContentResearchPanel />
     case 'research':
       return <ResearchIntakePanel />
     case 'cost-tracker':

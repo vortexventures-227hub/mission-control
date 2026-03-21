@@ -47,6 +47,7 @@ const navGroups: NavGroup[] = [
       { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
       { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
       { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
+      { id: 'content-research', label: 'Content', icon: <ContentIcon />, priority: false },
       { id: 'office', label: 'Office', icon: <OfficeIcon />, priority: false },
       { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
     ],
@@ -97,6 +98,7 @@ const navItemTranslationKeys: Record<string, string> = {
   'cost-tracker': 'costTracker',
   nodes: 'nodes',
   'exec-approvals': 'approvals',
+  'content-research': 'contentResearch',
   office: 'office',
   cron: 'cron',
   webhooks: 'webhooks',
@@ -1431,6 +1433,15 @@ function SettingsIcon() {
   )
 }
 
+function ContentIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="14" height="10" rx="1.5" />
+      <path d="M6 8l3 2 3-2" />
+      <circle cx="4" cy="6" r="0.75" fill="currentColor" />
+    </svg>
+  )
+}
 function OfficeIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
