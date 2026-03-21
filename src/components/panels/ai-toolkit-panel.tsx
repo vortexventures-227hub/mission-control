@@ -114,6 +114,23 @@ interface ToolsDatabase {
 type TabId = 'dashboard' | 'tools' | 'templates' | 'stack-builder' | 'compare'
 
 // =============================================================================
+// Free Tier Alternatives Mapping
+// =============================================================================
+
+const FREE_TIER_ALTERNATIVES: Record<string, { name: string; cost: number; notes: string }> = {
+  'make': { name: 'n8n (self-hosted)', cost: 0, notes: 'Self-hosted automation' },
+  'zapier': { name: 'n8n (self-hosted)', cost: 0, notes: 'Self-hosted automation' },
+  'midjourney': { name: 'Leonardo AI (free tier)', cost: 0, notes: '150 images/day free' },
+  'calendly': { name: 'Cal.com (free)', cost: 0, notes: 'Open-source scheduling' },
+  'notion': { name: 'Obsidian (free)', cost: 0, notes: 'Local-first notes' },
+  'airtable': { name: 'NocoDB (self-hosted)', cost: 0, notes: 'Open-source Airtable alternative' },
+  'typeform': { name: 'Tally (free)', cost: 0, notes: 'Free form builder' },
+  'intercom': { name: 'Chatwoot (self-hosted)', cost: 0, notes: 'Open-source support chat' },
+  'mailchimp': { name: 'Listmonk (self-hosted)', cost: 0, notes: 'Self-hosted email' },
+  'hotjar': { name: 'Plausible (self-hosted)', cost: 0, notes: 'Privacy-focused analytics' },
+}
+
+// =============================================================================
 // Category Icons
 // =============================================================================
 
@@ -183,6 +200,195 @@ function getYouTubeVideoId(url: string): string | null {
 }
 
 // =============================================================================
+// Cost Parsing Helpers
+// =============================================================================
+
+function parseCostFromString(costStr: string): { min: number; max: number } {
+  // Handle ranges like "$22-99" or "$22-$99"
+  const rangeMatch = costStr.match(/\$?(\d+(?:\.\d+)?)\s*[-–]\s*\$?(\d+(?:\.\d+)?)/)
+  if (rangeMatch) {
+    return { min: parseFloat(rangeMatch[1]), max: parseFloat(rangeMatch[2]) }
+  }
+  
+  // Handle single values like "$22" or "$22/mo"
+  const singleMatch = costStr.match(/\$?(\d+(?:\.\d+)?)/)
+  if (singleMatch) {
+    const val = parseFloat(singleMatch[1])
+    return { min: val, max: val }
+  }
+  
+  // Free or unknown
+  if (costStr.toLowerCase().includes('free') || costStr === '$0') {
+    return { min: 0, max: 0 }
+  }
+  
+  return { min: 0, max: 0 }
+}
+
+function extractToolCost(tool: Tool | StackTemplateTool): { min: number; max: number } {
+  // For StackTemplateTool (has cost string)
+  if ('cost' in tool && typeof tool.cost === 'string') {
+    return parseCostFromString(tool.cost)
+  }
+  
+  // For full Tool objects
+  const fullTool = tool as Tool
+  if (fullTool.pricing_tiers) {
+    let totalMin = 0
+    let totalMax = 0
+    const tiers = Object.values(fullTool.pricing_tiers)
+    if (tiers.length > 0) {
+      // Use first tier as estimate
+      const { min, max } = parseCostFromString(tiers[0].price)
+      return { min, max }
+    }
+  }
+  
+  if (fullTool.pricing_model === 'free' || fullTool.pricing_model === 'open-source') {
+    return { min: 0, max: 0 }
+  }
+  
+  return { min: 0, max: 0 }
+}
+
+// =============================================================================
+// Unified Cost Calculator
+// =============================================================================
+
+interface UnifiedCostResult {
+  totalMin: number
+  totalMax: number
+  deduplicatedTools: Map<string, { tool: StackTemplateTool; sharedAcross: string[]; cost: { min: number; max: number } }>
+  savings: number
+  naiveTotalMin: number
+  naiveTotalMax: number
+  freeTierSavings: number
+  withFreeTiersMin: number
+  withFreeTiersMax: number
+  freeTierSubstitutions: Array<{ original: string; replacement: string; savings: number }>
+}
+
+function calculateUnifiedCost(
+  selectedTemplates: StackTemplate[],
+  useFreeTiers: boolean = false
+): UnifiedCostResult {
+  const toolMap = new Map<string, { tool: StackTemplateTool; sharedAcross: string[]; cost: { min: number; max: number } }>()
+  
+  // Naive calculation (sum of all template costs without deduplication)
+  let naiveTotalMin = 0
+  let naiveTotalMax = 0
+  
+  selectedTemplates.forEach(template => {
+    naiveTotalMin += template.total_cost.min
+    naiveTotalMax += template.total_cost.max
+  })
+  
+  // Deduplicate tools across templates
+  selectedTemplates.forEach(template => {
+    template.tools.forEach(tool => {
+      const toolKey = tool.id.toLowerCase()
+      const existingEntry = toolMap.get(toolKey)
+      
+      if (existingEntry) {
+        // Tool already exists, add this template to sharedAcross
+        existingEntry.sharedAcross.push(template.name)
+      } else {
+        // New tool
+        toolMap.set(toolKey, {
+          tool,
+          sharedAcross: [template.name],
+          cost: extractToolCost(tool)
+        })
+      }
+    })
+  })
+  
+  // Calculate actual deduplicated total
+  let totalMin = 0
+  let totalMax = 0
+  
+  toolMap.forEach(entry => {
+    totalMin += entry.cost.min
+    totalMax += entry.cost.max
+  })
+  
+  // Calculate savings from deduplication
+  const savings = naiveTotalMax - totalMax
+  
+  // Calculate free tier substitutions
+  let freeTierSavings = 0
+  let withFreeTiersMin = totalMin
+  let withFreeTiersMax = totalMax
+  const freeTierSubstitutions: Array<{ original: string; replacement: string; savings: number }> = []
+  
+  if (useFreeTiers) {
+    toolMap.forEach((entry, toolKey) => {
+      const alternative = FREE_TIER_ALTERNATIVES[toolKey]
+      if (alternative) {
+        const originalCost = entry.cost.max
+        const savingsAmount = originalCost - alternative.cost
+        if (savingsAmount > 0) {
+          freeTierSavings += savingsAmount
+          freeTierSubstitutions.push({
+            original: entry.tool.name,
+            replacement: alternative.name,
+            savings: savingsAmount
+          })
+        }
+      }
+    })
+    withFreeTiersMin = Math.max(0, totalMin - freeTierSavings)
+    withFreeTiersMax = Math.max(0, totalMax - freeTierSavings)
+  }
+  
+  return {
+    totalMin,
+    totalMax,
+    deduplicatedTools: toolMap,
+    savings,
+    naiveTotalMin,
+    naiveTotalMax,
+    freeTierSavings,
+    withFreeTiersMin,
+    withFreeTiersMax,
+    freeTierSubstitutions
+  }
+}
+
+// =============================================================================
+// Tool Overlap Calculator for Templates
+// =============================================================================
+
+function calculateToolOverlaps(templates: StackTemplate[]): Map<string, Map<string, string[]>> {
+  // Map: templateId -> Map<otherTemplateId, [shared tool names]>
+  const overlaps = new Map<string, Map<string, string[]>>()
+  
+  templates.forEach(templateA => {
+    const templateAOverlaps = new Map<string, string[]>()
+    const toolsA = new Set(templateA.tools.map(t => t.id.toLowerCase()))
+    
+    templates.forEach(templateB => {
+      if (templateA.id === templateB.id) return
+      
+      const sharedTools: string[] = []
+      templateB.tools.forEach(toolB => {
+        if (toolsA.has(toolB.id.toLowerCase())) {
+          sharedTools.push(toolB.name)
+        }
+      })
+      
+      if (sharedTools.length > 0) {
+        templateAOverlaps.set(templateB.id, sharedTools)
+      }
+    })
+    
+    overlaps.set(templateA.id, templateAOverlaps)
+  })
+  
+  return overlaps
+}
+
+// =============================================================================
 // Main Panel Component
 // =============================================================================
 
@@ -192,6 +398,7 @@ export function AIToolkitPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [stackBuilderTools, setStackBuilderTools] = useState<Set<string>>(new Set())
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set())
 
   // Load tools database
   useEffect(() => {
@@ -218,6 +425,29 @@ export function AIToolkitPanel() {
     const toolIds = new Set(template.tools.map(t => t.id))
     setStackBuilderTools(toolIds)
     setActiveTab('stack-builder')
+  }, [])
+
+  // Handler to populate stack builder from multiple templates (unified)
+  const handleUseMultipleTemplates = useCallback((templates: StackTemplate[]) => {
+    const toolIds = new Set<string>()
+    templates.forEach(t => {
+      t.tools.forEach(tool => toolIds.add(tool.id))
+    })
+    setStackBuilderTools(toolIds)
+    setActiveTab('stack-builder')
+  }, [])
+
+  // Toggle template selection for unified cost view
+  const toggleTemplateSelection = useCallback((templateId: string) => {
+    setSelectedTemplateIds(prev => {
+      const next = new Set(prev)
+      if (next.has(templateId)) {
+        next.delete(templateId)
+      } else {
+        next.add(templateId)
+      }
+      return next
+    })
   }, [])
 
   if (loading) {
@@ -299,7 +529,15 @@ export function AIToolkitPanel() {
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'dashboard' && <DashboardView database={database} onNavigate={setActiveTab} />}
         {activeTab === 'tools' && <ToolsBrowserView database={database} />}
-        {activeTab === 'templates' && <TemplatesView database={database} onUseTemplate={handleUseTemplate} />}
+        {activeTab === 'templates' && (
+          <TemplatesView 
+            database={database} 
+            onUseTemplate={handleUseTemplate}
+            selectedTemplateIds={selectedTemplateIds}
+            onToggleTemplate={toggleTemplateSelection}
+            onUseMultipleTemplates={handleUseMultipleTemplates}
+          />
+        )}
         {activeTab === 'stack-builder' && <StackBuilderView database={database} initialTools={stackBuilderTools} />}
         {activeTab === 'compare' && <CompareView database={database} />}
       </div>
@@ -526,13 +764,40 @@ function StatCard({ icon, label, value, color }: { icon: string; label: string; 
 }
 
 // =============================================================================
-// Templates View (NEW)
+// Templates View (ENHANCED with Unified Cost Calculator)
 // =============================================================================
 
-function TemplatesView({ database, onUseTemplate }: { database: ToolsDatabase; onUseTemplate: (template: StackTemplate) => void }) {
+function TemplatesView({ 
+  database, 
+  onUseTemplate,
+  selectedTemplateIds,
+  onToggleTemplate,
+  onUseMultipleTemplates
+}: { 
+  database: ToolsDatabase
+  onUseTemplate: (template: StackTemplate) => void
+  selectedTemplateIds: Set<string>
+  onToggleTemplate: (templateId: string) => void
+  onUseMultipleTemplates: (templates: StackTemplate[]) => void
+}) {
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null)
+  const [useFreeTiers, setUseFreeTiers] = useState(false)
 
-  const templates = database.stack_templates || []
+  const templates = useMemo(() => database.stack_templates || [], [database.stack_templates])
+
+  // Calculate tool overlaps between templates
+  const toolOverlaps = useMemo(() => calculateToolOverlaps(templates), [templates])
+
+  // Get selected templates
+  const selectedTemplates = useMemo(() => {
+    return templates.filter(t => selectedTemplateIds.has(t.id))
+  }, [templates, selectedTemplateIds])
+
+  // Calculate unified cost for selected templates
+  const unifiedCost = useMemo(() => {
+    if (selectedTemplates.length === 0) return null
+    return calculateUnifiedCost(selectedTemplates, useFreeTiers)
+  }, [selectedTemplates, useFreeTiers])
 
   if (templates.length === 0) {
     return (
@@ -548,124 +813,303 @@ function TemplatesView({ database, onUseTemplate }: { database: ToolsDatabase; o
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-foreground">Pre-Built Stack Templates</h3>
         <p className="text-sm text-muted-foreground">
-          Production-ready tool combinations for common business use cases
+          Production-ready tool combinations for common business use cases. Select multiple to see unified costs.
         </p>
       </div>
 
-      {templates.map(template => (
-        <div
-          key={template.id}
-          className="bg-surface-1 rounded-lg border border-border overflow-hidden"
-        >
-          {/* Template Header */}
-          <button
-            onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}
-            className="w-full p-4 text-left hover:bg-surface-2/50 transition-colors"
-          >
-            <div className="flex items-start gap-4">
-              <span className="text-3xl">{template.icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-lg font-semibold text-foreground">{template.name}</span>
-                  <span className="px-2 py-0.5 text-xs rounded bg-violet-500/20 text-violet-400">
-                    {template.tools.length} tools
-                  </span>
-                  <span className="px-2 py-0.5 text-xs rounded bg-green-500/20 text-green-400 font-semibold">
-                    ${template.total_cost.min}-${template.total_cost.max}/mo
-                  </span>
-                  <span className="px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
-                    ROI: {template.roi_timeline}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
-              </div>
-              <span className={`text-muted-foreground transition-transform ${expandedTemplate === template.id ? 'rotate-180' : ''}`}>
-                ▼
+      {/* Unified Cost Calculator Panel */}
+      {selectedTemplates.length > 0 && unifiedCost && (
+        <div className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 rounded-lg border border-violet-500/30 p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🧮</span>
+              <h4 className="font-semibold text-foreground">Unified Cost Calculator</h4>
+              <span className="px-2 py-0.5 text-xs rounded bg-violet-500/20 text-violet-400">
+                {selectedTemplates.length} templates selected
               </span>
             </div>
-          </button>
+            <Button
+              onClick={() => onUseMultipleTemplates(selectedTemplates)}
+              size="sm"
+              className="bg-primary hover:bg-primary/90"
+            >
+              Build Combined Stack →
+            </Button>
+          </div>
 
-          {/* Expanded Details */}
-          {expandedTemplate === template.id && (
-            <div className="px-4 pb-4 pt-0 space-y-4 border-t border-border">
-              {/* Tools in Stack */}
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Tools in Stack</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {template.tools.map((tool, i) => (
-                    <div key={i} className="p-3 bg-surface-2 rounded-lg flex items-center gap-3">
-                      <span className="text-lg">{CATEGORY_ICONS[tool.name] || '🔧'}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-foreground text-sm">{tool.name}</div>
-                        <div className="text-xs text-muted-foreground">{tool.role}</div>
-                      </div>
-                      <span className="text-xs font-medium text-green-400">{tool.cost}</span>
-                    </div>
-                  ))}
-                </div>
+          {/* Cost Breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Naive Total */}
+            <div className="p-3 bg-surface-1/50 rounded-lg">
+              <div className="text-xs text-muted-foreground uppercase mb-1">If Purchased Separately</div>
+              <div className="text-lg font-bold text-muted-foreground line-through">
+                ${unifiedCost.naiveTotalMin}-${unifiedCost.naiveTotalMax}/mo
               </div>
+            </div>
 
-              {/* Flow Diagram */}
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Workflow</h4>
-                <div className="flex flex-wrap gap-2 items-center">
-                  {template.flow.map((step, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <div className="p-2 bg-primary/10 rounded-lg text-center min-w-[120px]">
-                        <div className="text-xs font-semibold text-primary">Step {step.step}</div>
-                        <div className="text-sm font-medium text-foreground">{step.label}</div>
-                        <div className="text-xs text-muted-foreground">{step.description}</div>
-                      </div>
-                      {i < template.flow.length - 1 && (
-                        <span className="text-muted-foreground text-lg">→</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
+            {/* Actual Total (Deduplicated) */}
+            <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/30">
+              <div className="text-xs text-green-400 uppercase mb-1">Actual Combined Cost</div>
+              <div className="text-lg font-bold text-green-400">
+                ${unifiedCost.totalMin}-${unifiedCost.totalMax}/mo
               </div>
+              {unifiedCost.savings > 0 && (
+                <div className="text-xs text-green-400 mt-1">
+                  ✨ You save ${unifiedCost.savings}/mo by sharing tools!
+                </div>
+              )}
+            </div>
 
-              {/* Integrations Required */}
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Key Integrations</h4>
-                <div className="flex flex-wrap gap-2">
-                  {template.integrations_required.map((integration, i) => (
-                    <span key={i} className="px-2 py-1 text-xs bg-surface-2 rounded text-foreground">
-                      {integration}
+            {/* Free Tier Option */}
+            <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-xs text-blue-400 uppercase">With Free Alternatives</div>
+                <button
+                  onClick={() => setUseFreeTiers(!useFreeTiers)}
+                  className={`w-10 h-5 rounded-full transition-colors relative ${
+                    useFreeTiers ? 'bg-blue-500' : 'bg-surface-2'
+                  }`}
+                >
+                  <span className={`absolute w-4 h-4 rounded-full bg-white top-0.5 transition-all ${
+                    useFreeTiers ? 'left-5' : 'left-0.5'
+                  }`} />
+                </button>
+              </div>
+              {useFreeTiers ? (
+                <>
+                  <div className="text-lg font-bold text-blue-400">
+                    ${unifiedCost.withFreeTiersMin}-${unifiedCost.withFreeTiersMax}/mo
+                  </div>
+                  <div className="text-xs text-blue-400 mt-1">
+                    💰 Saves ${unifiedCost.freeTierSavings}/mo with free tiers
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-muted-foreground">
+                  Toggle to see potential savings
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Free Tier Substitutions List */}
+          {useFreeTiers && unifiedCost.freeTierSubstitutions.length > 0 && (
+            <div className="mt-3 p-3 bg-surface-1/50 rounded-lg">
+              <div className="text-xs text-muted-foreground uppercase mb-2">Free Tier Substitutions</div>
+              <div className="space-y-2">
+                {unifiedCost.freeTierSubstitutions.map((sub, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="text-red-400 line-through">{sub.original}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="text-green-400">{sub.replacement}</span>
+                    <span className="text-xs text-green-400 ml-auto">(saves ${sub.savings}/mo)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Deduplicated Tools List */}
+          <div>
+            <div className="text-xs text-muted-foreground uppercase mb-2">Deduplicated Tool Stack ({unifiedCost.deduplicatedTools.size} tools)</div>
+            <div className="flex flex-wrap gap-2">
+              {Array.from(unifiedCost.deduplicatedTools.entries()).map(([id, entry]) => (
+                <div
+                  key={id}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                    entry.sharedAcross.length > 1
+                      ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                      : 'bg-surface-1 text-foreground border border-border'
+                  }`}
+                >
+                  {entry.tool.name}
+                  {entry.sharedAcross.length > 1 && (
+                    <span className="ml-1 opacity-75">
+                      (shared across {entry.sharedAcross.length})
                     </span>
-                  ))}
+                  )}
                 </div>
-              </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-              {/* Revenue Model (for OSHA template) */}
-              {template.revenue_model && (
+      {/* Template Cards */}
+      {templates.map(template => {
+        const overlapsForTemplate = toolOverlaps.get(template.id)
+        const isSelected = selectedTemplateIds.has(template.id)
+
+        return (
+          <div
+            key={template.id}
+            className={`bg-surface-1 rounded-lg border overflow-hidden transition-colors ${
+              isSelected ? 'border-primary' : 'border-border'
+            }`}
+          >
+            {/* Template Header */}
+            <div className="flex items-start gap-3 p-4">
+              {/* Selection Checkbox */}
+              <button
+                onClick={() => onToggleTemplate(template.id)}
+                className={`mt-1 w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                  isSelected
+                    ? 'bg-primary border-primary text-primary-foreground'
+                    : 'border-border hover:border-primary/50'
+                }`}
+              >
+                {isSelected && '✓'}
+              </button>
+
+              {/* Main Content Button */}
+              <button
+                onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}
+                className="flex-1 text-left"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="text-3xl">{template.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-lg font-semibold text-foreground">{template.name}</span>
+                      <span className="px-2 py-0.5 text-xs rounded bg-violet-500/20 text-violet-400">
+                        {template.tools.length} tools
+                      </span>
+                      <span className="px-2 py-0.5 text-xs rounded bg-green-500/20 text-green-400 font-semibold">
+                        ${template.total_cost.min}-${template.total_cost.max}/mo
+                      </span>
+                      <span className="px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
+                        ROI: {template.roi_timeline}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+
+                    {/* Tool Overlap Badges */}
+                    {overlapsForTemplate && overlapsForTemplate.size > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {Array.from(overlapsForTemplate.entries()).map(([otherTemplateId, sharedTools]) => {
+                          const otherTemplate = templates.find(t => t.id === otherTemplateId)
+                          if (!otherTemplate) return null
+                          return (
+                            <span
+                              key={otherTemplateId}
+                              className="px-2 py-0.5 text-xs rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                            >
+                              🔄 {sharedTools.length} tool{sharedTools.length > 1 ? 's' : ''} shared with {otherTemplate.name}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <span className={`text-muted-foreground transition-transform ${expandedTemplate === template.id ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            {/* Expanded Details */}
+            {expandedTemplate === template.id && (
+              <div className="px-4 pb-4 pt-0 space-y-4 border-t border-border ml-8">
+                {/* Tools in Stack */}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Revenue Model</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    {template.revenue_model.map((item, i) => (
-                      <div key={i} className="p-3 bg-surface-2 rounded-lg">
-                        <div className="font-medium text-foreground text-sm">{item.course}</div>
-                        <div className="text-xs text-muted-foreground">Price: {item.price}</div>
-                        <div className="text-xs text-muted-foreground">Cost: {item.cost_per_student}</div>
-                        <div className="text-xs font-semibold text-green-400">Margin: {item.margin}</div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Tools in Stack</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {template.tools.map((tool, i) => {
+                      // Check if this tool is shared with other templates
+                      let sharedWith: string[] = []
+                      templates.forEach(otherTemplate => {
+                        if (otherTemplate.id !== template.id) {
+                          const hasShared = otherTemplate.tools.some(t => t.id.toLowerCase() === tool.id.toLowerCase())
+                          if (hasShared) sharedWith.push(otherTemplate.name)
+                        }
+                      })
+
+                      return (
+                        <div key={i} className={`p-3 rounded-lg flex items-center gap-3 ${
+                          sharedWith.length > 0 
+                            ? 'bg-yellow-500/10 border border-yellow-500/20' 
+                            : 'bg-surface-2'
+                        }`}>
+                          <span className="text-lg">{CATEGORY_ICONS[tool.name] || '🔧'}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-foreground text-sm">{tool.name}</div>
+                            <div className="text-xs text-muted-foreground">{tool.role}</div>
+                            {sharedWith.length > 0 && (
+                              <div className="text-xs text-yellow-400 mt-0.5">
+                                ♻️ Also in: {sharedWith.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs font-medium text-green-400">{tool.cost}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Flow Diagram */}
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Workflow</h4>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {template.flow.map((step, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="p-2 bg-primary/10 rounded-lg text-center min-w-[120px]">
+                          <div className="text-xs font-semibold text-primary">Step {step.step}</div>
+                          <div className="text-sm font-medium text-foreground">{step.label}</div>
+                          <div className="text-xs text-muted-foreground">{step.description}</div>
+                        </div>
+                        {i < template.flow.length - 1 && (
+                          <span className="text-muted-foreground text-lg">→</span>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* Use Template Button */}
-              <div className="flex justify-end pt-2">
-                <Button
-                  onClick={() => onUseTemplate(template)}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  Use This Stack →
-                </Button>
+                {/* Integrations Required */}
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Key Integrations</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {template.integrations_required.map((integration, i) => (
+                      <span key={i} className="px-2 py-1 text-xs bg-surface-2 rounded text-foreground">
+                        {integration}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Revenue Model (for OSHA template) */}
+                {template.revenue_model && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Revenue Model</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      {template.revenue_model.map((item, i) => (
+                        <div key={i} className="p-3 bg-surface-2 rounded-lg">
+                          <div className="font-medium text-foreground text-sm">{item.course}</div>
+                          <div className="text-xs text-muted-foreground">Price: {item.price}</div>
+                          <div className="text-xs text-muted-foreground">Cost: {item.cost_per_student}</div>
+                          <div className="text-xs font-semibold text-green-400">Margin: {item.margin}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Use Template Button */}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={() => onUseTemplate(template)}
+                    className="bg-primary hover:bg-primary/90"
+                  >
+                    Use This Stack →
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -1010,12 +1454,13 @@ function ToolCard({ tool, expanded, onToggle }: { tool: Tool; expanded: boolean;
 }
 
 // =============================================================================
-// Stack Builder View
+// Stack Builder View (ENHANCED with Free Tier Toggle)
 // =============================================================================
 
 function StackBuilderView({ database, initialTools }: { database: ToolsDatabase; initialTools?: Set<string> }) {
   const [selectedTools, setSelectedTools] = useState<Set<string>>(initialTools || new Set())
   const [searchQuery, setSearchQuery] = useState('')
+  const [useFreeTiers, setUseFreeTiers] = useState(false)
 
   // Sync with initialTools when it changes (from template)
   useEffect(() => {
@@ -1039,11 +1484,14 @@ function StackBuilderView({ database, initialTools }: { database: ToolsDatabase;
     return database.tools.filter(t => selectedTools.has(t.id))
   }, [database.tools, selectedTools])
 
-  // Calculate costs
+  // Calculate costs with free tier support
   const costSummary = useMemo(() => {
-    let estimatedMonthly = 0
+    let estimatedMonthlyMin = 0
+    let estimatedMonthlyMax = 0
     let hasFreeTier = 0
     let unknownPricing = 0
+    let freeTierSavings = 0
+    const freeTierSubstitutions: Array<{ original: string; replacement: string; savings: number }> = []
 
     selectedToolsData.forEach(tool => {
       if (tool.free_tier?.available) hasFreeTier++
@@ -1053,22 +1501,47 @@ function StackBuilderView({ database, initialTools }: { database: ToolsDatabase;
         const firstTier = Object.values(tool.pricing_tiers)[0]
         const price = firstTier?.price
         if (price) {
-          const match = price.match(/\$?(\d+(?:\.\d+)?)/);
-          if (match) {
-            estimatedMonthly += parseFloat(match[1])
-          } else {
-            unknownPricing++
+          const { min, max } = parseCostFromString(price)
+          estimatedMonthlyMin += min
+          estimatedMonthlyMax += max
+
+          // Check for free tier alternative
+          if (useFreeTiers) {
+            const toolKey = tool.id.toLowerCase()
+            const alternative = FREE_TIER_ALTERNATIVES[toolKey]
+            if (alternative && max > 0) {
+              freeTierSavings += max
+              freeTierSubstitutions.push({
+                original: tool.name,
+                replacement: alternative.name,
+                savings: max
+              })
+            }
           }
+        } else {
+          unknownPricing++
         }
       } else if (tool.pricing_model === 'free' || tool.pricing_model === 'open-source') {
-        // Free tools
+        // Free tools - no cost
       } else {
         unknownPricing++
       }
     })
 
-    return { estimatedMonthly, hasFreeTier, unknownPricing }
-  }, [selectedToolsData])
+    const withFreeTiersMin = Math.max(0, estimatedMonthlyMin - freeTierSavings)
+    const withFreeTiersMax = Math.max(0, estimatedMonthlyMax - freeTierSavings)
+
+    return { 
+      estimatedMonthlyMin, 
+      estimatedMonthlyMax, 
+      hasFreeTier, 
+      unknownPricing,
+      freeTierSavings,
+      withFreeTiersMin,
+      withFreeTiersMax,
+      freeTierSubstitutions
+    }
+  }, [selectedToolsData, useFreeTiers])
 
   const toggleTool = (id: string) => {
     setSelectedTools(prev => {
@@ -1124,6 +1597,11 @@ function StackBuilderView({ database, initialTools }: { database: ToolsDatabase;
                     <div className="text-xs text-muted-foreground">{tool.category}</div>
                   </div>
                   <div className="flex items-center gap-1">
+                    {FREE_TIER_ALTERNATIVES[tool.id.toLowerCase()] && (
+                      <span className="px-1.5 py-0.5 text-xs rounded bg-green-500/20 text-green-400" title="Free alternative available">
+                        🆓
+                      </span>
+                    )}
                     {tool.integrations && tool.integrations.length > 0 && (
                       <span className="px-1.5 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
                         🔗{tool.integrations.length}
@@ -1141,21 +1619,59 @@ function StackBuilderView({ database, initialTools }: { database: ToolsDatabase;
       </div>
 
       {/* Right: Stack Summary */}
-      <div className="w-80 flex flex-col bg-surface-1/50">
+      <div className="w-96 flex flex-col bg-surface-1/50">
         <div className="p-4 border-b border-border">
           <h3 className="font-semibold text-foreground">Your Stack</h3>
           <p className="text-sm text-muted-foreground">{selectedTools.size} tools selected</p>
+        </div>
+
+        {/* Free Tier Toggle */}
+        <div className="p-4 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-foreground">Use Free Tiers</div>
+              <div className="text-xs text-muted-foreground">Swap paid tools for free alternatives</div>
+            </div>
+            <button
+              onClick={() => setUseFreeTiers(!useFreeTiers)}
+              className={`w-12 h-6 rounded-full transition-colors relative ${
+                useFreeTiers ? 'bg-green-500' : 'bg-surface-2'
+              }`}
+            >
+              <span className={`absolute w-5 h-5 rounded-full bg-white top-0.5 transition-all shadow ${
+                useFreeTiers ? 'left-6' : 'left-0.5'
+              }`} />
+            </button>
+          </div>
         </div>
 
         {/* Cost Summary */}
         <div className="p-4 border-b border-border space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Estimated Monthly</span>
-            <span className="text-lg font-bold text-foreground">
-              ${costSummary.estimatedMonthly.toFixed(2)}
+            <span className={`text-lg font-bold ${useFreeTiers && costSummary.freeTierSavings > 0 ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+              ${costSummary.estimatedMonthlyMin.toFixed(0)}-${costSummary.estimatedMonthlyMax.toFixed(0)}
               {costSummary.unknownPricing > 0 && <span className="text-xs text-muted-foreground">+</span>}
             </span>
           </div>
+          
+          {useFreeTiers && costSummary.freeTierSavings > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-green-400">With Free Tiers</span>
+              <span className="text-lg font-bold text-green-400">
+                ${costSummary.withFreeTiersMin.toFixed(0)}-${costSummary.withFreeTiersMax.toFixed(0)}/mo
+              </span>
+            </div>
+          )}
+
+          {useFreeTiers && costSummary.freeTierSavings > 0 && (
+            <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/30">
+              <div className="text-xs text-green-400 font-medium">
+                💰 You save ${costSummary.freeTierSavings.toFixed(0)}/mo with free alternatives!
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-between items-center">
             <span className="text-sm text-muted-foreground">Free Tiers Available</span>
             <span className="text-sm font-medium text-green-400">{costSummary.hasFreeTier}</span>
@@ -1167,6 +1683,22 @@ function StackBuilderView({ database, initialTools }: { database: ToolsDatabase;
           )}
         </div>
 
+        {/* Free Tier Substitutions */}
+        {useFreeTiers && costSummary.freeTierSubstitutions.length > 0 && (
+          <div className="p-4 border-b border-border">
+            <div className="text-xs font-semibold text-muted-foreground uppercase mb-2">Free Substitutions</div>
+            <div className="space-y-2">
+              {costSummary.freeTierSubstitutions.map((sub, i) => (
+                <div key={i} className="text-xs">
+                  <span className="text-red-400 line-through">{sub.original}</span>
+                  <span className="text-muted-foreground mx-1">→</span>
+                  <span className="text-green-400">{sub.replacement}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Selected Tools List */}
         <div className="flex-1 overflow-y-auto p-4">
           {selectedToolsData.length === 0 ? (
@@ -1176,21 +1708,35 @@ function StackBuilderView({ database, initialTools }: { database: ToolsDatabase;
             </div>
           ) : (
             <div className="space-y-2">
-              {selectedToolsData.map(tool => (
-                <div
-                  key={tool.id}
-                  className="p-2 bg-surface-1 rounded-lg border border-border flex items-center gap-2"
-                >
-                  <span>{CATEGORY_ICONS[tool.category] || '🔧'}</span>
-                  <span className="flex-1 text-sm font-medium text-foreground truncate">{tool.name}</span>
-                  <button
-                    onClick={() => toggleTool(tool.id)}
-                    className="text-muted-foreground hover:text-red-400 transition-colors"
+              {selectedToolsData.map(tool => {
+                const hasFreeAlt = FREE_TIER_ALTERNATIVES[tool.id.toLowerCase()]
+                return (
+                  <div
+                    key={tool.id}
+                    className={`p-2 rounded-lg border flex items-center gap-2 ${
+                      useFreeTiers && hasFreeAlt
+                        ? 'bg-green-500/10 border-green-500/30'
+                        : 'bg-surface-1 border-border'
+                    }`}
                   >
-                    ✕
-                  </button>
-                </div>
-              ))}
+                    <span>{CATEGORY_ICONS[tool.category] || '🔧'}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className={`text-sm font-medium truncate ${useFreeTiers && hasFreeAlt ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                        {tool.name}
+                      </span>
+                      {useFreeTiers && hasFreeAlt && (
+                        <div className="text-xs text-green-400">{hasFreeAlt.name}</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => toggleTool(tool.id)}
+                      className="text-muted-foreground hover:text-red-400 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
