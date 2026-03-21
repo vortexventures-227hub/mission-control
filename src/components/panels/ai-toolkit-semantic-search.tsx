@@ -65,10 +65,10 @@ export function SemanticSearch({ onSelectTool, className = '' }: SemanticSearchP
   
   // Handle filter changes
   const updateFilter = <K extends keyof SearchFilters>(key: K, value: SearchFilters[K]) => {
-    setFilters(prev => ({
-      ...prev,
+    setFilters({
+      ...filters,
       [key]: value,
-    }))
+    })
   }
   
   return (

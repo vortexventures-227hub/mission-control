@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { syncToolsToSupabase } from '@/lib/ai-toolkit/sync-tools'
+import { syncToolsToFile } from '@/lib/ai-toolkit/sync-tools'
 
 /**
  * POST /api/ai-toolkit/sync
  * 
- * Triggers a sync of tools.json to Supabase with embeddings
- * Requires admin authentication (check for API key or session)
+ * Regenerates embeddings and saves to tools-with-embeddings.json
+ * This is the in-memory approach (no Supabase needed)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}))
     const toolsJsonPath = body.path
     
-    // Run sync
-    const result = await syncToolsToSupabase(toolsJsonPath)
+    // Run sync (generates embeddings to file)
+    const result = await syncToolsToFile(toolsJsonPath)
     
     return NextResponse.json({
       success: result.success,
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       failed: result.failed,
       errors: result.errors,
       duration: `${result.duration}ms`,
+      note: 'Embeddings saved to data/tools-with-embeddings.json. Restart server to reload.',
     }, {
       status: result.success ? 200 : 207, // 207 = Multi-Status (partial success)
     })
@@ -53,15 +54,16 @@ export async function GET() {
   return NextResponse.json({
     endpoint: '/api/ai-toolkit/sync',
     method: 'POST',
-    description: 'Sync tools.json to Supabase with embeddings',
-    authorization: 'Bearer <ADMIN_API_KEY>',
+    description: 'Regenerate embeddings for AI Toolkit (in-memory approach)',
+    authorization: 'Bearer <ADMIN_API_KEY> (optional)',
     body: {
       path: '(optional) Path to tools.json file',
     },
     notes: [
       'Generates embeddings using OpenAI text-embedding-3-small',
-      'Upserts all tools to Supabase ai_tools table',
-      'Processing ~93 tools takes ~30-60 seconds',
+      'Saves to data/tools-with-embeddings.json',
+      'Server restart required to reload embeddings',
+      'Alternative: run `pnpm generate-embeddings` from CLI',
     ],
   })
 }

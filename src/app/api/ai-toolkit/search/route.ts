@@ -1,46 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
-import { createClient } from '@supabase/supabase-js'
+import {
+  semanticSearch,
+  hybridSearch,
+  textSearch,
+  generateQueryEmbedding,
+  expandQuery,
+  type SearchFilters,
+  type SearchResult,
+} from '@/lib/vector-search'
 
 // =============================================================================
 // Types
 // =============================================================================
-
-interface SearchFilters {
-  category?: string
-  pricingModel?: string
-  recommendationTier?: string
-  hasFreeTier?: boolean
-  hasApi?: boolean
-  tags?: string[]
-}
-
-interface SearchResult {
-  id: string
-  name: string
-  category: string
-  subcategory?: string
-  description?: string
-  pricing_model: string
-  pricing_tiers?: Record<string, any>
-  free_tier?: { available: boolean; details?: string }
-  key_features?: string[]
-  pros?: string[]
-  cons?: string[]
-  skills?: string[]
-  tags?: string[]
-  forklift_relevance?: { score: number; notes?: string; use_cases?: string[] }
-  api_available?: boolean
-  local_deployment?: { available: boolean; requirements?: string }
-  video_links?: Array<{ title: string; url: string; type?: string }>
-  integrations?: string[]
-  status?: string
-  recommendation_tier?: string
-  source_file?: string
-  last_updated?: string
-  similarity: number
-  match_reasons: string[]
-}
 
 interface SemanticSearchResponse {
   query: string
@@ -49,170 +20,6 @@ interface SemanticSearchResponse {
   searchType: 'semantic' | 'hybrid' | 'fallback'
   processingTime: number
   embedding_cached?: boolean
-}
-
-// =============================================================================
-// Clients
-// =============================================================================
-
-// Initialize OpenAI client for embeddings
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role for RLS bypass on search
-  {
-    auth: { persistSession: false }
-  }
-)
-
-// Simple in-memory cache for embeddings (production: use Redis)
-const embeddingCache = new Map<string, { embedding: number[]; timestamp: number }>()
-const CACHE_TTL = 1000 * 60 * 60 // 1 hour
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Generate embedding for a query string using OpenAI
- * Uses text-embedding-3-small for cost efficiency (1536 dimensions)
- */
-async function generateEmbedding(text: string): Promise<number[]> {
-  // Check cache first
-  const cacheKey = text.toLowerCase().trim()
-  const cached = embeddingCache.get(cacheKey)
-  
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.embedding
-  }
-  
-  // Generate new embedding
-  const response = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: text,
-    encoding_format: 'float',
-  })
-  
-  const embedding = response.data[0].embedding
-  
-  // Cache it
-  embeddingCache.set(cacheKey, {
-    embedding,
-    timestamp: Date.now(),
-  })
-  
-  return embedding
-}
-
-/**
- * Perform semantic search using Supabase pgvector
- */
-async function semanticSearch(
-  queryEmbedding: number[],
-  filters: SearchFilters,
-  limit: number = 20,
-  threshold: number = 0.3
-): Promise<SearchResult[]> {
-  const { data, error } = await supabase.rpc('search_ai_tools', {
-    query_embedding: queryEmbedding,
-    match_threshold: threshold,
-    match_count: limit,
-    filter_category: filters.category || null,
-    filter_pricing_model: filters.pricingModel || null,
-    filter_recommendation_tier: filters.recommendationTier || null,
-    filter_has_free_tier: filters.hasFreeTier ?? null,
-    filter_has_api: filters.hasApi ?? null,
-    filter_tags: filters.tags || null,
-  })
-  
-  if (error) {
-    console.error('Semantic search error:', error)
-    throw new Error(`Semantic search failed: ${error.message}`)
-  }
-  
-  return data || []
-}
-
-/**
- * Perform hybrid search (semantic + keyword) using Supabase
- */
-async function hybridSearch(
-  queryEmbedding: number[],
-  queryText: string,
-  limit: number = 20,
-  semanticWeight: number = 0.7
-): Promise<SearchResult[]> {
-  const { data, error } = await supabase.rpc('hybrid_search_ai_tools', {
-    query_embedding: queryEmbedding,
-    query_text: queryText,
-    semantic_weight: semanticWeight,
-    keyword_weight: 1 - semanticWeight,
-    match_threshold: 0.2,
-    match_count: limit,
-  })
-  
-  if (error) {
-    console.error('Hybrid search error:', error)
-    throw new Error(`Hybrid search failed: ${error.message}`)
-  }
-  
-  return data || []
-}
-
-/**
- * Fallback to basic text search if Supabase/embeddings fail
- */
-async function fallbackTextSearch(
-  queryText: string,
-  limit: number = 20
-): Promise<SearchResult[]> {
-  const { data, error } = await supabase
-    .from('ai_tools')
-    .select('*')
-    .or(`name.ilike.%${queryText}%,description.ilike.%${queryText}%,category.ilike.%${queryText}%`)
-    .limit(limit)
-  
-  if (error) {
-    console.error('Fallback search error:', error)
-    return []
-  }
-  
-  // Add placeholder similarity scores
-  return (data || []).map((tool, index) => ({
-    ...tool,
-    similarity: 1 - (index * 0.05), // Decreasing "relevance"
-    match_reasons: ['Keyword match'],
-  }))
-}
-
-/**
- * Expand query with related terms for better semantic matching
- */
-function expandQuery(query: string): string {
-  // Common expansions for forklift business context
-  const expansions: Record<string, string[]> = {
-    'sales': ['selling', 'CRM', 'leads', 'pipeline', 'conversion'],
-    'voice': ['calling', 'phone', 'AI voice', 'speech', 'TTS'],
-    'automation': ['workflow', 'integration', 'automate', 'n8n', 'zapier'],
-    'image': ['graphics', 'visual', 'design', 'generation'],
-    'llm': ['AI model', 'language model', 'GPT', 'Claude'],
-    'free': ['open source', 'no cost', 'freemium'],
-    'local': ['self-hosted', 'on-premise', 'offline'],
-  }
-  
-  let expandedQuery = query
-  
-  for (const [key, values] of Object.entries(expansions)) {
-    if (query.toLowerCase().includes(key)) {
-      expandedQuery += ' ' + values.join(' ')
-    }
-  }
-  
-  return expandedQuery
 }
 
 // =============================================================================
@@ -278,12 +85,9 @@ export async function GET(request: NextRequest) {
       // Expand query for better semantic matching
       const expandedQuery = expandQuery(query)
       
-      // Check if embedding was cached
-      const cacheKey = expandedQuery.toLowerCase().trim()
-      embeddingCached = embeddingCache.has(cacheKey)
-      
       // Generate embedding for the query
-      const queryEmbedding = await generateEmbedding(expandedQuery)
+      const { embedding: queryEmbedding, cached } = await generateQueryEmbedding(expandedQuery)
+      embeddingCached = cached
       
       // Determine search strategy
       if (searchType === 'hybrid' || (searchType === 'auto' && query.split(' ').length > 3)) {
@@ -293,7 +97,7 @@ export async function GET(request: NextRequest) {
       } else {
         // Use pure semantic search
         actualSearchType = 'semantic'
-        results = await semanticSearch(queryEmbedding, filters, limit, threshold)
+        results = await semanticSearch(queryEmbedding, filters, limit, threshold, query)
       }
       
     } catch (embeddingError) {
@@ -301,7 +105,7 @@ export async function GET(request: NextRequest) {
       
       // Fallback to basic text search
       actualSearchType = 'fallback'
-      results = await fallbackTextSearch(query, limit)
+      results = await textSearch(query, limit)
     }
     
     // Build response
@@ -371,8 +175,8 @@ export async function POST(request: NextRequest) {
       queries.map(async (query: string) => {
         try {
           const expandedQuery = expandQuery(query)
-          const embedding = await generateEmbedding(expandedQuery)
-          const searchResults = await semanticSearch(embedding, filters, limit, threshold)
+          const { embedding } = await generateQueryEmbedding(expandedQuery)
+          const searchResults = await semanticSearch(embedding, filters, limit, threshold, query)
           
           return {
             query,

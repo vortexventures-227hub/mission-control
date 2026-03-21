@@ -1,0 +1,13 @@
+{
+  "metadata": {
+    "total_tools": 0,
+    "last_updated": "placeholder",
+    "version": "2.0.0",
+    "categories": [],
+    "embeddings_generated": null,
+    "embedding_model": "text-embedding-3-small",
+    "embedding_dimensions": 1536,
+    "note": "Run 'pnpm generate-embeddings' to populate this file"
+  },
+  "tools": []
+}
