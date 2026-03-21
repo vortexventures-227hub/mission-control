@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { 
   useSemanticSearch, 
   formatSimilarity, 
@@ -9,6 +9,230 @@ import {
   SearchResult,
   SearchFilters 
 } from '@/lib/ai-toolkit/use-semantic-search'
+
+// =============================================================================
+// Web Speech API Types (for TypeScript)
+// =============================================================================
+
+interface SpeechRecognitionResult {
+  readonly length: number
+  item(index: number): SpeechRecognitionAlternative
+  [index: number]: SpeechRecognitionAlternative
+}
+
+interface SpeechRecognitionAlternative {
+  readonly transcript: string
+  readonly confidence: number
+}
+
+interface SpeechRecognitionResultList {
+  readonly length: number
+  item(index: number): SpeechRecognitionResult
+  [index: number]: SpeechRecognitionResult
+}
+
+interface SpeechRecognitionEvent extends Event {
+  readonly results: SpeechRecognitionResultList
+  readonly resultIndex: number
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string
+  readonly message: string
+}
+
+interface ISpeechRecognition extends EventTarget {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onstart: ((this: ISpeechRecognition, ev: Event) => void) | null
+  onresult: ((this: ISpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
+  onerror: ((this: ISpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
+  onend: ((this: ISpeechRecognition, ev: Event) => void) | null
+  start(): void
+  stop(): void
+  abort(): void
+}
+
+// =============================================================================
+// Voice Search Hook
+// =============================================================================
+
+type VoiceState = 'idle' | 'listening' | 'processing' | 'unsupported'
+
+interface UseVoiceSearchOptions {
+  onResult: (transcript: string) => void
+  onError?: (error: string) => void
+  language?: string
+}
+
+function useVoiceSearch({ onResult, onError, language = 'en-US' }: UseVoiceSearchOptions) {
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle')
+  const recognitionRef = useRef<ISpeechRecognition | null>(null)
+  const [isSupported, setIsSupported] = useState(true)
+
+  useEffect(() => {
+    // Check for browser support
+    const SpeechRecognitionAPI = 
+      (window as unknown as { SpeechRecognition?: new () => ISpeechRecognition; webkitSpeechRecognition?: new () => ISpeechRecognition }).SpeechRecognition || 
+      (window as unknown as { SpeechRecognition?: new () => ISpeechRecognition; webkitSpeechRecognition?: new () => ISpeechRecognition }).webkitSpeechRecognition
+
+    if (!SpeechRecognitionAPI) {
+      setIsSupported(false)
+      setVoiceState('unsupported')
+      return
+    }
+
+    const recognition = new SpeechRecognitionAPI()
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = language
+
+    recognition.onstart = () => {
+      setVoiceState('listening')
+    }
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      setVoiceState('processing')
+      const transcript = event.results[0][0].transcript
+      onResult(transcript)
+      setVoiceState('idle')
+    }
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error)
+      if (event.error === 'not-allowed') {
+        onError?.('Microphone access denied. Please allow microphone permissions.')
+      } else if (event.error === 'no-speech') {
+        onError?.('No speech detected. Please try again.')
+      } else {
+        onError?.(`Voice error: ${event.error}`)
+      }
+      setVoiceState('idle')
+    }
+
+    recognition.onend = () => {
+      // Only reset to idle if not already processing
+      setVoiceState(prev => prev === 'processing' ? prev : 'idle')
+    }
+
+    recognitionRef.current = recognition
+
+    return () => {
+      recognition.abort()
+    }
+  }, [language, onResult, onError])
+
+  const startListening = useCallback(() => {
+    if (!recognitionRef.current || voiceState === 'listening') return
+    
+    try {
+      recognitionRef.current.start()
+    } catch {
+      // Already started, ignore
+    }
+  }, [voiceState])
+
+  const stopListening = useCallback(() => {
+    if (!recognitionRef.current) return
+    recognitionRef.current.stop()
+  }, [])
+
+  const toggleListening = useCallback(() => {
+    if (voiceState === 'listening') {
+      stopListening()
+    } else if (voiceState === 'idle') {
+      startListening()
+    }
+  }, [voiceState, startListening, stopListening])
+
+  return {
+    voiceState,
+    isSupported,
+    startListening,
+    stopListening,
+    toggleListening,
+  }
+}
+
+// =============================================================================
+// Microphone Button Component
+// =============================================================================
+
+interface MicButtonProps {
+  voiceState: VoiceState
+  isSupported: boolean
+  onClick: () => void
+}
+
+function MicButton({ voiceState, isSupported, onClick }: MicButtonProps) {
+  if (!isSupported) {
+    return (
+      <button
+        disabled
+        title="Voice search available in Chrome, Edge, Safari"
+        className="absolute right-[4.5rem] top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted-foreground/40 cursor-not-allowed"
+      >
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="18" 
+          height="18" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          stroke="currentColor" 
+          strokeWidth="2" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <line x1="1" y1="1" x2="23" y2="23" />
+          <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+          <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+      </button>
+    )
+  }
+
+  const isListening = voiceState === 'listening'
+  const isProcessing = voiceState === 'processing'
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={isProcessing}
+      title={isListening ? 'Click to stop' : 'Click to speak your search'}
+      className={`absolute right-[4.5rem] top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all duration-200 ${
+        isListening 
+          ? 'text-red-400 bg-red-500/20 animate-pulse' 
+          : isProcessing
+            ? 'text-yellow-400 bg-yellow-500/20'
+            : 'text-muted-foreground hover:text-primary hover:bg-primary/10'
+      }`}
+    >
+      {isProcessing ? (
+        <div className="w-[18px] h-[18px] border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+      ) : (
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="18" 
+          height="18" 
+          viewBox="0 0 24 24" 
+          fill={isListening ? 'currentColor' : 'none'}
+          stroke="currentColor" 
+          strokeWidth="2" 
+          strokeLinecap="round" 
+          strokeLinejoin="round"
+        >
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+      )}
+    </button>
+  )
+}
 
 // =============================================================================
 // Semantic Search Component
@@ -21,12 +245,12 @@ interface SemanticSearchProps {
 
 export function SemanticSearch({ onSelectTool, className = '' }: SemanticSearchProps) {
   const [showFilters, setShowFilters] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
   
   const {
     state,
     setQuery,
     setFilters,
-    search,
     clearResults,
     filters,
   } = useSemanticSearch({
@@ -35,6 +259,28 @@ export function SemanticSearch({ onSelectTool, className = '' }: SemanticSearchP
     limit: 20,
     threshold: 0.25,
     autoSearch: true,
+  })
+
+  // Voice search integration
+  const handleVoiceResult = useCallback((transcript: string) => {
+    setVoiceError(null)
+    setQuery(transcript)
+    // Auto-search triggers via useSemanticSearch's autoSearch option
+  }, [setQuery])
+
+  const handleVoiceError = useCallback((error: string) => {
+    setVoiceError(error)
+    // Clear error after 3 seconds
+    setTimeout(() => setVoiceError(null), 3000)
+  }, [])
+
+  const {
+    voiceState,
+    isSupported: voiceSupported,
+    toggleListening,
+  } = useVoiceSearch({
+    onResult: handleVoiceResult,
+    onError: handleVoiceError,
   })
   
   // Category options (hardcoded for now, could fetch from API)
@@ -70,6 +316,11 @@ export function SemanticSearch({ onSelectTool, className = '' }: SemanticSearchP
       [key]: value,
     })
   }
+
+  // Dynamic placeholder based on voice state
+  const placeholder = voiceState === 'listening' 
+    ? '🎤 Listening...' 
+    : "Search with natural language... e.g. 'AI for 24/7 phone sales' or 'free local LLM'"
   
   return (
     <div className={`space-y-4 ${className}`}>
@@ -79,10 +330,21 @@ export function SemanticSearch({ onSelectTool, className = '' }: SemanticSearchP
           type="text"
           value={state.query || ''}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search with natural language... e.g. 'AI for 24/7 phone sales' or 'free local LLM'"
-          className="w-full bg-surface-1 text-foreground border border-border rounded-lg px-4 py-3 pl-10 pr-24 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          placeholder={placeholder}
+          className={`w-full bg-surface-1 text-foreground border rounded-lg px-4 py-3 pl-10 pr-28 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors ${
+            voiceState === 'listening' 
+              ? 'border-red-500/50 ring-2 ring-red-500/20' 
+              : 'border-border'
+          }`}
         />
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-lg">🔮</span>
+        
+        {/* Microphone Button */}
+        <MicButton 
+          voiceState={voiceState}
+          isSupported={voiceSupported}
+          onClick={toggleListening}
+        />
         
         {/* Search Type Badge */}
         {state.searchType && (
@@ -97,11 +359,19 @@ export function SemanticSearch({ onSelectTool, className = '' }: SemanticSearchP
         
         {/* Loading Spinner */}
         {state.isLoading && (
-          <div className="absolute right-16 top-1/2 -translate-y-1/2">
+          <div className="absolute right-20 top-1/2 -translate-y-1/2">
             <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </div>
+
+      {/* Voice Error Message */}
+      {voiceError && (
+        <div className="p-2 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400 flex items-center gap-2">
+          <span>🎤</span>
+          {voiceError}
+        </div>
+      )}
       
       {/* Filter Toggle & Clear */}
       <div className="flex items-center gap-2">
@@ -243,10 +513,13 @@ export function SemanticSearch({ onSelectTool, className = '' }: SemanticSearchP
             <span>🔮</span> Semantic Search Tips
           </h4>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Describe what you need: <span className="text-foreground">"AI that answers phone calls 24/7"</span></li>
-            <li>• Specify constraints: <span className="text-foreground">"free image generator with API"</span></li>
-            <li>• Ask questions: <span className="text-foreground">"what tool can automate lead follow-ups?"</span></li>
-            <li>• Use business context: <span className="text-foreground">"forklift sales automation"</span></li>
+            <li>• Describe what you need: <span className="text-foreground">&quot;AI that answers phone calls 24/7&quot;</span></li>
+            <li>• Specify constraints: <span className="text-foreground">&quot;free image generator with API&quot;</span></li>
+            <li>• Ask questions: <span className="text-foreground">&quot;what tool can automate lead follow-ups?&quot;</span></li>
+            <li>• Use business context: <span className="text-foreground">&quot;forklift sales automation&quot;</span></li>
+            {voiceSupported && (
+              <li>• <span className="text-primary">🎤 Click the mic button</span> to search by voice!</li>
+            )}
           </ul>
         </div>
       )}
