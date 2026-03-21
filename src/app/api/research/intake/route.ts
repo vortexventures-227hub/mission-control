@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getDatabase } from '@/lib/db'
 import { requireRole } from '@/lib/auth'
 import { logger } from '@/lib/logger'
+import { notifyOpenClaw, formatResearchRequest } from '@/lib/openclaw-notify'
 
 const log = logger.child({ module: 'research-intake-api' })
 
@@ -52,22 +53,49 @@ export async function POST(req: NextRequest) {
       })
     )
 
-    log.info(`Research intake task created: ${result.lastInsertRowid}`)
+    const taskId = result.lastInsertRowid
+    log.info(`Research intake task created: ${taskId}`)
+
+    // Notify OpenClaw (Axis) to delegate to Mr. Blanc
+    const notificationMessage = formatResearchRequest({
+      url,
+      notes,
+      taskId,
+      jobId
+    })
+
+    const notifyResult = await notifyOpenClaw(notificationMessage, { silent: true })
+    
+    if (!notifyResult.success) {
+      log.warn(`Failed to notify OpenClaw, task created but not dispatched: ${notifyResult.error}`)
+      // Update task status to reflect notification failure
+      const updateStmt = db.prepare(`
+        UPDATE tasks SET metadata = json_set(metadata, '$.notification_error', ?) WHERE id = ?
+      `)
+      updateStmt.run(notifyResult.error, taskId)
+    } else {
+      // Update task status to processing since notification was sent
+      const updateStmt = db.prepare(`
+        UPDATE tasks SET status = 'processing', updated_at = ? WHERE id = ?
+      `)
+      updateStmt.run(Math.floor(Date.now() / 1000), taskId)
+    }
 
     return NextResponse.json({
       success: true,
       job: {
         id: jobId,
-        task_id: result.lastInsertRowid,
+        task_id: taskId,
         url,
         notes,
-        status: 'pending',
+        status: notifyResult.success ? 'processing' : 'pending',
         created_at: now,
-        assigned_to
+        assigned_to,
+        notified: notifyResult.success
       }
     })
   } catch (error) {
-    log.error('Failed to create research intake task')
+    log.error('Failed to create research intake task', error)
     return NextResponse.json(
       { error: 'Failed to create research request' },
       { status: 500 }
@@ -105,13 +133,14 @@ export async function GET(req: NextRequest) {
         status: task.status,
         created_at: task.created_at,
         completed_at: task.completed_at,
-        result: task.result ? (typeof task.result === 'string' ? JSON.parse(task.result) : task.result) : null
+        result: task.result ? (typeof task.result === 'string' ? JSON.parse(task.result) : task.result) : null,
+        notification_error: metadata.notification_error
       }
     })
 
     return NextResponse.json({ jobs })
   } catch (error) {
-    log.error('Failed to fetch research jobs')
+    log.error('Failed to fetch research jobs', error)
     return NextResponse.json(
       { error: 'Failed to fetch research jobs' },
       { status: 500 }

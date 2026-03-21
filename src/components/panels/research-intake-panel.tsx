@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { createClientLogger } from '@/lib/client-logger'
@@ -10,11 +10,13 @@ const log = createClientLogger('ResearchIntakePanel')
 
 interface ResearchJob {
   id: string
+  task_id: number
   url: string
   notes?: string
   status: 'pending' | 'processing' | 'completed' | 'error'
   created_at: number
   completed_at?: number
+  notification_error?: string
   result?: {
     title?: string
     summary?: string
@@ -33,6 +35,39 @@ export function ResearchIntakePanel() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [recentJobs, setRecentJobs] = useState<ResearchJob[]>([])
+  const [isPolling, setIsPolling] = useState(false)
+
+  // Fetch recent jobs on mount and poll for updates
+  const fetchJobs = useCallback(async () => {
+    try {
+      const response = await fetch('/api/research/intake?limit=10')
+      if (response.ok) {
+        const data = await response.json()
+        setRecentJobs(data.jobs || [])
+      }
+    } catch (err) {
+      log.error('Failed to fetch jobs:', err)
+    }
+  }, [])
+
+  // Initial fetch
+  useEffect(() => {
+    fetchJobs()
+  }, [fetchJobs])
+
+  // Poll for updates when there are processing jobs
+  useEffect(() => {
+    const hasProcessingJobs = recentJobs.some(j => j.status === 'pending' || j.status === 'processing')
+    
+    if (hasProcessingJobs && !isPolling) {
+      setIsPolling(true)
+      const interval = setInterval(fetchJobs, 5000) // Poll every 5 seconds
+      return () => {
+        clearInterval(interval)
+        setIsPolling(false)
+      }
+    }
+  }, [recentJobs, isPolling, fetchJobs])
 
   // URL validation
   const isValidUrl = (str: string) => {
@@ -92,20 +127,51 @@ export function ResearchIntakePanel() {
         throw new Error(data.error || t('errorSubmitFailed'))
       }
 
-      setSuccess(t('successSubmitted'))
+      if (data.job?.notified === false) {
+        setSuccess(t('successSubmittedNoNotify'))
+      } else {
+        setSuccess(t('successSubmitted'))
+      }
       setUrl('')
       setNotes('')
       
-      // Add to recent jobs
-      if (data.job) {
-        setRecentJobs(prev => [data.job, ...prev.slice(0, 4)])
-      }
+      // Refresh jobs list
+      fetchJobs()
     } catch (err) {
       log.error('Failed to submit research request:', err)
       setError(err instanceof Error ? err.message : t('errorSubmitFailed'))
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const getStatusDisplay = (job: ResearchJob) => {
+    if (job.notification_error) {
+      return {
+        className: 'bg-orange-500/20 text-orange-400',
+        label: 'Notification Failed',
+        icon: '⚠️'
+      }
+    }
+    
+    switch (job.status) {
+      case 'completed':
+        return { className: 'bg-green-500/20 text-green-400', label: 'Completed', icon: '✓' }
+      case 'processing':
+        return { className: 'bg-yellow-500/20 text-yellow-400', label: 'Processing', icon: '⟳' }
+      case 'error':
+        return { className: 'bg-red-500/20 text-red-400', label: 'Error', icon: '✗' }
+      default:
+        return { className: 'bg-gray-500/20 text-gray-400', label: 'Pending', icon: '…' }
+    }
+  }
+
+  const formatTimeAgo = (timestamp: number) => {
+    const seconds = Math.floor(Date.now() / 1000) - timestamp
+    if (seconds < 60) return 'just now'
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+    return `${Math.floor(seconds / 86400)}d ago`
   }
 
   const urlType = url ? getUrlType(url) : null
@@ -128,6 +194,11 @@ export function ResearchIntakePanel() {
             </p>
           </div>
         </div>
+        {isPolling && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="animate-pulse">●</span> Live
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
@@ -222,34 +293,76 @@ export function ResearchIntakePanel() {
           {/* Recent Jobs */}
           {recentJobs.length > 0 && (
             <div className="mt-8">
-              <h3 className="text-sm font-semibold text-foreground mb-3">{t('recentJobs')}</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">{t('recentJobs')}</h3>
+                <button
+                  onClick={fetchJobs}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Refresh
+                </button>
+              </div>
               <div className="space-y-2">
-                {recentJobs.map(job => (
-                  <div
-                    key={job.id}
-                    className="p-3 bg-surface-1 rounded-lg border border-border"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-mono text-muted-foreground truncate flex-1 mr-2">
-                        {job.url}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        job.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                        job.status === 'processing' ? 'bg-yellow-500/20 text-yellow-400' :
-                        job.status === 'error' ? 'bg-red-500/20 text-red-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {job.status}
-                      </span>
+                {recentJobs.map(job => {
+                  const statusDisplay = getStatusDisplay(job)
+                  return (
+                    <div
+                      key={job.id}
+                      className="p-3 bg-surface-1 rounded-lg border border-border hover:border-border/80 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-mono text-muted-foreground truncate flex-1 mr-2">
+                          {job.url}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {formatTimeAgo(job.created_at)}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${statusDisplay.className}`}>
+                            {job.status === 'processing' && (
+                              <span className="animate-spin">{statusDisplay.icon}</span>
+                            )}
+                            {job.status !== 'processing' && statusDisplay.icon}
+                            {statusDisplay.label}
+                          </span>
+                        </div>
+                      </div>
+                      {job.notes && (
+                        <p className="text-xs text-muted-foreground truncate">{job.notes}</p>
+                      )}
+                      {job.notification_error && (
+                        <p className="text-xs text-orange-400 mt-1">
+                          ⚠️ Could not notify Axis: {job.notification_error.slice(0, 50)}...
+                        </p>
+                      )}
+                      {job.result?.title && (
+                        <div className="mt-2 pt-2 border-t border-border/50">
+                          <p className="text-sm font-medium text-foreground">{job.result.title}</p>
+                          {job.result.summary && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-3">
+                              {job.result.summary}
+                            </p>
+                          )}
+                          {job.result.key_points && job.result.key_points.length > 0 && (
+                            <ul className="mt-2 text-xs text-muted-foreground space-y-1">
+                              {job.result.key_points.slice(0, 3).map((point, i) => (
+                                <li key={i} className="flex items-start gap-1">
+                                  <span className="text-primary">•</span>
+                                  <span>{point}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                      {job.result?.error && (
+                        <p className="text-xs text-red-400 mt-1">
+                          Error: {job.result.error}
+                        </p>
+                      )}
                     </div>
-                    {job.notes && (
-                      <p className="text-xs text-muted-foreground truncate">{job.notes}</p>
-                    )}
-                    {job.result?.title && (
-                      <p className="text-sm text-foreground mt-1">{job.result.title}</p>
-                    )}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}

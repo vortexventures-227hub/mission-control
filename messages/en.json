@@ -2176,6 +2176,7 @@
     "howItWorks": "How it works",
     "step1": "Paste a URL you want researched (YouTube, article, X post, etc.)",
     "step2": "{agent} will analyze and summarize the content",
-    "step3": "Results appear in your tasks and can be reviewed in Memory"
+    "step3": "Results appear in your tasks and can be reviewed in Memory",
+    "successSubmittedNoNotify": "Request saved, but notification to Axis failed. Task will be processed when connection is restored."
   }
 }
