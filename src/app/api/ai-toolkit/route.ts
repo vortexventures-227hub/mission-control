@@ -4,10 +4,15 @@ import { join } from 'path'
 import { homedir } from 'os'
 import { requireRole } from '@/lib/auth'
 
-// Path to the AI Toolkit database
+// Paths to the AI Toolkit database files
 const TOOLKIT_DB_PATH = join(
   homedir(),
   'Desktop/VVAxeOps/AxeVault/40_KNOWLEDGE/AIToolkit/database/tools.json'
+)
+
+const TEMPLATES_DB_PATH = join(
+  homedir(),
+  'Desktop/VVAxeOps/AxeVault/40_KNOWLEDGE/AIToolkit/database/stack-templates.json'
 )
 
 export async function GET(req: NextRequest) {
@@ -15,10 +20,23 @@ export async function GET(req: NextRequest) {
   if (authResult instanceof NextResponse) return authResult
 
   try {
-    const content = await readFile(TOOLKIT_DB_PATH, 'utf-8')
-    const database = JSON.parse(content)
+    // Load tools database
+    const toolsContent = await readFile(TOOLKIT_DB_PATH, 'utf-8')
+    const toolsDatabase = JSON.parse(toolsContent)
     
-    return NextResponse.json(database)
+    // Try to load templates (optional, won't fail if missing)
+    let templatesDatabase = { templates: [] }
+    try {
+      const templatesContent = await readFile(TEMPLATES_DB_PATH, 'utf-8')
+      templatesDatabase = JSON.parse(templatesContent)
+    } catch {
+      // Templates file doesn't exist yet, use empty
+    }
+    
+    return NextResponse.json({
+      ...toolsDatabase,
+      stack_templates: templatesDatabase.templates || []
+    })
   } catch (error) {
     console.error('Failed to load AI Toolkit database:', error)
     return NextResponse.json(

@@ -63,6 +63,43 @@ interface Tool {
   source_file?: string
 }
 
+interface StackTemplateTool {
+  id: string
+  name: string
+  role: string
+  cost: string
+}
+
+interface StackTemplateFlow {
+  step: number
+  label: string
+  description: string
+}
+
+interface StackTemplate {
+  id: string
+  name: string
+  description: string
+  use_case: string
+  icon: string
+  tools: StackTemplateTool[]
+  total_cost: {
+    min: number
+    max: number
+    currency: string
+    period: string
+  }
+  flow: StackTemplateFlow[]
+  integrations_required: string[]
+  roi_timeline: string
+  revenue_model?: Array<{
+    course: string
+    price: string
+    cost_per_student: string
+    margin: string
+  }>
+}
+
 interface ToolsDatabase {
   metadata: {
     total_tools: number
@@ -71,9 +108,10 @@ interface ToolsDatabase {
     categories: string[]
   }
   tools: Tool[]
+  stack_templates?: StackTemplate[]
 }
 
-type TabId = 'dashboard' | 'tools' | 'stack-builder' | 'compare'
+type TabId = 'dashboard' | 'tools' | 'templates' | 'stack-builder' | 'compare'
 
 // =============================================================================
 // Category Icons
@@ -128,6 +166,23 @@ const PRICING_COLORS: Record<string, string> = {
 }
 
 // =============================================================================
+// YouTube Thumbnail Helper
+// =============================================================================
+
+function getYouTubeThumbnail(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  if (match) {
+    return `https://img.youtube.com/vi/${match[1]}/mqdefault.jpg`
+  }
+  return null
+}
+
+function getYouTubeVideoId(url: string): string | null {
+  const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return match ? match[1] : null
+}
+
+// =============================================================================
 // Main Panel Component
 // =============================================================================
 
@@ -136,6 +191,7 @@ export function AIToolkitPanel() {
   const [database, setDatabase] = useState<ToolsDatabase | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [stackBuilderTools, setStackBuilderTools] = useState<Set<string>>(new Set())
 
   // Load tools database
   useEffect(() => {
@@ -156,6 +212,13 @@ export function AIToolkitPanel() {
       setLoading(false)
     }
   }
+
+  // Handler to populate stack builder from template
+  const handleUseTemplate = useCallback((template: StackTemplate) => {
+    const toolIds = new Set(template.tools.map(t => t.id))
+    setStackBuilderTools(toolIds)
+    setActiveTab('stack-builder')
+  }, [])
 
   if (loading) {
     return (
@@ -187,6 +250,7 @@ export function AIToolkitPanel() {
   const tabs: { id: TabId; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Overview', icon: '📊' },
     { id: 'tools', label: 'Browse Tools', icon: '🔧' },
+    { id: 'templates', label: 'Templates', icon: '📋' },
     { id: 'stack-builder', label: 'Stack Builder', icon: '🏗️' },
     { id: 'compare', label: 'Compare', icon: '⚖️' },
   ]
@@ -200,9 +264,9 @@ export function AIToolkitPanel() {
             🛠️
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-foreground">AI Toolkit</h2>
+            <h2 className="text-lg font-semibold text-foreground">AI Toolkit V2</h2>
             <p className="text-sm text-muted-foreground">
-              {database.metadata.total_tools} tools across {database.metadata.categories.length} categories
+              {database.metadata.total_tools} tools • {database.stack_templates?.length || 0} templates
             </p>
           </div>
         </div>
@@ -222,6 +286,11 @@ export function AIToolkitPanel() {
           >
             <span>{tab.icon}</span>
             {tab.label}
+            {tab.id === 'templates' && database.stack_templates && database.stack_templates.length > 0 && (
+              <span className="px-1.5 py-0.5 text-xs rounded-full bg-violet-500/20 text-violet-400">
+                {database.stack_templates.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -230,7 +299,8 @@ export function AIToolkitPanel() {
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'dashboard' && <DashboardView database={database} onNavigate={setActiveTab} />}
         {activeTab === 'tools' && <ToolsBrowserView database={database} />}
-        {activeTab === 'stack-builder' && <StackBuilderView database={database} />}
+        {activeTab === 'templates' && <TemplatesView database={database} onUseTemplate={handleUseTemplate} />}
+        {activeTab === 'stack-builder' && <StackBuilderView database={database} initialTools={stackBuilderTools} />}
         {activeTab === 'compare' && <CompareView database={database} />}
       </div>
     </div>
@@ -250,6 +320,8 @@ function DashboardView({ database, onNavigate }: { database: ToolsDatabase; onNa
     const tier1 = tools.filter(t => t.recommendation_tier === 'tier_1_essential').length
     const freeTierCount = tools.filter(t => t.free_tier?.available).length
     const withApi = tools.filter(t => t.api_available).length
+    const withVideos = tools.filter(t => t.video_links && t.video_links.length > 0).length
+    const withIntegrations = tools.filter(t => t.integrations && t.integrations.length > 0).length
 
     // Group by category
     const byCategory = tools.reduce((acc, tool) => {
@@ -257,7 +329,7 @@ function DashboardView({ database, onNavigate }: { database: ToolsDatabase; onNa
       return acc
     }, {} as Record<string, number>)
 
-    return { tier1, freeTierCount, withApi, byCategory }
+    return { tier1, freeTierCount, withApi, withVideos, withIntegrations, byCategory }
   }, [database.tools])
 
   // Filter tools by search
@@ -303,11 +375,18 @@ function DashboardView({ database, onNavigate }: { database: ToolsDatabase; onNa
                   <div className="font-medium text-foreground truncate">{tool.name}</div>
                   <div className="text-xs text-muted-foreground truncate">{tool.category}</div>
                 </div>
-                {tool.recommendation_tier && (
-                  <span className={`px-2 py-0.5 text-xs rounded border ${TIER_COLORS[tool.recommendation_tier]}`}>
-                    {TIER_LABELS[tool.recommendation_tier]}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {tool.integrations && tool.integrations.length > 0 && (
+                    <span className="px-1.5 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
+                      🔗 {tool.integrations.length}
+                    </span>
+                  )}
+                  {tool.recommendation_tier && (
+                    <span className={`px-2 py-0.5 text-xs rounded border ${TIER_COLORS[tool.recommendation_tier]}`}>
+                      {TIER_LABELS[tool.recommendation_tier]}
+                    </span>
+                  )}
+                </div>
               </button>
             ))}
           </div>
@@ -315,32 +394,48 @@ function DashboardView({ database, onNavigate }: { database: ToolsDatabase; onNa
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          icon="🛠️"
-          label="Total Tools"
-          value={database.metadata.total_tools}
-          color="violet"
-        />
-        <StatCard
-          icon="⭐"
-          label="Tier-1 Essential"
-          value={stats.tier1}
-          color="green"
-        />
-        <StatCard
-          icon="🆓"
-          label="Free Tier Available"
-          value={stats.freeTierCount}
-          color="blue"
-        />
-        <StatCard
-          icon="🔌"
-          label="API Available"
-          value={stats.withApi}
-          color="purple"
-        />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard icon="🛠️" label="Total Tools" value={database.metadata.total_tools} color="violet" />
+        <StatCard icon="⭐" label="Tier-1 Essential" value={stats.tier1} color="green" />
+        <StatCard icon="🆓" label="Free Tier" value={stats.freeTierCount} color="blue" />
+        <StatCard icon="📹" label="With Videos" value={stats.withVideos} color="red" />
+        <StatCard icon="🔗" label="Integrations" value={stats.withIntegrations} color="purple" />
       </div>
+
+      {/* Templates Quick Access */}
+      {database.stack_templates && database.stack_templates.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-foreground">Stack Templates</h3>
+            <button onClick={() => onNavigate('templates')} className="text-xs text-primary hover:underline">
+              View all →
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            {database.stack_templates.map(template => (
+              <button
+                key={template.id}
+                onClick={() => onNavigate('templates')}
+                className="p-4 bg-surface-1 hover:bg-surface-2 rounded-lg border border-border transition-colors text-left group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">{template.icon}</span>
+                  <span className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+                    {template.name}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{template.use_case}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{template.tools.length} tools</span>
+                  <span className="text-xs font-semibold text-green-400">
+                    ${template.total_cost.min}-${template.total_cost.max}/mo
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Category Cards */}
       <div>
@@ -370,10 +465,7 @@ function DashboardView({ database, onNavigate }: { database: ToolsDatabase; onNa
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Tier-1 Essentials</h3>
-          <button
-            onClick={() => onNavigate('tools')}
-            className="text-xs text-primary hover:underline"
-          >
+          <button onClick={() => onNavigate('tools')} className="text-xs text-primary hover:underline">
             View all →
           </button>
         </div>
@@ -382,22 +474,24 @@ function DashboardView({ database, onNavigate }: { database: ToolsDatabase; onNa
             .filter(t => t.recommendation_tier === 'tier_1_essential')
             .slice(0, 6)
             .map(tool => (
-              <div
-                key={tool.id}
-                className="p-4 bg-surface-1 rounded-lg border border-green-500/30"
-              >
+              <div key={tool.id} className="p-4 bg-surface-1 rounded-lg border border-green-500/30">
                 <div className="flex items-start gap-3">
                   <span className="text-xl">{CATEGORY_ICONS[tool.category] || '🔧'}</span>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-foreground">{tool.name}</div>
                     <div className="text-xs text-muted-foreground truncate">{tool.description}</div>
-                    <div className="flex items-center gap-2 mt-2">
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <span className={`px-2 py-0.5 text-xs rounded ${PRICING_COLORS[tool.pricing_model]}`}>
                         {tool.pricing_model}
                       </span>
-                      {tool.free_tier?.available && (
-                        <span className="px-2 py-0.5 text-xs rounded bg-green-500/20 text-green-400">
-                          Free tier
+                      {tool.integrations && tool.integrations.length > 0 && (
+                        <span className="px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
+                          🔗 {tool.integrations.length}
+                        </span>
+                      )}
+                      {tool.video_links && tool.video_links.length > 0 && (
+                        <span className="px-2 py-0.5 text-xs rounded bg-red-500/20 text-red-400">
+                          📹 {tool.video_links.length}
                         </span>
                       )}
                     </div>
@@ -417,6 +511,7 @@ function StatCard({ icon, label, value, color }: { icon: string; label: string; 
     green: 'from-green-500/20 to-emerald-500/20',
     blue: 'from-blue-500/20 to-cyan-500/20',
     purple: 'from-purple-500/20 to-pink-500/20',
+    red: 'from-red-500/20 to-orange-500/20',
   }
 
   return (
@@ -426,6 +521,151 @@ function StatCard({ icon, label, value, color }: { icon: string; label: string; 
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
       <div className="text-2xl font-bold text-foreground">{value}</div>
+    </div>
+  )
+}
+
+// =============================================================================
+// Templates View (NEW)
+// =============================================================================
+
+function TemplatesView({ database, onUseTemplate }: { database: ToolsDatabase; onUseTemplate: (template: StackTemplate) => void }) {
+  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null)
+
+  const templates = database.stack_templates || []
+
+  if (templates.length === 0) {
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        <div className="text-4xl mb-4">📋</div>
+        <p>No stack templates available yet.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="mb-4">
+        <h3 className="text-lg font-semibold text-foreground">Pre-Built Stack Templates</h3>
+        <p className="text-sm text-muted-foreground">
+          Production-ready tool combinations for common business use cases
+        </p>
+      </div>
+
+      {templates.map(template => (
+        <div
+          key={template.id}
+          className="bg-surface-1 rounded-lg border border-border overflow-hidden"
+        >
+          {/* Template Header */}
+          <button
+            onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}
+            className="w-full p-4 text-left hover:bg-surface-2/50 transition-colors"
+          >
+            <div className="flex items-start gap-4">
+              <span className="text-3xl">{template.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-lg font-semibold text-foreground">{template.name}</span>
+                  <span className="px-2 py-0.5 text-xs rounded bg-violet-500/20 text-violet-400">
+                    {template.tools.length} tools
+                  </span>
+                  <span className="px-2 py-0.5 text-xs rounded bg-green-500/20 text-green-400 font-semibold">
+                    ${template.total_cost.min}-${template.total_cost.max}/mo
+                  </span>
+                  <span className="px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
+                    ROI: {template.roi_timeline}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">{template.description}</p>
+              </div>
+              <span className={`text-muted-foreground transition-transform ${expandedTemplate === template.id ? 'rotate-180' : ''}`}>
+                ▼
+              </span>
+            </div>
+          </button>
+
+          {/* Expanded Details */}
+          {expandedTemplate === template.id && (
+            <div className="px-4 pb-4 pt-0 space-y-4 border-t border-border">
+              {/* Tools in Stack */}
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Tools in Stack</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {template.tools.map((tool, i) => (
+                    <div key={i} className="p-3 bg-surface-2 rounded-lg flex items-center gap-3">
+                      <span className="text-lg">{CATEGORY_ICONS[tool.name] || '🔧'}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-foreground text-sm">{tool.name}</div>
+                        <div className="text-xs text-muted-foreground">{tool.role}</div>
+                      </div>
+                      <span className="text-xs font-medium text-green-400">{tool.cost}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Flow Diagram */}
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Workflow</h4>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {template.flow.map((step, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="p-2 bg-primary/10 rounded-lg text-center min-w-[120px]">
+                        <div className="text-xs font-semibold text-primary">Step {step.step}</div>
+                        <div className="text-sm font-medium text-foreground">{step.label}</div>
+                        <div className="text-xs text-muted-foreground">{step.description}</div>
+                      </div>
+                      {i < template.flow.length - 1 && (
+                        <span className="text-muted-foreground text-lg">→</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Integrations Required */}
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Key Integrations</h4>
+                <div className="flex flex-wrap gap-2">
+                  {template.integrations_required.map((integration, i) => (
+                    <span key={i} className="px-2 py-1 text-xs bg-surface-2 rounded text-foreground">
+                      {integration}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Revenue Model (for OSHA template) */}
+              {template.revenue_model && (
+                <div>
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Revenue Model</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    {template.revenue_model.map((item, i) => (
+                      <div key={i} className="p-3 bg-surface-2 rounded-lg">
+                        <div className="font-medium text-foreground text-sm">{item.course}</div>
+                        <div className="text-xs text-muted-foreground">Price: {item.price}</div>
+                        <div className="text-xs text-muted-foreground">Cost: {item.cost_per_student}</div>
+                        <div className="text-xs font-semibold text-green-400">Margin: {item.margin}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Use Template Button */}
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={() => onUseTemplate(template)}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  Use This Stack →
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   )
 }
@@ -587,6 +827,12 @@ function ToolCard({ tool, expanded, onToggle }: { tool: Tool; expanded: boolean;
                   Free tier
                 </span>
               )}
+              {/* Integration Badge (NEW) */}
+              {tool.integrations && tool.integrations.length > 0 && (
+                <span className="px-2 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
+                  🔗 {tool.integrations.length} integrations
+                </span>
+              )}
             </div>
             <div className="text-sm text-muted-foreground mt-1">{tool.description}</div>
             <div className="text-xs text-muted-foreground mt-1">{tool.category}{tool.subcategory ? ` › ${tool.subcategory}` : ''}</div>
@@ -645,6 +891,20 @@ function ToolCard({ tool, expanded, onToggle }: { tool: Tool; expanded: boolean;
             )}
           </div>
 
+          {/* Integrations List (NEW) */}
+          {tool.integrations && tool.integrations.length > 0 && (
+            <div>
+              <h4 className="text-xs font-semibold text-blue-400 uppercase mb-2">🔗 Integrations</h4>
+              <div className="flex flex-wrap gap-2">
+                {tool.integrations.map((integration, i) => (
+                  <span key={i} className="px-2 py-1 text-xs bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">
+                    {integration}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Pricing Tiers */}
           {tool.pricing_tiers && Object.keys(tool.pricing_tiers).length > 0 && (
             <div>
@@ -661,22 +921,48 @@ function ToolCard({ tool, expanded, onToggle }: { tool: Tool; expanded: boolean;
             </div>
           )}
 
-          {/* Video Links */}
+          {/* Video Links with Thumbnails (ENHANCED) */}
           {tool.video_links && tool.video_links.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">Videos & Tutorials</h4>
-              <div className="flex flex-wrap gap-2">
-                {tool.video_links.map((video, i) => (
-                  <a
-                    key={i}
-                    href={video.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm hover:bg-red-500/30 transition-colors flex items-center gap-1"
-                  >
-                    ▶ {video.title}
-                  </a>
-                ))}
+              <h4 className="text-xs font-semibold text-red-400 uppercase mb-2">📹 Video Tutorials</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {tool.video_links.map((video, i) => {
+                  const thumbnail = getYouTubeThumbnail(video.url)
+                  return (
+                    <a
+                      key={i}
+                      href={video.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group block bg-surface-2 rounded-lg overflow-hidden hover:ring-2 hover:ring-red-500/50 transition-all"
+                    >
+                      {thumbnail ? (
+                        <div className="relative">
+                          <img
+                            src={thumbnail}
+                            alt={video.title}
+                            className="w-full h-24 object-cover"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors">
+                            <span className="text-3xl">▶️</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-24 bg-red-500/10 flex items-center justify-center">
+                          <span className="text-3xl">🎬</span>
+                        </div>
+                      )}
+                      <div className="p-2">
+                        <div className="text-xs font-medium text-foreground line-clamp-2 group-hover:text-red-400 transition-colors">
+                          {video.title}
+                        </div>
+                        {video.type && (
+                          <span className="text-xs text-muted-foreground capitalize">{video.type}</span>
+                        )}
+                      </div>
+                    </a>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -727,9 +1013,16 @@ function ToolCard({ tool, expanded, onToggle }: { tool: Tool; expanded: boolean;
 // Stack Builder View
 // =============================================================================
 
-function StackBuilderView({ database }: { database: ToolsDatabase }) {
-  const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set())
+function StackBuilderView({ database, initialTools }: { database: ToolsDatabase; initialTools?: Set<string> }) {
+  const [selectedTools, setSelectedTools] = useState<Set<string>>(initialTools || new Set())
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Sync with initialTools when it changes (from template)
+  useEffect(() => {
+    if (initialTools && initialTools.size > 0) {
+      setSelectedTools(initialTools)
+    }
+  }, [initialTools])
 
   // Filter tools by search
   const filteredTools = useMemo(() => {
@@ -830,9 +1123,16 @@ function StackBuilderView({ database }: { database: ToolsDatabase }) {
                     <div className="font-medium text-foreground text-sm">{tool.name}</div>
                     <div className="text-xs text-muted-foreground">{tool.category}</div>
                   </div>
-                  <span className={`px-2 py-0.5 text-xs rounded ${PRICING_COLORS[tool.pricing_model]}`}>
-                    {tool.pricing_model}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    {tool.integrations && tool.integrations.length > 0 && (
+                      <span className="px-1.5 py-0.5 text-xs rounded bg-blue-500/20 text-blue-400">
+                        🔗{tool.integrations.length}
+                      </span>
+                    )}
+                    <span className={`px-2 py-0.5 text-xs rounded ${PRICING_COLORS[tool.pricing_model]}`}>
+                      {tool.pricing_model}
+                    </span>
+                  </div>
                 </div>
               </button>
             ))}
@@ -1026,8 +1326,10 @@ function CompareView({ database }: { database: ToolsDatabase }) {
               <CompareRow label="Free Tier" values={toolsToCompare.map(t => t.free_tier?.available ? '✓ Yes' : '✗ No')} />
               <CompareRow label="API Available" values={toolsToCompare.map(t => t.api_available ? '✓ Yes' : '✗ No')} />
               <CompareRow label="Self-hostable" values={toolsToCompare.map(t => t.local_deployment?.available ? '✓ Yes' : '✗ No')} />
+              <CompareRow label="Integrations" values={toolsToCompare.map(t => t.integrations?.length ? `${t.integrations.length} tools` : '—')} />
               <CompareRow label="Recommendation" values={toolsToCompare.map(t => TIER_LABELS[t.recommendation_tier || ''] || '—')} />
               <CompareRow label="Forklift Score" values={toolsToCompare.map(t => t.forklift_relevance?.score ? `${t.forklift_relevance.score}/10` : '—')} />
+              <CompareRow label="Videos" values={toolsToCompare.map(t => t.video_links?.length ? `${t.video_links.length} tutorials` : '—')} />
               <CompareRow label="Key Features" values={toolsToCompare.map(t => t.key_features?.slice(0, 3).join(', ') || '—')} multiline />
               <CompareRow label="Pros" values={toolsToCompare.map(t => t.pros?.slice(0, 3).join(', ') || '—')} multiline />
               <CompareRow label="Cons" values={toolsToCompare.map(t => t.cons?.slice(0, 3).join(', ') || '—')} multiline />
