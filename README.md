@@ -764,3 +764,41 @@ If you find this project useful, consider supporting my open-source work.
 ## License
 
 [MIT](LICENSE) © 2026 [Builderz Labs](https://github.com/builderz-labs/mission-control)
+
+## AI Toolkit Semantic Search
+
+The AI Toolkit includes semantic search powered by OpenAI embeddings with zero external dependencies.
+
+### Setup
+
+1. Add your OpenAI API key to `.env`:
+   ```
+   OPENAI_API_KEY=sk-...
+   ```
+
+2. Generate embeddings (one-time, ~$0.01):
+   ```bash
+   pnpm generate-embeddings
+   ```
+
+3. The generated `data/tools-with-embeddings.json` is loaded at server start.
+
+### How it works
+
+- Pre-computed embeddings are stored in `data/tools-with-embeddings.json`
+- At runtime, query embeddings are generated via OpenAI
+- Cosine similarity is computed in-memory against all tools
+- Results are sorted by similarity score
+
+### API
+
+**Search:**
+```
+GET /api/ai-toolkit/search?q=voice+ai+for+sales
+```
+
+**Regenerate embeddings:**
+```
+POST /api/ai-toolkit/sync
+```
+
