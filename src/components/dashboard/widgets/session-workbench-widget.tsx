@@ -33,19 +33,39 @@ export function SessionWorkbenchWidget({ data }: { data: DashboardData }) {
               <button
                 type="button"
                 onClick={() => openSession(session)}
-                className="w-full text-left flex items-center gap-3"
+                className="w-full text-left"
               >
-                <div className={`w-2 h-2 rounded-full shrink-0 ${session.active ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate font-mono-tight">{session.key || session.id}</div>
-                  <div className="text-2xs text-muted-foreground">
-                    {session.kind === 'codex-cli' ? 'Codex' : session.kind === 'claude-code' ? 'Claude' : session.kind === 'hermes' ? 'Hermes' : session.kind} · {session.model?.split('/').pop() || 'unknown'}
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${session.active ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.5)]' : 'bg-muted-foreground/30'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate font-mono-tight">{session.key || session.id}</div>
+                    <div className="text-2xs text-muted-foreground">
+                      {session.kind === 'codex-cli' ? 'Codex' : session.kind === 'claude-code' ? 'Claude' : session.kind === 'hermes' ? 'Hermes' : session.kind} · {session.model?.split('/').pop() || 'unknown'}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-2xs font-mono-tight text-muted-foreground">{session.tokens}</div>
+                    <div className="text-2xs text-muted-foreground">{session.age}</div>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="text-2xs font-mono-tight text-muted-foreground">{session.tokens}</div>
-                  <div className="text-2xs text-muted-foreground">{session.age}</div>
-                </div>
+                {/* Context usage bar */}
+                {(() => {
+                  const match = session.tokens?.match(/\((\d+(?:\.\d+)?)%\)/)
+                  const percentage = match ? parseFloat(match[1]) : 0
+                  if (percentage <= 0) return null
+                  return (
+                    <div className="mt-1.5 h-1 rounded-full bg-secondary/50 overflow-hidden">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          percentage > 90 ? 'bg-gradient-to-r from-red-500 to-red-400' : 
+                          percentage > 70 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 
+                          'bg-gradient-to-r from-emerald-500 to-emerald-400'
+                        }`}
+                        style={{ width: `${Math.min(percentage, 100)}%` }}
+                      />
+                    </div>
+                  )
+                })()}
               </button>
             </div>
           ))
