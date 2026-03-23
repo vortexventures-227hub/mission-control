@@ -522,23 +522,24 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === 'trends') {
-      const now = Date.now()
-      const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000
-      const recentData = filteredData.filter(r => r.timestamp >= twentyFourHoursAgo)
+      // Use filteredData directly (already filtered by timeframe).
+      // Group by hour for hour/day, by day for week/month.
+      const useDaily = timeframe === 'week' || timeframe === 'month'
+      const trendBuckets: Record<string, { tokens: number; cost: number; requests: number }> = {}
 
-      const hourlyTrends: Record<string, { tokens: number; cost: number; requests: number }> = {}
-
-      recentData.forEach(record => {
-        const hour = new Date(record.timestamp).toISOString().slice(0, 13) + ':00:00.000Z'
-        if (!hourlyTrends[hour]) {
-          hourlyTrends[hour] = { tokens: 0, cost: 0, requests: 0 }
+      filteredData.forEach(record => {
+        const bucketKey = useDaily
+          ? new Date(record.timestamp).toISOString().slice(0, 10) + 'T00:00:00.000Z'
+          : new Date(record.timestamp).toISOString().slice(0, 13) + ':00:00.000Z'
+        if (!trendBuckets[bucketKey]) {
+          trendBuckets[bucketKey] = { tokens: 0, cost: 0, requests: 0 }
         }
-        hourlyTrends[hour].tokens += record.totalTokens
-        hourlyTrends[hour].cost += record.cost
-        hourlyTrends[hour].requests += 1
+        trendBuckets[bucketKey].tokens += record.totalTokens
+        trendBuckets[bucketKey].cost += record.cost
+        trendBuckets[bucketKey].requests += 1
       })
 
-      const trends = Object.entries(hourlyTrends)
+      const trends = Object.entries(trendBuckets)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([timestamp, data]) => ({ timestamp, ...data }))
 

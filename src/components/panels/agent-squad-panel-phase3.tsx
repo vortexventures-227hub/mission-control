@@ -7,6 +7,7 @@ import { Loader } from '@/components/ui/loader'
 import { useSmartPoll } from '@/lib/use-smart-poll'
 import { createClientLogger } from '@/lib/client-logger'
 import { AgentAvatar } from '@/components/ui/agent-avatar'
+import { AxisVortex } from '@/components/ui/axis-vortex'
 import {
   OverviewTab,
   SoulTab,
@@ -47,18 +48,114 @@ interface SoulTemplate {
   size: number
 }
 
+// ── Agent Roster: display metadata for known agents ──
+interface AgentMeta {
+  displayName: string
+  role: string
+  description: string
+  avatar: string
+  team: 'axis' | 'valphaops' | 'other'
+}
+
+const AGENT_ROSTER: Record<string, AgentMeta> = {
+  main: {
+    displayName: 'Axis',
+    role: 'CSO Agent',
+    description: 'Chief Strategy Orchestrator. Coordinates all agents, manages workflows, and drives strategic decisions.',
+    avatar: 'A',
+    team: 'axis',
+  },
+  coordinator: {
+    displayName: 'Axis',
+    role: 'CSO Agent',
+    description: 'Chief Strategy Orchestrator. Coordinates all agents, manages workflows, and drives strategic decisions.',
+    avatar: 'A',
+    team: 'axis',
+  },
+  mrblanc: {
+    displayName: 'Mr. Blanc',
+    role: 'Research Agent',
+    description: 'Deep research specialist. Content analysis, market research, and intelligence gathering.',
+    avatar: 'MB',
+    team: 'valphaops',
+  },
+  knox: {
+    displayName: 'Knox',
+    role: 'Security Agent',
+    description: 'Security auditor and redundancy checker. Protects secrets, monitors integrity, enforces policies.',
+    avatar: 'K',
+    team: 'valphaops',
+  },
+  cortex: {
+    displayName: 'Cortex',
+    role: 'Memory Agent',
+    description: 'Organization and memory management. Maintains knowledge base, logs decisions, prevents context loss.',
+    avatar: 'CX',
+    team: 'valphaops',
+  },
+  cipher: {
+    displayName: 'Cipher',
+    role: 'Engineering Agent',
+    description: 'Lead engineer. Code architecture, implementation, debugging, and technical problem-solving.',
+    avatar: 'CI',
+    team: 'valphaops',
+  },
+  scribe: {
+    displayName: 'Scribe',
+    role: 'Documentation Agent',
+    description: 'Technical writer. Documentation, reports, communication drafts, and content formatting.',
+    avatar: 'SC',
+    team: 'valphaops',
+  },
+  michelangelo: {
+    displayName: 'Michelangelo',
+    role: 'Design Agent',
+    description: 'Visual design specialist. UI/UX, branding, creative direction, and aesthetic refinement.',
+    avatar: 'MI',
+    team: 'valphaops',
+  },
+}
+
+function getAgentMeta(agent: Agent): AgentMeta {
+  const key = agent.name.toLowerCase().replace(/[\s-]/g, '')
+  const match = AGENT_ROSTER[key]
+  if (match) return match
+  // Check by session key or known patterns
+  if (agent.session_key?.includes(':main:') || agent.name.toLowerCase() === 'main agent') {
+    return AGENT_ROSTER.main
+  }
+  return {
+    displayName: agent.name,
+    role: agent.role || 'Agent',
+    description: '',
+    avatar: agent.name.slice(0, 2).toUpperCase(),
+    team: 'other',
+  }
+}
+
+function isAgentActive(agent: Agent): boolean {
+  return agent.status === 'idle' || agent.status === 'busy'
+}
+
 const statusColors: Record<string, string> = {
   offline: 'bg-gray-500',
-  idle: 'bg-green-500',
-  busy: 'bg-yellow-500',
+  idle: 'bg-emerald-400',
+  busy: 'bg-emerald-400',
   error: 'bg-red-500',
 }
 
 const statusBadgeStyles: Record<string, string> = {
   offline: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
   idle: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  busy: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  busy: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
   error: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+}
+
+const statusLabels: Record<string, string> = {
+  offline: 'Offline',
+  idle: 'Active',
+  busy: 'Working',
+  error: 'Error',
 }
 
 const statusIcons: Record<string, string> = {
@@ -79,12 +176,12 @@ const statusCardStyles: Record<string, { edge: string; glow: string; dot: string
   idle: {
     edge: 'from-emerald-300/80 to-emerald-600/30',
     glow: 'from-emerald-400/15 via-transparent to-transparent',
-    dot: 'bg-emerald-300',
+    dot: 'bg-emerald-400',
   },
   busy: {
-    edge: 'from-amber-300/80 to-amber-600/30',
-    glow: 'from-amber-400/15 via-transparent to-transparent',
-    dot: 'bg-amber-300',
+    edge: 'from-emerald-300/80 to-emerald-500/30',
+    glow: 'from-emerald-400/20 via-transparent to-transparent',
+    dot: 'bg-emerald-400',
   },
   error: {
     edge: 'from-rose-300/80 to-rose-600/30',
@@ -399,7 +496,7 @@ export function AgentSquadPanelPhase3() {
         </div>
       )}
 
-      {/* Agent Grid */}
+      {/* Agent Org Chart */}
       <div className="flex-1 p-4 overflow-y-auto">
         {agents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/50">
@@ -414,133 +511,107 @@ export function AgentSquadPanelPhase3() {
               {t('noAgentsHint')}
             </p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {agents.map(agent => {
-              const modelName = formatModelName(agent.config)
-              const taskStatsLine = buildTaskStatParts(agent.taskStats)
+        ) : (() => {
+          // Separate Axis (orchestrator) from team agents
+          const axisAgent = agents.find(a => {
+            const meta = getAgentMeta(a)
+            return meta.team === 'axis'
+          })
+          const teamAgents = agents.filter(a => {
+            const meta = getAgentMeta(a)
+            return meta.team !== 'axis'
+          })
+          const valphaOps = teamAgents.filter(a => getAgentMeta(a).team === 'valphaops')
+          const otherAgents = teamAgents.filter(a => getAgentMeta(a).team === 'other')
 
-              return (
-                <div
-                  key={agent.id}
-                  className="group relative overflow-hidden rounded-xl border border-border/70 bg-card p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-border hover:shadow-lg cursor-pointer"
-                  onClick={() => setSelectedAgent(agent)}
-                >
-                  <div className={`pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${(statusCardStyles[agent.status] || defaultCardStyle).edge}`} />
-                  {agent.hidden ? <div className="absolute top-2 right-2 text-2xs text-slate-500">hidden</div> : null}
-
-                  {/* Header: avatar + name + status */}
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <AgentAvatar name={agent.name} size="md" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h3 className="font-semibold text-foreground truncate">{agent.name}</h3>
-                          {(agent as any).source && (agent as any).source !== 'manual' && (
-                            <span className={`text-2xs px-1.5 py-0.5 rounded-full border ${
-                              (agent as any).source === 'local'
-                                ? 'bg-violet-500/15 text-violet-300 border-violet-500/30'
-                                : (agent as any).source === 'gateway'
-                                  ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
-                                  : 'bg-slate-500/15 text-slate-300 border-slate-500/30'
-                            }`}>
-                              {(agent as any).source}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {agent.role}{modelName && <> · <span className="font-mono text-muted-foreground/80">{modelName}</span></>}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {hasRecentHeartbeat(agent) && (
-                        <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" title="Recent heartbeat" />
-                      )}
-                      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs capitalize ${statusBadgeStyles[agent.status]}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${(statusCardStyles[agent.status] || defaultCardStyle).dot}`} />
-                        {agent.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Task stats — inline */}
-                  {taskStatsLine && (
-                    <div className="text-xs text-muted-foreground mb-2 pl-0.5">
-                      {taskStatsLine.map((part, i) => (
-                        <span key={part.label}>
-                          {i > 0 && <span className="mx-1 text-muted-foreground/40">·</span>}
-                          <span className={part.color || 'text-foreground/80'}>{part.count}</span>
-                          {' '}{part.label}
-                        </span>
-                      ))}
-                    </div>
+          return (
+            <div className="space-y-6">
+              {/* Axis Vortex — Animated storm cloud at command center */}
+              <div className="flex flex-col items-center pb-2">
+                <AxisVortex size="lg" />
+              </div>
+              {/* Axis — Orchestrator at top */}
+              {axisAgent && (
+                <div className="flex flex-col items-center">
+                  <AgentOrgCard
+                    agent={axisAgent}
+                    variant="orchestrator"
+                    onClick={() => setSelectedAgent(axisAgent)}
+                    onWake={() => axisAgent.session_key
+                      ? wakeAgent(axisAgent.name, axisAgent.session_key!)
+                      : updateAgentStatus(axisAgent.name, 'idle', 'Manually activated')
+                    }
+                    onSpawn={() => { setSelectedAgent(axisAgent); setShowQuickSpawnModal(true) }}
+                    onToggleHidden={() => toggleAgentHidden(axisAgent.id, !axisAgent.hidden)}
+                    hasRecentHeartbeat={hasRecentHeartbeat(axisAgent)}
+                    formatLastSeen={formatLastSeen}
+                    t={t}
+                  />
+                  {/* Connector line */}
+                  {teamAgents.length > 0 && (
+                    <div className="w-px h-8 bg-gradient-to-b from-purple-500/60 to-border/30" />
                   )}
+                </div>
+              )}
 
-                  {/* Footer: last seen + actions */}
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
-                    <span className="text-[11px] text-muted-foreground/70">
-                      {formatLastSeen(agent.last_seen)}
-                    </span>
-                    <div className="flex gap-1">
-                      {agent.session_key ? (
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            wakeAgent(agent.name, agent.session_key!)
-                          }}
-                          size="xs"
-                          variant="ghost"
-                          className="h-6 px-2 text-xs text-cyan-300 hover:bg-cyan-500/15 hover:text-cyan-200"
-                          title="Wake agent via session"
-                        >
-                          {t('wake')}
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            updateAgentStatus(agent.name, 'idle', 'Manually activated')
-                          }}
-                          disabled={agent.status === 'idle'}
-                          size="xs"
-                          variant="ghost"
-                          className="h-6 px-2 text-xs"
-                        >
-                          {t('wake')}
-                        </Button>
-                      )}
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedAgent(agent)
-                          setShowQuickSpawnModal(true)
-                        }}
-                        size="xs"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs text-blue-300 hover:bg-blue-500/15 hover:text-blue-200"
-                      >
-                        {t('spawn')}
-                      </Button>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          toggleAgentHidden(agent.id, !agent.hidden)
-                        }}
-                        size="xs"
-                        variant="ghost"
-                        className="h-6 px-2 text-xs text-slate-400 hover:bg-slate-500/15 hover:text-slate-300"
-                      >
-                        {agent.hidden ? 'Unhide' : 'Hide'}
-                      </Button>
-                    </div>
+              {/* VAlphaOps Team */}
+              {valphaOps.length > 0 && (
+                <div>
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-semibold text-purple-400/80 uppercase tracking-wider">VAlphaOps Team</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {valphaOps.map(agent => (
+                      <AgentOrgCard
+                        key={agent.id}
+                        agent={agent}
+                        variant="team"
+                        onClick={() => setSelectedAgent(agent)}
+                        onWake={() => agent.session_key
+                          ? wakeAgent(agent.name, agent.session_key!)
+                          : updateAgentStatus(agent.name, 'idle', 'Manually activated')
+                        }
+                        onSpawn={() => { setSelectedAgent(agent); setShowQuickSpawnModal(true) }}
+                        onToggleHidden={() => toggleAgentHidden(agent.id, !agent.hidden)}
+                        hasRecentHeartbeat={hasRecentHeartbeat(agent)}
+                        formatLastSeen={formatLastSeen}
+                        t={t}
+                      />
+                    ))}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
+              )}
+
+              {/* Other Agents */}
+              {otherAgents.length > 0 && (
+                <div>
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-semibold text-slate-400/80 uppercase tracking-wider">Other Agents</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {otherAgents.map(agent => (
+                      <AgentOrgCard
+                        key={agent.id}
+                        agent={agent}
+                        variant="team"
+                        onClick={() => setSelectedAgent(agent)}
+                        onWake={() => agent.session_key
+                          ? wakeAgent(agent.name, agent.session_key!)
+                          : updateAgentStatus(agent.name, 'idle', 'Manually activated')
+                        }
+                        onSpawn={() => { setSelectedAgent(agent); setShowQuickSpawnModal(true) }}
+                        onToggleHidden={() => toggleAgentHidden(agent.id, !agent.hidden)}
+                        hasRecentHeartbeat={hasRecentHeartbeat(agent)}
+                        formatLastSeen={formatLastSeen}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Agent Detail Modal */}
@@ -574,6 +645,153 @@ export function AgentSquadPanelPhase3() {
           onSpawned={fetchAgents}
         />
       )}
+    </div>
+  )
+}
+
+// ── Agent Org Card ──
+function AgentOrgCard({
+  agent,
+  variant,
+  onClick,
+  onWake,
+  onSpawn,
+  onToggleHidden,
+  hasRecentHeartbeat: hasHeartbeat,
+  formatLastSeen,
+  t,
+}: {
+  agent: Agent
+  variant: 'orchestrator' | 'team'
+  onClick: () => void
+  onWake: () => void
+  onSpawn: () => void
+  onToggleHidden: () => void
+  hasRecentHeartbeat: boolean
+  formatLastSeen: (ts?: number) => string
+  t: ReturnType<typeof useTranslations>
+}) {
+  const meta = getAgentMeta(agent)
+  const modelName = formatModelName(agent.config)
+  const taskStatsLine = buildTaskStatParts(agent.taskStats)
+  const active = isAgentActive(agent)
+  const isOrchestrator = variant === 'orchestrator'
+
+  return (
+    <div
+      className={`group relative overflow-hidden rounded-xl border bg-card transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg cursor-pointer ${
+        isOrchestrator
+          ? 'border-purple-500/40 max-w-lg w-full p-5 hover:border-purple-500/60 hover:shadow-purple-500/10'
+          : 'border-border/70 p-4 hover:border-border'
+      }`}
+      onClick={onClick}
+    >
+      <div className={`pointer-events-none absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${(statusCardStyles[agent.status] || defaultCardStyle).edge}`} />
+      {agent.hidden ? <div className="absolute top-2 right-2 text-2xs text-slate-500">hidden</div> : null}
+
+      {/* Header: avatar + name + role + status */}
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-3 min-w-0">
+          {/* Avatar with status ring */}
+          <div className="relative">
+            <div className={`${isOrchestrator ? 'w-12 h-12 text-base' : 'w-10 h-10 text-sm'} rounded-full flex items-center justify-center font-bold shrink-0 ${
+              isOrchestrator
+                ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-lg shadow-purple-500/20'
+                : ''
+            }`}
+              style={isOrchestrator ? undefined : {
+                backgroundColor: `hsl(${(agent.name.split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0) % 360)} 65% 35%)`,
+                color: 'hsl(0 0% 95%)',
+              }}
+            >
+              {meta.avatar}
+            </div>
+            {/* Green active dot */}
+            {active && (
+              <div className={`absolute -bottom-0.5 -right-0.5 ${isOrchestrator ? 'w-3.5 h-3.5' : 'w-3 h-3'} rounded-full bg-emerald-400 border-2 border-card ${agent.status === 'busy' ? 'animate-pulse' : ''}`} />
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className={`font-semibold text-foreground truncate ${isOrchestrator ? 'text-lg' : ''}`}>
+                {meta.displayName}
+              </h3>
+              {isOrchestrator && (
+                <span className="text-2xs px-1.5 py-0.5 rounded-full border bg-purple-500/15 text-purple-300 border-purple-500/30">
+                  Orchestrator
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground truncate">
+              {meta.role}{modelName && <> · <span className="font-mono text-muted-foreground/80">{modelName}</span></>}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {hasHeartbeat && (
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" title="Recent heartbeat" />
+          )}
+          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${statusBadgeStyles[agent.status]}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${(statusCardStyles[agent.status] || defaultCardStyle).dot} ${active ? 'animate-pulse' : ''}`} />
+            {statusLabels[agent.status] || agent.status}
+          </span>
+        </div>
+      </div>
+
+      {/* Description */}
+      {meta.description && (
+        <p className="text-xs text-muted-foreground/70 mb-2 line-clamp-2 pl-0.5">
+          {meta.description}
+        </p>
+      )}
+
+      {/* Task stats — inline */}
+      {taskStatsLine && (
+        <div className="text-xs text-muted-foreground mb-2 pl-0.5">
+          {taskStatsLine.map((part, i) => (
+            <span key={part.label}>
+              {i > 0 && <span className="mx-1 text-muted-foreground/40">·</span>}
+              <span className={part.color || 'text-foreground/80'}>{part.count}</span>
+              {' '}{part.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Footer: last seen + actions */}
+      <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+        <span className="text-[11px] text-muted-foreground/70">
+          {formatLastSeen(agent.last_seen)}
+        </span>
+        <div className="flex gap-1">
+          <Button
+            onClick={(e) => { e.stopPropagation(); onWake() }}
+            disabled={agent.status === 'idle'}
+            size="xs"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-cyan-300 hover:bg-cyan-500/15 hover:text-cyan-200"
+          >
+            {t('wake')}
+          </Button>
+          <Button
+            onClick={(e) => { e.stopPropagation(); onSpawn() }}
+            size="xs"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-blue-300 hover:bg-blue-500/15 hover:text-blue-200"
+          >
+            {t('spawn')}
+          </Button>
+          <Button
+            onClick={(e) => { e.stopPropagation(); onToggleHidden() }}
+            size="xs"
+            variant="ghost"
+            className="h-6 px-2 text-xs text-slate-400 hover:bg-slate-500/15 hover:text-slate-300"
+          >
+            {agent.hidden ? 'Unhide' : 'Hide'}
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -864,13 +1082,13 @@ function AgentDetailModalPhase3({
         <div className="px-5 pt-5 pb-0 border-b border-border">
           <div className="flex justify-between items-center gap-4 mb-4">
             <div className="flex items-center gap-3 min-w-0">
-              <AgentAvatar name={agent.name} size="md" />
+              <AgentAvatar name={getAgentMeta(agent).displayName} size="md" />
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold text-foreground leading-tight truncate">{agentState.name}</h3>
+                  <h3 className="text-lg font-semibold text-foreground leading-tight truncate">{getAgentMeta(agentState).displayName}</h3>
                   <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${statusBadgeStyles[agentState.status]}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${statusColors[agentState.status]}`} />
-                    {agentState.status}
+                    <span className={`w-1.5 h-1.5 rounded-full ${statusColors[agentState.status]} ${isAgentActive(agentState) ? 'animate-pulse' : ''}`} />
+                    {statusLabels[agentState.status] || agentState.status}
                   </span>
                   {agentState.session_key && (
                     <span className="text-[11px] px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300">
@@ -879,7 +1097,7 @@ function AgentDetailModalPhase3({
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-sm text-muted-foreground">{agentState.role}</span>
+                  <span className="text-sm text-muted-foreground">{getAgentMeta(agentState).role}</span>
                   <span className="text-xs text-muted-foreground/60">·</span>
                   <span className="text-xs text-muted-foreground/60">seen {formatLastSeen(agentState.last_seen)}</span>
                 </div>

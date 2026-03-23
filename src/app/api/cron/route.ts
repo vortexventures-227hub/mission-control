@@ -20,6 +20,7 @@ interface CronJob {
   timezone?: string
   model?: string
   delivery?: string
+  sessionTarget?: string
 }
 
 /**
@@ -128,6 +129,7 @@ function mapOpenClawJob(job: OpenClawCronJob): CronJob {
     timezone: job.schedule.tz,
     model: job.payload.model,
     delivery: job.delivery?.mode === 'none' ? undefined : job.delivery?.channel,
+    sessionTarget: job.sessionTarget,
   }
 }
 

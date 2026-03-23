@@ -6,6 +6,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { THEME_IDS } from '@/lib/themes'
 import { ThemeBackground } from '@/components/ui/theme-background'
+import { PWARegister } from '@/components/pwa-register'
 import './globals.css'
 
 const inter = Inter({
@@ -79,6 +80,7 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Mission Control',
   },
+  manifest: '/manifest.json',
 }
 
 export default async function RootLayout({
@@ -117,6 +119,7 @@ export default async function RootLayout({
             </div>
           </ThemeProvider>
         </NextIntlClientProvider>
+              <PWARegister />
       </body>
     </html>
   )

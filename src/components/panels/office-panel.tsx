@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useMissionControl, Agent } from '@/store'
+import { getAgentProfile, AGENT_ROSTER } from '@/lib/agent-roster'
 import { buildOfficeLayout } from '@/lib/office-layout'
 
 type ViewMode = 'office' | 'org-chart'
@@ -213,6 +214,14 @@ function getStatusEmote(status: Agent['status']): string {
 }
 
 function inferLocalRole(row: SessionAgentRow): string {
+  // First check shared agent roster
+  const agentName = String(row.agent || '').toLowerCase().replace(/[\s-]/g, '')
+  const profile = getAgentProfile(agentName)
+  if (profile.team !== 'other') {
+    return profile.role
+  }
+  
+  // Fallback to context-based inference for unknown agents
   const context = [
     String(row.agent || ''),
     String(row.key || ''),

@@ -115,6 +115,7 @@ export function CronManagementPanel() {
   const [agentFilter, setAgentFilter] = useState('all')
   const [stateFilter, setStateFilter] = useState<'all' | 'enabled' | 'disabled'>('all')
   const [scheduleKindFilter, setScheduleKindFilter] = useState<ScheduleKindFilter>('all')
+  const [sessionTargetFilter, setSessionTargetFilter] = useState<'all' | 'main' | 'isolated'>('all')
   const [sortField, setSortField] = useState<SortField>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [formErrors, setFormErrors] = useState<FormErrors>({})
@@ -153,32 +154,33 @@ export function CronManagementPanel() {
   const loadCronJobs = useCallback(async () => {
     setIsLoading(true)
     try {
-      const cronResponse = await fetch('/api/cron?action=list')
+      // Always load both OpenClaw cron jobs and built-in scheduler tasks
+      const [cronResponse, schedulerResponse] = await Promise.all([
+        fetch('/api/cron?action=list'),
+        fetch('/api/scheduler').catch(() => null),
+      ])
       const cronData = await cronResponse.json()
       const cronList = Array.isArray(cronData.jobs) ? cronData.jobs : []
 
-      if (!isLocalMode) {
-        setCronJobs(cronList)
-        return
+      let mappedSchedulerJobs: CronJob[] = []
+      if (schedulerResponse?.ok) {
+        const schedulerData = await schedulerResponse.json()
+        const schedulerTasks = Array.isArray(schedulerData.tasks) ? schedulerData.tasks : []
+        mappedSchedulerJobs = schedulerTasks.map((task: any) => ({
+          id: task.id,
+          name: task.name || task.id || 'scheduler-task',
+          schedule: 'system-managed automation',
+          command: `Built-in automation (${task.id || 'unknown'})`,
+          agentId: 'mission-control-local',
+          delivery: 'local',
+          enabled: task.running ? true : !!task.enabled,
+          lastRun: typeof task.lastRun === 'number' ? task.lastRun : undefined,
+          nextRun: typeof task.nextRun === 'number' ? task.nextRun : undefined,
+          lastStatus: task.running
+            ? 'running'
+            : (task.lastResult?.ok === false ? 'error' : (task.lastResult?.ok === true ? 'success' : undefined)),
+        }))
       }
-
-      const schedulerResponse = await fetch('/api/scheduler')
-      const schedulerData = await schedulerResponse.json()
-      const schedulerTasks = Array.isArray(schedulerData.tasks) ? schedulerData.tasks : []
-      const mappedSchedulerJobs: CronJob[] = schedulerTasks.map((task: any) => ({
-        id: task.id,
-        name: task.name || task.id || 'scheduler-task',
-        schedule: 'system-managed automation',
-        command: `Built-in local automation (${task.id || 'unknown'})`,
-        agentId: 'mission-control-local',
-        delivery: 'local',
-        enabled: task.running ? true : !!task.enabled,
-        lastRun: typeof task.lastRun === 'number' ? task.lastRun : undefined,
-        nextRun: typeof task.nextRun === 'number' ? task.nextRun : undefined,
-        lastStatus: task.running
-          ? 'running'
-          : (task.lastResult?.ok === false ? 'error' : (task.lastResult?.ok === true ? 'success' : undefined)),
-      }))
 
       setCronJobs([...cronList, ...mappedSchedulerJobs])
     } catch (error) {
@@ -186,7 +188,7 @@ export function CronManagementPanel() {
     } finally {
       setIsLoading(false)
     }
-  }, [isLocalMode, setCronJobs])
+  }, [setCronJobs])
 
   useEffect(() => {
     loadCronJobs()
@@ -556,7 +558,9 @@ export function CronManagementPanel() {
         }
       }
 
-      return matchesQuery && matchesAgent && matchesState && matchesKind
+      const matchesSessionTarget = sessionTargetFilter === 'all' || (job as any).sessionTarget === sessionTargetFilter
+
+      return matchesQuery && matchesAgent && matchesState && matchesKind && matchesSessionTarget
     })
     .sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1
@@ -787,6 +791,15 @@ export function CronManagementPanel() {
                 <option value="all">{t('allStates')}</option>
                 <option value="enabled">{t('enabled')}</option>
                 <option value="disabled">{t('disabled')}</option>
+              </select>
+              <select
+                value={sessionTargetFilter}
+                onChange={(e) => setSessionTargetFilter(e.target.value as 'all' | 'main' | 'isolated')}
+                className="px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm"
+              >
+                <option value="all">All Sessions</option>
+                <option value="main">Main Session</option>
+                <option value="isolated">Isolated</option>
               </select>
             </div>
             <div className="grid md:grid-cols-3 gap-3">
@@ -1032,6 +1045,7 @@ export function CronManagementPanel() {
                   <tr className="border-b border-border text-left text-xs text-muted-foreground">
                     <th className="pb-2 pr-3 font-medium">{t('colJobName')}</th>
                     <th className="pb-2 pr-3 font-medium">{t('colAgent')}</th>
+                    <th className="pb-2 pr-3 font-medium">Session</th>
                     <th className="pb-2 pr-3 font-medium">{t('colSchedule')}</th>
                     <th className="pb-2 pr-3 font-medium">{t('colModel')}</th>
                     <th className="pb-2 pr-3 font-medium">{t('colStatus')}</th>
@@ -1060,6 +1074,15 @@ export function CronManagementPanel() {
                           <span className={`text-xs px-1.5 py-0.5 rounded border ${getAgentColorClass(job.agentId || '', uniqueAgents)}`}>
                             {job.agentId || 'system'}
                           </span>
+                        </td>
+                        <td className="py-2.5 pr-3">
+                          {(job as any).sessionTarget === 'main' ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded border bg-cyan-500/20 text-cyan-300 border-cyan-500/30">main</span>
+                          ) : (job as any).sessionTarget === 'isolated' ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded border bg-violet-500/20 text-violet-300 border-violet-500/30">isolated</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/50">--</span>
+                          )}
                         </td>
                         <td className="py-2.5 pr-3">
                           <div className="text-xs">

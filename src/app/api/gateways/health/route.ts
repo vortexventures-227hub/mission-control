@@ -211,9 +211,25 @@ export async function POST(request: NextRequest) {
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 5000)
 
-      const res = await fetch(probeUrl, {
+      let res = await fetch(probeUrl, {
         signal: controller.signal,
       })
+
+      // Many gateways don't expose /api/health — fall back to probing the root path.
+      if (res.status === 404) {
+        const rootUrl = probeUrl.replace(/\/api\/health\/?$/, '/')
+        if (rootUrl !== probeUrl) {
+          const rootController = new AbortController()
+          const rootTimeout = setTimeout(() => rootController.abort(), 3000)
+          try {
+            const rootRes = await fetch(rootUrl, { signal: rootController.signal })
+            clearTimeout(rootTimeout)
+            if (rootRes.ok) res = rootRes
+          } catch {
+            clearTimeout(rootTimeout)
+          }
+        }
+      }
       clearTimeout(timeout)
 
       const latency = Date.now() - start
