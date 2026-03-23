@@ -297,10 +297,19 @@ function OverviewView({
 
   const trendChartData = (() => {
     if (!trendData?.trends) return []
-    const raw = trendData.trends.map(t => ({
-      time: new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      tokens: t.tokens, cost: t.cost, requests: t.requests,
-    }))
+    const useDaily = timeframe === 'week' || timeframe === 'month'
+    const raw = trendData.trends.map(t => {
+      const date = new Date(t.timestamp)
+      let time: string
+      if (useDaily) {
+        // Show date for week/month view
+        time = date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+      } else {
+        // Show time for hour/day view
+        time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+      return { time, tokens: t.tokens, cost: t.cost, requests: t.requests }
+    })
     if (chartMode === 'cumulative') {
       let ct = 0, cc = 0, cr = 0
       return raw.map(d => { ct += d.tokens; cc += d.cost; cr += d.requests; return { ...d, tokens: ct, cost: cc, requests: cr } })

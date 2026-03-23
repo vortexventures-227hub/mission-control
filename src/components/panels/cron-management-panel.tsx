@@ -558,7 +558,8 @@ export function CronManagementPanel() {
         }
       }
 
-      const matchesSessionTarget = sessionTargetFilter === 'all' || (job as any).sessionTarget === sessionTargetFilter
+      const jobTarget = (job as any).sessionTarget || 'main' // Default to main if not specified
+      const matchesSessionTarget = sessionTargetFilter === 'all' || jobTarget === sessionTargetFilter
 
       return matchesQuery && matchesAgent && matchesState && matchesKind && matchesSessionTarget
     })
