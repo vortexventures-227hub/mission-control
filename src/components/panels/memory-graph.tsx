@@ -426,7 +426,7 @@ export function MemoryGraph() {
             className="px-2.5 py-1 text-[11px] font-mono rounded-md bg-[#1e1e2e]/80 backdrop-blur-xl border border-[#45475a]/50 text-[#cdd6f4] placeholder-[#45475a] focus:outline-none focus:border-[#cba6f7]/40 w-36 transition-colors"
           />
         )}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#1e1e2e]/80 backdrop-blur-xl border border-[#45475a]/30">
+        <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[#1e1e2e]/90 backdrop-blur-2xl border border-[#45475a]/40 shadow-2xl shadow-black/20">
           <StatChip label={t('statAgents')} value={stats.totalAgents} />
           <Sep />
           <StatChip label={t('statFiles')} value={stats.totalFiles} />
@@ -470,15 +470,16 @@ export function MemoryGraph() {
         </div>
       )}
 
-      {/* Color legend (bottom-right) */}
+      {/* Color legend (bottom-right) - enhanced with glow effects */}
       <div className="absolute bottom-3 right-3 z-10">
-        <div className="px-3 py-2 rounded-lg bg-[#1e1e2e]/80 backdrop-blur-xl border border-[#45475a]/30">
-          <div className="flex items-center gap-3 text-[9px] font-mono text-[#585b70]">
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#89dceb]" />{t('legendSessions')}</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#94e2d5]" />{t('legendMemory')}</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#b4befe]" />{t('legendKnowledge')}</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#f9e2af]" />.md</span>
-            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#cba6f7]" />.json</span>
+        <div className="px-4 py-2.5 rounded-xl bg-[#1e1e2e]/90 backdrop-blur-2xl border border-[#45475a]/40 shadow-2xl shadow-black/20">
+          <div className="text-[8px] uppercase tracking-wider text-[#585b70] mb-1.5 font-semibold">{t('legendTitle') || 'File Types'}</div>
+          <div className="flex items-center gap-4 text-[10px] font-mono text-[#6c7086]">
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#89dceb] shadow-[0_0_8px_rgba(137,220,235,0.5)]" />{t('legendSessions')}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#94e2d5] shadow-[0_0_8px_rgba(148,226,213,0.5)]" />{t('legendMemory')}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#b4befe] shadow-[0_0_8px_rgba(180,190,254,0.5)]" />{t('legendKnowledge')}</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#f9e2af] shadow-[0_0_8px_rgba(249,226,175,0.5)]" />.md</span>
+            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#cba6f7] shadow-[0_0_8px_rgba(203,166,247,0.5)]" />.json</span>
           </div>
         </div>
       </div>

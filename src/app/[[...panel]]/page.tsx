@@ -12,6 +12,7 @@ import { MemoryBrowserPanel } from '@/components/panels/memory-browser-panel'
 import { ResearchIntakePanel } from '@/components/panels/research-intake-panel'
 import { ContentResearchPanel } from '@/components/panels/content-research-panel'
 import { CostTrackerPanel } from '@/components/panels/cost-tracker-panel'
+import { ExpensesPanel } from '@/components/panels/expenses-panel'
 import { TaskBoardPanel } from '@/components/panels/task-board-panel'
 import { ActivityFeedPanel } from '@/components/panels/activity-feed-panel'
 import { AgentSquadPanelPhase3 } from '@/components/panels/agent-squad-panel-phase3'
@@ -536,6 +537,9 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'tokens':
     case 'agent-costs':
       return <CostTrackerPanel />
+    case 'expenses':
+    case 'ledger':
+      return <ExpensesPanel />
     case 'users':
       return <UserManagementPanel />
     case 'history':

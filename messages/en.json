@@ -194,7 +194,8 @@
     "goToGithubSync": "Go to GitHub Sync",
     "goToOffice": "Go to Office",
     "goToSkills": "Go to Skills",
-    "quickNavigation": "Quick navigation"
+    "quickNavigation": "Quick navigation",
+    "goToExpenses": "Go to Expenses"
   },
   "contextSwitcher": {
     "localMode": "Local Mode",
@@ -2179,5 +2180,24 @@
     "step2": "{agent} will analyze and summarize the content",
     "step3": "Results appear in your tasks and can be reviewed in Memory",
     "successSubmittedNoNotify": "Request saved, but notification to Axis failed. Task will be processed when connection is restored."
+  },
+  "expenses": {
+    "title": "Expenses",
+    "subtitle": "Track and manage your AI operational costs",
+    "overview": "Overview",
+    "list": "List",
+    "voice": "Voice",
+    "totalSpent": "Total Spent",
+    "thisMonth": "This Month",
+    "lastMonth": "Last Month",
+    "byCategory": "By Category",
+    "byAgent": "By Agent",
+    "recentExpenses": "Recent Expenses",
+    "addExpense": "Add Expense",
+    "noExpenses": "No expenses yet",
+    "voicePrompt": "Say something like \"I spent $50 on API calls today\"",
+    "listening": "Listening...",
+    "processing": "Processing...",
+    "tapToRecord": "Tap to record an expense"
   }
 }
