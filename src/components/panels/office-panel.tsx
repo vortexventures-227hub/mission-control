@@ -1626,40 +1626,46 @@ export function OfficePanel() {
               </div>
             )}
             <div className="space-y-2 max-h-[560px] overflow-y-auto pr-1">
-              {filteredRosterRows.map(({ agent, minutesIdle, needsAttention }) => (
-                <Button
-                  key={agent.id}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedAgent(agent)
-                    const worker = renderedWorkers.find((item) => item.agent.id === agent.id)
-                    if (worker) focusMapPoint(worker.x, worker.y)
-                  }}
-                  className={`w-full flex items-center gap-2 rounded-lg p-2 text-left h-auto ${
-                    needsAttention
-                      ? 'bg-amber-500/12 border border-amber-400/60 hover:bg-amber-500/20'
-                      : 'bg-black/20 border border-white/5 hover:bg-black/35'
-                  }`}
-                >
-                  <span className={`w-6 h-6 rounded ${hashColor(agent.name)} flex items-center justify-center text-[10px] font-bold text-white`}>
-                    {getInitials(agent.name)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-medium truncate">{agent.name}</span>
-                    <span className="block text-[10px] text-slate-300 truncate">{agent.role}</span>
-                    <span className="block text-[9px] text-slate-400 truncate">
-                      {agent.last_activity || t('noRecentActivity')}
+              {filteredRosterRows.map(({ agent, minutesIdle, needsAttention }) => {
+                const profile = getAgentProfile(agent.name)
+                return (
+                  <Button
+                    key={agent.id}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedAgent(agent)
+                      const worker = renderedWorkers.find((item) => item.agent.id === agent.id)
+                      if (worker) focusMapPoint(worker.x, worker.y)
+                    }}
+                    className={`w-full flex items-center gap-2 rounded-lg p-2.5 text-left h-auto ${
+                      needsAttention
+                        ? 'bg-amber-500/12 border border-amber-400/60 hover:bg-amber-500/20'
+                        : 'bg-black/20 border border-white/5 hover:bg-black/35'
+                    }`}
+                  >
+                    <span 
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white shadow-lg"
+                      style={{ backgroundColor: profile.color || '#64748b' }}
+                    >
+                      {profile.emoji || getInitials(agent.name)}
                     </span>
-                  </span>
-                  <span className="flex flex-col items-end gap-1">
-                    <span className={`w-2 h-2 rounded-full ${statusDot[agent.status]}`} />
-                    <span className={`text-[9px] ${needsAttention ? 'text-amber-300 font-semibold' : 'text-slate-400'}`}>
-                      {agent.status === 'busy' ? t('activeStatus') : t('idleMinutes', { minutes: minutesIdle })}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-semibold truncate">{profile.displayName}</span>
+                      <span className="block text-[10px] text-slate-300 truncate">{profile.role}</span>
+                      <span className="block text-[9px] text-slate-400 truncate">
+                        {agent.last_activity || t('noRecentActivity')}
+                      </span>
                     </span>
-                  </span>
-                </Button>
-              ))}
+                    <span className="flex flex-col items-end gap-1">
+                      <span className={`w-2.5 h-2.5 rounded-full ${statusDot[agent.status]} shadow-lg`} />
+                      <span className={`text-[9px] ${needsAttention ? 'text-amber-300 font-semibold' : 'text-slate-400'}`}>
+                        {agent.status === 'busy' ? t('activeStatus') : t('idleMinutes', { minutes: minutesIdle })}
+                      </span>
+                    </span>
+                  </Button>
+                )
+              })}
               {filteredRosterRows.length === 0 && (
                 <div className="text-[11px] text-slate-400 px-1 py-2">{t('noWorkersInFilter')}</div>
               )}
@@ -1979,14 +1985,23 @@ export function OfficePanel() {
                     className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-500 hover:scale-110 h-auto p-0 rounded-none hover:bg-transparent"
                     style={{ left: `${x}%`, top: `${y}%` }}
                   >
-                    <div className="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/70 border border-white/10 text-white text-[11px] px-2 py-0.5 shadow-[0_0_12px_rgba(0,0,0,0.4)]">
-                      <span className={`inline-block w-2 h-2 rounded-full ${statusDot[agent.status]} mr-1`} />
-                      {agent.name}
-                    </div>
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 text-sm">
+                    {(() => {
+                      const profile = getAgentProfile(agent.name)
+                      return (
+                        <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-black/85 border border-white/20 text-white px-3 py-1.5 shadow-[0_0_20px_rgba(0,0,0,0.6)] backdrop-blur-sm">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2.5 h-2.5 rounded-full ${statusDot[agent.status]}`} />
+                            {profile.emoji && <span className="text-sm">{profile.emoji}</span>}
+                            <span className="font-semibold text-[12px]">{profile.displayName}</span>
+                          </div>
+                          <div className="text-[9px] text-center text-slate-400 mt-0.5">{profile.role.split('(')[0].trim()}</div>
+                        </div>
+                      )
+                    })()}
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 text-lg">
                       <span className={`${agent.status === 'busy' ? 'animate-bounce' : 'animate-pulse'}`}>{getStatusEmote(agent.status)}</span>
                     </div>
-                    <div className="relative w-8 h-12 mx-auto">
+                    <div className="relative w-14 h-20 mx-auto">
                       <div
                         className={`absolute inset-0 ${transitioningAgentIds.has(agent.id) || isMoving ? 'animate-pulse' : ''}`}
                         style={{
@@ -2005,7 +2020,15 @@ export function OfficePanel() {
                           transformOrigin: 'center',
                         }}
                       />
-                      <div className={`absolute left-[8px] top-[14px] w-4 h-3 ${hashColor(agent.name)} border border-black/60`} />
+                      {(() => {
+                        const profile = getAgentProfile(agent.name)
+                        return (
+                          <div 
+                            className="absolute left-[10px] top-[22px] w-6 h-4 border border-black/60 rounded-sm"
+                            style={{ backgroundColor: profile.color || '#94a3b8' }}
+                          />
+                        )
+                      })()}
                     </div>
                     {!isMoving && <div className="text-[9px] text-slate-300 font-mono mt-0.5">#{seatLabel}</div>}
                   </Button>
@@ -2220,18 +2243,31 @@ export function OfficePanel() {
       {selectedAgent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedAgent(null)}>
           <div className="bg-card border border-border rounded-lg max-w-sm w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`w-14 h-14 rounded-full ${hashColor(selectedAgent.name)} flex items-center justify-center text-white font-bold text-lg ring-2 ring-offset-2 ring-offset-card ${selectedAgent.status === 'busy' ? 'ring-yellow-500' : selectedAgent.status === 'idle' ? 'ring-green-500' : selectedAgent.status === 'error' ? 'ring-red-500' : 'ring-gray-600'}`}>
-                  {getInitials(selectedAgent.name)}
+            {(() => {
+              const profile = getAgentProfile(selectedAgent.name)
+              return (
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className={`w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-2xl ring-2 ring-offset-2 ring-offset-card shadow-xl ${selectedAgent.status === 'busy' ? 'ring-yellow-500' : selectedAgent.status === 'idle' ? 'ring-green-500' : selectedAgent.status === 'error' ? 'ring-red-500' : 'ring-gray-600'}`}
+                      style={{ backgroundColor: profile.color || '#64748b' }}
+                    >
+                      {profile.emoji || getInitials(selectedAgent.name)}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
+                        {profile.displayName}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">{profile.role}</p>
+                      {profile.description && (
+                        <p className="text-xs text-muted-foreground/70 mt-1 max-w-[200px]">{profile.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon-xs" onClick={() => setSelectedAgent(null)} className="text-muted-foreground hover:text-foreground text-xl w-6 h-6">×</Button>
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-foreground">{selectedAgent.name}</h3>
-                  <p className="text-sm text-muted-foreground">{selectedAgent.role}</p>
-                </div>
-              </div>
-              <Button variant="ghost" size="icon-xs" onClick={() => setSelectedAgent(null)} className="text-muted-foreground hover:text-foreground text-xl w-6 h-6">×</Button>
-            </div>
+              )
+            })()}
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2">
