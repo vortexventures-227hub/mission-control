@@ -49,6 +49,7 @@ const navGroups: NavGroup[] = [
       { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
       { id: 'content-research', label: 'Content', icon: <ContentIcon />, priority: false },
       { id: 'office', label: 'Office', icon: <OfficeIcon />, priority: false },
+      { id: 'app-factory', label: 'App Factory', icon: <AppFactoryIcon />, priority: false },
       { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
     ],
   },
@@ -100,6 +101,7 @@ const navItemTranslationKeys: Record<string, string> = {
   'exec-approvals': 'approvals',
   'content-research': 'contentResearch',
   office: 'office',
+  'app-factory': 'appFactory',
   cron: 'cron',
   webhooks: 'webhooks',
   alerts: 'alerts',
@@ -1531,6 +1533,16 @@ function MonitorIcon() {
       <rect x="1" y="2" width="14" height="10" rx="1.5" />
       <polyline points="4,9 6,6 8,8 12,4" />
       <path d="M5 14h6" />
+    </svg>
+  )
+}
+
+function AppFactoryIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="12" height="12" rx="2" />
+      <path d="M5 6h6M5 8h4M5 10h5" />
+      <circle cx="11" cy="11" r="1" fill="currentColor" />
     </svg>
   )
 }
