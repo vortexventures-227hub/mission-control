@@ -24,6 +24,7 @@ import {
 } from './agent-detail-tabs'
 import { formatModelName, buildTaskStatParts } from '@/lib/agent-card-helpers'
 import { useMissionControl, type Agent } from '@/store'
+import { getAgentProfile, TEAMS, type TeamType } from '@/lib/agent-roster'
 
 const log = createClientLogger('AgentSquadPhase3')
 
@@ -48,88 +49,27 @@ interface SoulTemplate {
   size: number
 }
 
-// ── Agent Roster: display metadata for known agents ──
+// ── Agent Roster: use centralized roster from lib/agent-roster.ts ──
 interface AgentMeta {
   displayName: string
   role: string
   description: string
   avatar: string
-  team: 'axis' | 'valphaops' | 'other'
-}
-
-const AGENT_ROSTER: Record<string, AgentMeta> = {
-  main: {
-    displayName: 'Axis',
-    role: 'CSO Agent',
-    description: 'Chief Strategy Orchestrator. Coordinates all agents, manages workflows, and drives strategic decisions.',
-    avatar: 'A',
-    team: 'axis',
-  },
-  coordinator: {
-    displayName: 'Axis',
-    role: 'CSO Agent',
-    description: 'Chief Strategy Orchestrator. Coordinates all agents, manages workflows, and drives strategic decisions.',
-    avatar: 'A',
-    team: 'axis',
-  },
-  mrblanc: {
-    displayName: 'Mr. Blanc',
-    role: 'Research Agent',
-    description: 'Deep research specialist. Content analysis, market research, and intelligence gathering.',
-    avatar: 'MB',
-    team: 'valphaops',
-  },
-  knox: {
-    displayName: 'Knox',
-    role: 'Security Agent',
-    description: 'Security auditor and redundancy checker. Protects secrets, monitors integrity, enforces policies.',
-    avatar: 'K',
-    team: 'valphaops',
-  },
-  cortex: {
-    displayName: 'Cortex',
-    role: 'Memory Agent',
-    description: 'Organization and memory management. Maintains knowledge base, logs decisions, prevents context loss.',
-    avatar: 'CX',
-    team: 'valphaops',
-  },
-  cipher: {
-    displayName: 'Cipher',
-    role: 'Engineering Agent',
-    description: 'Lead engineer. Code architecture, implementation, debugging, and technical problem-solving.',
-    avatar: 'CI',
-    team: 'valphaops',
-  },
-  scribe: {
-    displayName: 'Scribe',
-    role: 'Documentation Agent',
-    description: 'Technical writer. Documentation, reports, communication drafts, and content formatting.',
-    avatar: 'SC',
-    team: 'valphaops',
-  },
-  michelangelo: {
-    displayName: 'Michelangelo',
-    role: 'Design Agent',
-    description: 'Visual design specialist. UI/UX, branding, creative direction, and aesthetic refinement.',
-    avatar: 'MI',
-    team: 'valphaops',
-  },
+  emoji?: string
+  color?: string
+  team: TeamType
 }
 
 function getAgentMeta(agent: Agent): AgentMeta {
-  const key = agent.name.toLowerCase().replace(/[\s-]/g, '')
-  const match = AGENT_ROSTER[key]
-  if (match) return match
-  // Check by session key or known patterns
-  if (agent.session_key?.includes(':main:') || agent.name.toLowerCase() === 'main agent') {
-    return AGENT_ROSTER.main
-  }
+  const profile = getAgentProfile(agent.name)
   return {
-    displayName: agent.name,
-    role: agent.role || 'Agent',
-    description: '',
-    avatar: agent.name.slice(0, 2).toUpperCase(),
-    team: 'other',
+    displayName: profile.displayName,
+    role: profile.role,
+    description: profile.description,
+    avatar: profile.emoji || profile.displayName.slice(0, 2).toUpperCase(),
+    emoji: profile.emoji,
+    color: profile.color,
+    team: profile.team,
   }
 }
 

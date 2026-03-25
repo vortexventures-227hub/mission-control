@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { createClientLogger } from '@/lib/client-logger'
-import { getAgentProfile } from '@/lib/agent-roster'
+import { getAgentProfile, TEAMS, TeamType, getAllTeams } from '@/lib/agent-roster'
 
 const log = createClientLogger('AgentSquadPanel')
 
@@ -43,6 +43,8 @@ const statusIcons: Record<string, string> = {
   error: '🔴',
 }
 
+type ViewMode = 'grid' | 'teams'
+
 export function AgentSquadPanel() {
   const t = useTranslations('agentSquad')
   const [agents, setAgents] = useState<Agent[]>([])
@@ -51,6 +53,7 @@ export function AgentSquadPanel() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [viewMode, setViewMode] = useState<ViewMode>('teams')
 
   // Fetch agents
   const fetchAgents = useCallback(async () => {
@@ -140,6 +143,18 @@ export function AgentSquadPanel() {
     return acc
   }, {} as Record<string, number>)
 
+  // Group agents by team
+  const agentsByTeam = agents.reduce((acc, agent) => {
+    const profile = getAgentProfile(agent.name)
+    const team = profile.team
+    if (!acc[team]) acc[team] = []
+    acc[team].push(agent)
+    return acc
+  }, {} as Record<TeamType, Agent[]>)
+
+  // Team order for display - prioritize active teams
+  const teamOrder: TeamType[] = ['command', 'valphaops', 'research', 'tradingops', 'appfactory', 'davidscrew', 'other']
+
   if (loading && agents.length === 0) {
     return <Loader variant="panel" label={t('loadingAgents')} />
   }
@@ -163,6 +178,24 @@ export function AgentSquadPanel() {
         </div>
         
         <div className="flex gap-2">
+          <div className="flex rounded-md overflow-hidden border border-gray-600">
+            <Button
+              onClick={() => setViewMode('grid')}
+              variant={viewMode === 'grid' ? 'default' : 'secondary'}
+              size="sm"
+              className="rounded-none border-0"
+            >
+              Grid
+            </Button>
+            <Button
+              onClick={() => setViewMode('teams')}
+              variant={viewMode === 'teams' ? 'default' : 'secondary'}
+              size="sm"
+              className="rounded-none border-0"
+            >
+              Teams
+            </Button>
+          </div>
           <Button
             onClick={() => setAutoRefresh(!autoRefresh)}
             variant={autoRefresh ? 'success' : 'secondary'}
@@ -207,7 +240,68 @@ export function AgentSquadPanel() {
             <p>{t('noAgents')}</p>
             <p className="text-sm">{t('addFirstAgent')}</p>
           </div>
+        ) : viewMode === 'teams' ? (
+          // Teams View
+          <div className="space-y-6">
+            {teamOrder.map(teamType => {
+              const teamAgents = agentsByTeam[teamType]
+              if (!teamAgents || teamAgents.length === 0) return null
+              const teamInfo = TEAMS[teamType]
+              
+              return (
+                <div key={teamType} className="bg-gray-800/50 rounded-lg border border-gray-700">
+                  {/* Team Header */}
+                  <div 
+                    className="px-4 py-3 border-b border-gray-700 flex items-center justify-between"
+                    style={{ borderLeftWidth: '4px', borderLeftColor: teamInfo.color }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{teamInfo.icon}</span>
+                      <div>
+                        <h3 className="font-semibold text-white">{teamInfo.name}</h3>
+                        <p className="text-xs text-gray-400">{teamInfo.description}</p>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {teamAgents.length} agent{teamAgents.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  
+                  {/* Team Agents */}
+                  <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {teamAgents.map(agent => {
+                      const profile = getAgentProfile(agent.name)
+                      return (
+                        <div
+                          key={agent.id}
+                          className="bg-gray-800 rounded-lg p-3 border border-gray-700 hover:border-gray-600 transition-colors cursor-pointer"
+                          onClick={() => setSelectedAgent(agent)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div 
+                              className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold"
+                              style={{ backgroundColor: profile.color || '#4b5563' }}
+                            >
+                              {profile.emoji || profile.displayName.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-medium text-white truncate">{profile.displayName}</h4>
+                                <div className={`w-2 h-2 rounded-full ${statusColors[agent.status]} flex-shrink-0`}></div>
+                              </div>
+                              <p className="text-xs text-gray-400 truncate">{profile.role}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         ) : (
+          // Grid View (original)
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {agents.map(agent => {
               const profile = getAgentProfile(agent.name)
