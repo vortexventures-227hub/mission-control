@@ -4,7 +4,7 @@
  * Updated: 2026-03-24
  */
 
-export type TeamType = 'command' | 'valphaops' | 'davidscrew' | 'appfactory' | 'research' | 'other'
+export type TeamType = 'command' | 'valphaops' | 'davidscrew' | 'appfactory' | 'research' | 'tradingops' | 'other'
 
 export interface AgentProfile {
   displayName: string
@@ -59,6 +59,13 @@ export const TEAMS: Record<TeamType, TeamInfo> = {
     description: 'Deep research and intelligence',
     color: '#a78bfa',
     icon: '🔬',
+  },
+  tradingops: {
+    id: 'tradingops',
+    name: 'Trading Ops (Gekko)',
+    description: 'Automated trading and market operations',
+    color: '#22c55e',
+    icon: '📈',
   },
   other: {
     id: 'other',
@@ -202,15 +209,6 @@ export const AGENT_ROSTER: Record<string, AgentProfile> = {
     color: '#84cc16', // lime-500
     team: 'davidscrew',
   },
-  mrsteel: {
-    displayName: 'Mr. Steel',
-    role: 'Technical Architect',
-    description: 'System architecture and technical leadership.',
-    emoji: '🏗️',
-    color: '#64748b', // slate-500
-    team: 'davidscrew',
-  },
-  
   // ═══════════════════════════════════════════════════════════════════
   // RESEARCH DIVISION - Deep research and intelligence
   // ═══════════════════════════════════════════════════════════════════
@@ -238,6 +236,22 @@ export const AGENT_ROSTER: Record<string, AgentProfile> = {
     color: '#ec4899', // pink-500
     team: 'research',
   },
+  mrorange: {
+    displayName: 'Mr. Orange',
+    role: 'Field Intelligence Analyst',
+    description: 'On-ground data gathering, source verification, and real-time intel reporting.',
+    emoji: '🍊',
+    color: '#f97316', // orange-500
+    team: 'research',
+  },
+  mrsteel: {
+    displayName: 'Mr. Steel',
+    role: 'Technical Research Analyst',
+    description: 'System architecture research, technical documentation, and infrastructure intel.',
+    emoji: '🏗️',
+    color: '#64748b', // slate-500
+    team: 'research',
+  },
   
   // ═══════════════════════════════════════════════════════════════════
   // APP FACTORY - App building pipeline
@@ -249,6 +263,34 @@ export const AGENT_ROSTER: Record<string, AgentProfile> = {
     emoji: '🏭',
     color: '#8b5cf6', // violet-500
     team: 'appfactory',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // TRADING OPS (GEKKO) - Automated trading operations
+  // ═══════════════════════════════════════════════════════════════════
+  herald: {
+    displayName: 'Herald',
+    role: 'Market Announcer',
+    description: 'Real-time market news, price alerts, and trading signal announcements.',
+    emoji: '📢',
+    color: '#3b82f6', // blue-500
+    team: 'tradingops',
+  },
+  atlas: {
+    displayName: 'Atlas',
+    role: 'Portfolio Manager',
+    description: 'Portfolio tracking, position sizing, and risk management.',
+    emoji: '🗺️',
+    color: '#22c55e', // green-500
+    team: 'tradingops',
+  },
+  spread: {
+    displayName: 'Spread',
+    role: 'Arbitrage Specialist',
+    description: 'Cross-exchange arbitrage, spread trading, and market making.',
+    emoji: '📊',
+    color: '#eab308', // yellow-500
+    team: 'tradingops',
   },
   
   // ═══════════════════════════════════════════════════════════════════
