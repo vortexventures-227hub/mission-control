@@ -1,8 +1,10 @@
 /**
  * Agent Roster - Maps agent IDs to display names and roles
  * This is the source of truth for agent identities in Mission Control
- * Updated: 2026-03-23
+ * Updated: 2026-03-24
  */
+
+export type TeamType = 'command' | 'valphaops' | 'davidscrew' | 'appfactory' | 'research' | 'other'
 
 export interface AgentProfile {
   displayName: string
@@ -10,12 +12,68 @@ export interface AgentProfile {
   description: string
   emoji?: string
   color?: string
-  team: 'command' | 'valphaops' | 'other'
+  team: TeamType
+  avatar?: string // Optional avatar image URL
 }
 
-// Agent roster mapping - All VAlphaOps team members
+export interface TeamInfo {
+  id: TeamType
+  name: string
+  description: string
+  color: string
+  icon: string
+}
+
+export const TEAMS: Record<TeamType, TeamInfo> = {
+  command: {
+    id: 'command',
+    name: 'Command',
+    description: 'Strategic orchestration and coordination',
+    color: '#38bdf8',
+    icon: '🎯',
+  },
+  valphaops: {
+    id: 'valphaops',
+    name: 'VAlphaOps',
+    description: 'Core operations team',
+    color: '#34d399',
+    icon: '⚡',
+  },
+  davidscrew: {
+    id: 'davidscrew',
+    name: "David's Crew",
+    description: 'App development and operations',
+    color: '#f59e0b',
+    icon: '🔨',
+  },
+  appfactory: {
+    id: 'appfactory',
+    name: 'App Factory',
+    description: 'App building and deployment',
+    color: '#8b5cf6',
+    icon: '🏭',
+  },
+  research: {
+    id: 'research',
+    name: 'Research Division',
+    description: 'Deep research and intelligence',
+    color: '#a78bfa',
+    icon: '🔬',
+  },
+  other: {
+    id: 'other',
+    name: 'Other',
+    description: 'Other agents',
+    color: '#94a3b8',
+    icon: '🤖',
+  },
+}
+
+// Agent roster mapping - All team members
 export const AGENT_ROSTER: Record<string, AgentProfile> = {
-  // Command - The orchestrator
+  // ═══════════════════════════════════════════════════════════════════
+  // COMMAND - The orchestrator
+  // ═══════════════════════════════════════════════════════════════════
   main: {
     displayName: 'Axis',
     role: 'Chief Strategic Orchestrator (CSO)',
@@ -25,29 +83,15 @@ export const AGENT_ROSTER: Record<string, AgentProfile> = {
     team: 'command',
   },
   
-  // VAlphaOps Team
-  mrblanc: {
-    displayName: 'Mr. Blanc',
-    role: 'Head of Research',
-    description: 'Deep-dive research, web intelligence, social monitoring, market analysis, and competitive intel.',
-    emoji: '🔍',
-    color: '#a78bfa', // violet-400
-    team: 'valphaops',
-  },
+  // ═══════════════════════════════════════════════════════════════════
+  // VALPHAOPS TEAM - Core operations
+  // ═══════════════════════════════════════════════════════════════════
   cipher: {
     displayName: 'Cipher',
     role: 'Head of Engineering',
     description: 'Code architecture, implementation, debugging, PR reviews, and technical problem-solving.',
     emoji: '⚙️',
     color: '#34d399', // emerald-400
-    team: 'valphaops',
-  },
-  michelangelo: {
-    displayName: 'Michelangelo',
-    role: 'Head of Visual Arts & Design',
-    description: 'Image generation, avatars, UI/UX design, branding, and creative direction.',
-    emoji: '🎨',
-    color: '#f472b6', // pink-400
     team: 'valphaops',
   },
   knox: {
@@ -74,13 +118,149 @@ export const AGENT_ROSTER: Record<string, AgentProfile> = {
     color: '#60a5fa', // blue-400
     team: 'valphaops',
   },
+  michelangelo: {
+    displayName: 'Michelangelo',
+    role: 'Head of Visual Arts & Design',
+    description: 'Image generation, avatars, UI/UX design, branding, and creative direction.',
+    emoji: '🎨',
+    color: '#f472b6', // pink-400
+    team: 'valphaops',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // DAVID'S CREW - App development team
+  // ═══════════════════════════════════════════════════════════════════
+  david: {
+    displayName: 'David',
+    role: 'Crew Lead',
+    description: 'Team lead for app development operations.',
+    emoji: '👔',
+    color: '#f59e0b', // amber-500
+    team: 'davidscrew',
+  },
+  gary: {
+    displayName: 'Gary',
+    role: 'Senior Developer',
+    description: 'Senior app developer and code reviewer.',
+    emoji: '💻',
+    color: '#10b981', // emerald-500
+    team: 'davidscrew',
+  },
+  eddie: {
+    displayName: 'Eddie',
+    role: 'Backend Engineer',
+    description: 'Backend systems and API development.',
+    emoji: '🔧',
+    color: '#6366f1', // indigo-500
+    team: 'davidscrew',
+  },
+  frank: {
+    displayName: 'Frank',
+    role: 'Frontend Engineer',
+    description: 'UI/UX implementation and frontend development.',
+    emoji: '🖥️',
+    color: '#06b6d4', // cyan-500
+    team: 'davidscrew',
+  },
+  bob: {
+    displayName: 'Bob',
+    role: 'DevOps Engineer',
+    description: 'CI/CD, deployment, and infrastructure.',
+    emoji: '🚀',
+    color: '#8b5cf6', // violet-500
+    team: 'davidscrew',
+  },
+  lou: {
+    displayName: 'Lou',
+    role: 'QA Engineer',
+    description: 'Quality assurance and testing.',
+    emoji: '🔍',
+    color: '#ec4899', // pink-500
+    team: 'davidscrew',
+  },
+  sal: {
+    displayName: 'Sal',
+    role: 'Mobile Developer',
+    description: 'iOS and Android app development.',
+    emoji: '📱',
+    color: '#14b8a6', // teal-500
+    team: 'davidscrew',
+  },
+  carl: {
+    displayName: 'Carl',
+    role: 'Database Engineer',
+    description: 'Database design and optimization.',
+    emoji: '🗄️',
+    color: '#f97316', // orange-500
+    team: 'davidscrew',
+  },
+  hank: {
+    displayName: 'Hank',
+    role: 'Integration Specialist',
+    description: 'Third-party integrations and APIs.',
+    emoji: '🔌',
+    color: '#84cc16', // lime-500
+    team: 'davidscrew',
+  },
+  mrsteel: {
+    displayName: 'Mr. Steel',
+    role: 'Technical Architect',
+    description: 'System architecture and technical leadership.',
+    emoji: '🏗️',
+    color: '#64748b', // slate-500
+    team: 'davidscrew',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // RESEARCH DIVISION - Deep research and intelligence
+  // ═══════════════════════════════════════════════════════════════════
+  mrblanc: {
+    displayName: 'Mr. Blanc',
+    role: 'Head of Research',
+    description: 'Deep-dive research, web intelligence, social monitoring, market analysis, and competitive intel.',
+    emoji: '🔍',
+    color: '#a78bfa', // violet-400
+    team: 'research',
+  },
+  mrgecko: {
+    displayName: 'Mr. Gecko',
+    role: 'Head of Financial Research',
+    description: 'Polymarket intel, trading strategies, market analysis, economic research, and financial intelligence.',
+    emoji: '🦎',
+    color: '#4ade80', // green-400
+    team: 'research',
+  },
+  mrpink: {
+    displayName: 'Mr. Pink',
+    role: 'Head of Social & Competitive Intel',
+    description: 'X monitoring, influencer tracking, competitor surveillance, brand sentiment, and viral content analysis.',
+    emoji: '🩷',
+    color: '#ec4899', // pink-500
+    team: 'research',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // APP FACTORY - App building pipeline
+  // ═══════════════════════════════════════════════════════════════════
+  factory: {
+    displayName: 'Factory',
+    role: 'Build Coordinator',
+    description: 'Coordinates app building pipeline and deployments.',
+    emoji: '🏭',
+    color: '#8b5cf6', // violet-500
+    team: 'appfactory',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // OTHER AGENTS
+  // ═══════════════════════════════════════════════════════════════════
   scout: {
     displayName: 'Scout',
     role: 'Reconnaissance Agent',
     description: 'Exploratory tasks, preliminary research, and information gathering.',
     emoji: '🔭',
     color: '#2dd4bf', // teal-400
-    team: 'valphaops',
+    team: 'other',
   },
   ledger: {
     displayName: 'Ledger',
@@ -88,7 +268,7 @@ export const AGENT_ROSTER: Record<string, AgentProfile> = {
     description: 'Expense tracking, financial analysis, and budget management.',
     emoji: '💰',
     color: '#4ade80', // green-400
-    team: 'valphaops',
+    team: 'other',
   },
 }
 
@@ -100,6 +280,15 @@ const AGENT_ALIASES: Record<string, string> = {
   'mr blanc': 'mrblanc',
   'mr. blanc': 'mrblanc',
   'blanc': 'mrblanc',
+  'mr gecko': 'mrgecko',
+  'mr. gecko': 'mrgecko',
+  'gecko': 'mrgecko',
+  'mr pink': 'mrpink',
+  'mr. pink': 'mrpink',
+  'pink': 'mrpink',
+  'mr steel': 'mrsteel',
+  'mr. steel': 'mrsteel',
+  'steel': 'mrsteel',
 }
 
 /**
@@ -142,18 +331,50 @@ export function isKnownAgent(agentId: string): boolean {
 /**
  * Get all agents by team
  */
-export function getAgentsByTeam(team: AgentProfile['team']): string[] {
+export function getAgentsByTeam(team: TeamType): string[] {
   return Object.entries(AGENT_ROSTER)
     .filter(([_, profile]) => profile.team === team)
     .map(([id]) => id)
 }
 
 /**
- * Get the VAlphaOps command structure
+ * Get all teams with their agents
  */
-export function getCommandStructure(): { command: string[]; valphaops: string[] } {
-  return {
-    command: getAgentsByTeam('command'),
-    valphaops: getAgentsByTeam('valphaops'),
+export function getAllTeams(): Array<{ team: TeamInfo; agents: AgentProfile[] }> {
+  const teams: Array<{ team: TeamInfo; agents: AgentProfile[] }> = []
+  
+  for (const teamType of Object.keys(TEAMS) as TeamType[]) {
+    const teamAgents = Object.entries(AGENT_ROSTER)
+      .filter(([_, profile]) => profile.team === teamType)
+      .map(([_, profile]) => profile)
+    
+    if (teamAgents.length > 0) {
+      teams.push({
+        team: TEAMS[teamType],
+        agents: teamAgents,
+      })
+    }
   }
+  
+  return teams
+}
+
+/**
+ * Get the full command structure with all teams
+ */
+export function getCommandStructure(): Record<TeamType, string[]> {
+  const structure: Record<TeamType, string[]> = {} as Record<TeamType, string[]>
+  
+  for (const teamType of Object.keys(TEAMS) as TeamType[]) {
+    structure[teamType] = getAgentsByTeam(teamType)
+  }
+  
+  return structure
+}
+
+/**
+ * Get team info by type
+ */
+export function getTeamInfo(team: TeamType): TeamInfo {
+  return TEAMS[team]
 }
