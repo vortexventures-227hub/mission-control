@@ -455,11 +455,11 @@ export function AgentSquadPanelPhase3() {
           // Separate Axis (orchestrator) from team agents
           const axisAgent = agents.find(a => {
             const meta = getAgentMeta(a)
-            return meta.team === 'axis'
+            return meta.team === 'command'
           })
           const teamAgents = agents.filter(a => {
             const meta = getAgentMeta(a)
-            return meta.team !== 'axis'
+            return meta.team !== 'command'
           })
           const valphaOps = teamAgents.filter(a => getAgentMeta(a).team === 'valphaops')
           const otherAgents = teamAgents.filter(a => getAgentMeta(a).team === 'other')
