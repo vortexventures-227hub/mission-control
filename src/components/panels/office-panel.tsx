@@ -286,13 +286,50 @@ function getPropSprite(propId: string): string {
 const HERO_SHEET_COLS = 6
 const HERO_SHEET_ROWS = 7
 
-function getWorkerHeroFrame(status: Agent['status'], isMoving: boolean, frame: number) {
-  const phase = frame % 2
-  const walkCol = phase === 0 ? 1 : 3
-  if (isMoving) return { col: walkCol, row: 3 } // side-walk row
-  if (status === 'busy') return { col: walkCol, row: 0 } // forward loop as typing proxy
+// Walking animation frame sequence for smooth 4-frame walk cycle
+const WALK_FRAMES_DOWN = [
+  { col: 0, row: 0 }, { col: 1, row: 0 }, { col: 2, row: 0 }, { col: 1, row: 0 }
+]
+const WALK_FRAMES_UP = [
+  { col: 0, row: 1 }, { col: 1, row: 1 }, { col: 2, row: 1 }, { col: 1, row: 1 }
+]
+const WALK_FRAMES_SIDE = [
+  { col: 0, row: 2 }, { col: 1, row: 2 }, { col: 2, row: 2 }, { col: 3, row: 2 }
+]
+const IDLE_FRAMES = [
+  { col: 1, row: 0 }, { col: 1, row: 0 }, { col: 0, row: 0 }, { col: 1, row: 0 }
+]
+const BUSY_FRAMES = [
+  { col: 0, row: 0 }, { col: 1, row: 0 }, { col: 2, row: 0 }, { col: 1, row: 0 }
+]
+
+function getWorkerHeroFrame(
+  status: Agent['status'], 
+  isMoving: boolean, 
+  frame: number,
+  direction?: { dx: number; dy: number }
+) {
+  const cycleFrame = frame % 4
+  
+  if (isMoving && direction) {
+    const { dx, dy } = direction
+    // Determine primary direction of movement
+    if (Math.abs(dy) > Math.abs(dx)) {
+      // Vertical movement
+      if (dy > 0) {
+        return WALK_FRAMES_DOWN[cycleFrame]
+      } else {
+        return WALK_FRAMES_UP[cycleFrame]
+      }
+    } else {
+      // Horizontal movement (will be flipped via CSS for left)
+      return WALK_FRAMES_SIDE[cycleFrame]
+    }
+  }
+  
+  if (status === 'busy') return BUSY_FRAMES[cycleFrame]
   if (status === 'error') return { col: 5, row: 6 }
-  return { col: phase === 0 ? 0 : 5, row: 0 } // idle pulse
+  return IDLE_FRAMES[cycleFrame]
 }
 
 interface WorkerVariant {
@@ -625,8 +662,8 @@ export function OfficePanel() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setSpriteFrame((current) => (current + 1) % 2)
-    }, 380)
+      setSpriteFrame((current) => (current + 1) % 4)
+    }, 180) // Faster animation for smoother walk cycle
     return () => clearInterval(interval)
   }, [])
 
@@ -683,34 +720,93 @@ export function OfficePanel() {
 
   const currentSeatMap = useMemo(() => {
     const seatMap = new Map<number, SeatPosition>()
+    
+    // Expanded seat templates with more positions per zone (3 rows, 3 columns)
     const zoneSeatTemplates: Record<string, Array<{ x: number; y: number }>> = {
-      engineering: [{ x: 24, y: 36 }, { x: 32, y: 36 }, { x: 24, y: 42 }, { x: 32, y: 42 }],
-      product: [{ x: 54, y: 36 }, { x: 62, y: 36 }, { x: 54, y: 42 }, { x: 62, y: 42 }],
-      operations: [{ x: 24, y: 64 }, { x: 32, y: 64 }, { x: 24, y: 70 }, { x: 32, y: 70 }],
-      research: [{ x: 50, y: 64 }, { x: 58, y: 64 }, { x: 50, y: 70 }, { x: 58, y: 70 }],
-      quality: [{ x: 58, y: 64 }, { x: 66, y: 64 }, { x: 58, y: 70 }, { x: 66, y: 70 }],
-      general: [{ x: 38, y: 45 }, { x: 46, y: 39 }, { x: 54, y: 45 }, { x: 62, y: 39 }, { x: 42, y: 52 }, { x: 58, y: 52 }],
+      engineering: [
+        // Row 1
+        { x: 20, y: 28 }, { x: 28, y: 28 }, { x: 36, y: 28 },
+        // Row 2
+        { x: 20, y: 36 }, { x: 28, y: 36 }, { x: 36, y: 36 },
+        // Row 3
+        { x: 20, y: 44 }, { x: 28, y: 44 }, { x: 36, y: 44 },
+      ],
+      product: [
+        // Row 1
+        { x: 52, y: 28 }, { x: 60, y: 28 }, { x: 68, y: 28 },
+        // Row 2
+        { x: 52, y: 36 }, { x: 60, y: 36 }, { x: 68, y: 36 },
+        // Row 3
+        { x: 52, y: 44 }, { x: 60, y: 44 }, { x: 68, y: 44 },
+      ],
+      operations: [
+        // Row 1
+        { x: 20, y: 56 }, { x: 28, y: 56 }, { x: 36, y: 56 },
+        // Row 2
+        { x: 20, y: 64 }, { x: 28, y: 64 }, { x: 36, y: 64 },
+        // Row 3
+        { x: 20, y: 72 }, { x: 28, y: 72 }, { x: 36, y: 72 },
+      ],
+      research: [
+        // Row 1
+        { x: 48, y: 56 }, { x: 56, y: 56 }, { x: 64, y: 56 },
+        // Row 2
+        { x: 48, y: 64 }, { x: 56, y: 64 }, { x: 64, y: 64 },
+        // Row 3
+        { x: 48, y: 72 }, { x: 56, y: 72 }, { x: 64, y: 72 },
+      ],
+      quality: [
+        // Smaller zone - 2x2
+        { x: 72, y: 56 }, { x: 80, y: 56 },
+        { x: 72, y: 64 }, { x: 80, y: 64 },
+      ],
+      general: [
+        // Central corridor area with wider spacing
+        { x: 40, y: 48 }, { x: 48, y: 48 }, { x: 56, y: 48 },
+        { x: 44, y: 52 }, { x: 52, y: 52 }, { x: 60, y: 52 },
+        { x: 40, y: 80 }, { x: 48, y: 80 }, { x: 56, y: 80 },
+      ],
     }
+    
     const fallbackByZone: Record<string, string[]> = {
       engineering: ['operations', 'general'],
       product: ['research', 'general'],
       operations: ['engineering', 'general'],
-      research: ['product', 'general'],
+      research: ['product', 'quality', 'general'],
       quality: ['research', 'general'],
       general: ['general'],
     }
 
+    const usedPositions = new Set<string>()
     const usageByZone = new Map<string, number>()
-    const pullSeat = (zoneId: string) => {
+    
+    const pullSeat = (zoneId: string): { x: number; y: number } => {
       const templates = zoneSeatTemplates[zoneId] || zoneSeatTemplates.general
       const used = usageByZone.get(zoneId) || 0
-      const chosen = templates[used % templates.length] || { x: 38, y: 47 }
-      const overflowBand = Math.floor(used / templates.length)
-      usageByZone.set(zoneId, used + 1)
-      return {
-        x: chosen.x,
-        y: chosen.y + overflowBand * 3.5,
+      
+      // Find next available seat that isn't already occupied
+      for (let attempt = 0; attempt < templates.length * 3; attempt++) {
+        const idx = (used + attempt) % templates.length
+        const overflowBand = Math.floor((used + attempt) / templates.length)
+        const basePos = templates[idx] || { x: 38, y: 47 }
+        
+        // Add spacing for overflow rows (8% vertical separation)
+        const x = basePos.x
+        const y = basePos.y + overflowBand * 8
+        const posKey = `${Math.round(x)},${Math.round(y)}`
+        
+        if (!usedPositions.has(posKey)) {
+          usedPositions.add(posKey)
+          usageByZone.set(zoneId, used + attempt + 1)
+          return { x, y }
+        }
       }
+      
+      // Fallback: generate a unique position
+      const fallbackX = 38 + (used % 5) * 8
+      const fallbackY = 50 + Math.floor(used / 5) * 8
+      usageByZone.set(zoneId, used + 1)
+      return { x: fallbackX, y: fallbackY }
     }
 
     for (let zoneIndex = 0; zoneIndex < officeLayout.length; zoneIndex += 1) {
@@ -721,10 +817,24 @@ export function OfficePanel() {
         const primaryTemplates = zoneSeatTemplates[zone.id] || zoneSeatTemplates.general
         const primaryUsed = usageByZone.get(zone.id) || 0
         const inPrimaryCapacity = primaryUsed < primaryTemplates.length * 2
-        const targetZone = inPrimaryCapacity ? zone.id : (fallbackByZone[zone.id] || ['general'])[0]
+        
+        let targetZone: string = zone.id
+        if (!inPrimaryCapacity) {
+          // Try fallback zones
+          for (const fallbackZone of (fallbackByZone[zone.id] || ['general'])) {
+            const fallbackTemplates = zoneSeatTemplates[fallbackZone] || zoneSeatTemplates.general
+            const fallbackUsed = usageByZone.get(fallbackZone) || 0
+            if (fallbackUsed < fallbackTemplates.length * 2) {
+              targetZone = fallbackZone
+              break
+            }
+          }
+        }
+        
         const seat = pullSeat(targetZone)
-        const x = clamp(seat.x, 8, 92)
-        const y = clamp(seat.y, 12, 92)
+        const x = clamp(seat.x, 10, 90)
+        const y = clamp(seat.y, 18, 88)
+        
         seatMap.set(worker.agent.id, {
           seatKey: `${targetZone}:${worker.anchor.seatLabel}`,
           x,
@@ -2009,7 +2119,7 @@ export function OfficePanel() {
                           backgroundRepeat: 'no-repeat',
                           backgroundSize: `${HERO_SHEET_COLS * 100}% ${HERO_SHEET_ROWS * 100}%`,
                           backgroundPosition: (() => {
-                            const frame = getWorkerHeroFrame(agent.status, isMoving, spriteFrame)
+                            const frame = getWorkerHeroFrame(agent.status, isMoving, spriteFrame, direction)
                             const xPct = (frame.col / (HERO_SHEET_COLS - 1)) * 100
                             const yPct = (frame.row / (HERO_SHEET_ROWS - 1)) * 100
                             return `${xPct}% ${yPct}%`
