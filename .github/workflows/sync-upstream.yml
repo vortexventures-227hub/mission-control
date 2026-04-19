@@ -1,0 +1,102 @@
+name: Sync upstream (builderz-labs/mission-control)
+
+# Pulls new commits from upstream weekly (Mon 06:00 UTC).
+# Flow:
+#   1. Fast-forward our `main` to upstream/main.
+#   2. Open PR from `main` -> `og/main` for human review.
+#
+# Manual trigger: Actions -> "Sync upstream" -> Run workflow.
+# Our production branch is `og/main`. Deploys happen from `og/main` only.
+# Never commit directly on `main` — it stays clean mirror of upstream.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:       # manual
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout our `main`
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.OG_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Add upstream remote + fetch
+        run: |
+          git remote add upstream https://github.com/builderz-labs/mission-control.git || true
+          git fetch upstream main --tags
+
+      - name: Configure identity
+        run: |
+          git config user.name  "og-sync-bot"
+          git config user.email "276391314+OGSENS@users.noreply.github.com"
+
+      - name: Fast-forward our main from upstream/main
+        id: ff
+        run: |
+          set -e
+          git checkout main
+          BEFORE=$(git rev-parse HEAD)
+          # Fast-forward only — fails if our main diverged from upstream (manual intervention)
+          if git merge --ff-only upstream/main; then
+            AFTER=$(git rev-parse HEAD)
+            if [ "$BEFORE" = "$AFTER" ]; then
+              echo "upstream has no new commits"
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git push origin main
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "before=$BEFORE" >> "$GITHUB_OUTPUT"
+            echo "after=$AFTER" >> "$GITHUB_OUTPUT"
+          else
+            echo "main diverged from upstream — manual resolution needed"
+            echo "changed=diverged" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR `main` -> `og/main`
+        if: steps.ff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.OG_SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          gh --version >/dev/null 2>&1 || { apt-get install -y gh; }
+          EXISTING=$(gh pr list --base og/main --head main --state open --json number -q '.[0].number' || true)
+          DIFFURL="https://github.com/${{ github.repository }}/compare/og/main...main"
+          BODY=$(cat <<EOF
+          ### Automatic upstream sync
+
+          - **From:** \`${{ steps.ff.outputs.before }}\`
+          - **To:** \`${{ steps.ff.outputs.after }}\`
+          - Compare: ${DIFFURL}
+
+          Review the diff, resolve any conflicts with our customizations on \`og/main\`, merge when safe.
+
+          **Rebuild + deploy** after merge:
+          1. GHCR image publish (if we add that workflow) or manual \`docker build\`
+          2. Restart MC container: \`docker restart mission-control\`
+          3. Health check: \`curl -sI https://ops.144-91-94-177.sslip.io/?u=<salt>\`
+          EOF
+          )
+          if [ -n "$EXISTING" ]; then
+            gh pr edit "$EXISTING" --body "$BODY"
+            echo "updated PR #$EXISTING"
+          else
+            gh pr create --base og/main --head main \
+              --title "chore: sync upstream mission-control ($(date -u +%Y-%m-%d))" \
+              --body "$BODY"
+          fi
+
+      - name: Notify on divergence (manual intervention needed)
+        if: steps.ff.outputs.changed == 'diverged'
+        run: |
+          echo "::error::main diverged from upstream — cannot fast-forward. Rebase or merge manually."
+          exit 1
