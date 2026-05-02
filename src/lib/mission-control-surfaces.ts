@@ -17,6 +17,7 @@ export interface SurfaceCard {
   summary: string
   evidence: string
   nextAction: string
+  details?: Array<{ label: string; value: string; status?: SurfaceStatus }>
   links?: Array<{ label: string; href: string }>
 }
 
@@ -56,14 +57,14 @@ const snapshots: Record<string, Omit<MissionControlSurfaceSnapshot, 'generatedAt
     eyebrow: 'Finish-line surfaces / truthful instrumentation',
     status: 'read_only',
     safetyMode: 'read_only',
-    description: 'One user-visible home for the Mission Control MVP surface map: Command Truth, Blackwire ops, Brain/Memory, Asset Library, Brainstorm Wall, Security, Marketing, Research, Design, and Trading. It is a read-only command map; missing integrations remain visibly Not Instrumented Yet or Evidence Missing.',
+    description: 'One user-visible home for the Mission Control MVP surface map: Command Truth, Blackwire ops, Brain/Memory, Asset Library, Brainstorm Wall, Security, Marketing, Research, Automation, Design, and Trading. It is a read-only command map; missing integrations remain visibly Not Instrumented Yet or Evidence Missing.',
     guardrails: [
       ...globalGuardrails,
       'No external marketing sends/posts/spend from Mission Control without explicit Chris approval.',
       'No real trades, order placement, wallet/account mutation, or market API-key use from Mission Control without explicit Chris approval.',
       'MiroFish paid simulations require explicit approval before paid run or external compute spend.',
     ],
-    summary: { surfaces: 10, externalExecutionEnabled: false, approvalGatesVisible: true, fakeGreenAllowed: false },
+    summary: { surfaces: 11, externalExecutionEnabled: false, approvalGatesVisible: true, fakeGreenAllowed: false },
     sections: [
       { id: 'live-ops', title: 'Live ops / evidence-gated Done', cards: [
         card({ id: 'command-truth', title: 'Command Truth + Blackwire flow', status: 'read_only', owner: 'Herm', summary: 'Canonical-root cockpit for Blackwire group chat, task board, approvals, receipts, evidence-gated Done, and rollback truth.', evidence: 'Command Truth panel and Blackwire group chat routes are linked from the app shell.', nextAction: 'Use Command Truth for source-of-truth checks before claiming completion.', links: [{ label: 'Command Truth', href: '/command-truth' }, { label: 'Blackwire Group Chat', href: '/group-chat' }] }),
@@ -77,6 +78,7 @@ const snapshots: Record<string, Omit<MissionControlSurfaceSnapshot, 'generatedAt
       { id: 'growth-research-design-trading', title: 'Growth, research, design, and markets', cards: [
         card({ id: 'marketing', title: 'Marketing Command Center', status: 'approval_required', summary: 'Global and per-project marketing tabs, playbooks, templates, experiment board, and approval gates.', evidence: 'External sends/posts/spend remain approval-gated; analytics missing stays Not Instrumented Yet.', nextAction: 'Prepare drafts and approval requests only; do not send/post/spend.', links: [{ label: 'Marketing Command Center', href: '/marketing' }] }),
         card({ id: 'research-command', title: 'Research Command Center', status: 'read_only', owner: 'Karpathia / MiroFish', summary: 'Research queue, citation vault, findings board, Karpathia Auto-Research shell, and MiroFish Simulation Lab approval gate.', evidence: 'Karpathia connector is Not Instrumented Yet; MiroFish paid simulations require approval.', nextAction: 'Stage source-backed research plans and simulation briefs.', links: [{ label: 'Research Command Center', href: '/research-command' }] }),
+        card({ id: 'automation-command', title: 'Automation / n8n MCP Command Center', status: 'approval_required', owner: 'Herm / Knox', summary: 'Read-only workflow registry for n8n MCP automations across Research, Marketing, Security, Trading, and Design.', evidence: 'n8n host, credentials, MCP execution, and approval model are Not Instrumented Yet; no live workflow execution path is enabled.', nextAction: 'Use as planning/approval surface only until read-only auth, credential scoping, and receipts are proven.', links: [{ label: 'Automation Command Center', href: '/automation-command' }] }),
         card({ id: 'design', title: 'Design Studio', status: 'read_only', summary: 'Brand systems, UI QA, visual receipts, color/language psychology, and design decisions.', evidence: 'Visual QA remains Evidence Missing until screenshot receipts are linked.', nextAction: 'Capture and attach visual receipts before approving design claims.', links: [{ label: 'Design Studio', href: '/design' }] }),
         card({ id: 'trading', title: 'Trading Operations Cockpit', status: 'blocked', owner: 'Herald / Atlas / Knox / Spread / Ledger', summary: 'Polymarket/approved-market watchlist, signals, risk shell, spread monitor, ledger placeholders, and no-execution guardrails.', evidence: 'No trading connector, positions, fills, P&L, orders, or wallet/API mutation path exists in this MVP surface.', nextAction: 'Use as read-only research/watch surface only.', links: [{ label: 'Trading Cockpit', href: '/trading' }] }),
       ]},
@@ -101,6 +103,33 @@ const snapshots: Record<string, Omit<MissionControlSurfaceSnapshot, 'generatedAt
         card({ id: 'secrets', title: 'Secrets hygiene', status: 'blocked', owner: 'Knox', summary: 'Never display or exfiltrate secrets from env/data/local proof files.', evidence: 'Policy boundary visible; no secret reader is implemented here.', nextAction: 'Keep diagnostics redacted.' }),
         card({ id: 'approval-sensitive-fixes', title: 'Approval-sensitive fixes', status: 'approval_required', owner: 'Ledger', summary: 'Config changes, credential rotation, network exposure changes, and destructive cleanup require scoped approval.', evidence: 'No mutation controls on this page.', nextAction: 'Use approval workflow with rollback notes.' }),
         card({ id: 'evidence-gaps', title: 'Evidence gaps', status: 'evidence_missing', summary: 'Unknown scanner state or stale receipts stay labeled Evidence Missing.', evidence: 'Evidence Missing until fresh scan/receipt is linked.', nextAction: 'Run approved security audit flow if needed.' }),
+      ]},
+    ],
+  },
+  'automation-command': {
+    id: 'automation-command',
+    title: 'Automation / n8n MCP Command Center',
+    eyebrow: 'Workflow registry / approval-gated automation',
+    status: 'approval_required',
+    safetyMode: 'read_only',
+    description: 'Read-only Mission Control surface for planned n8n MCP automations: workflow catalog, trigger state, last-execution receipts, failed execution queue, owner/project mapping, and approval gates. It is not a live n8n connector and cannot execute workflows.',
+    guardrails: [
+      ...globalGuardrails,
+      'n8n host, MCP tool execution, credential access, and workflow mutation are Not Instrumented Yet until auth, scoping, receipts, and approval models are reviewed.',
+      'No email/SMS/social sends, marketplace posts, paid ads/spend, trades/orders/wallet/account mutation, production deploys/env changes, or database writes outside approved receipt stores from this surface.',
+      'Secrets stay in n8n/MCP credential stores; Mission Control must never print or persist credentials.',
+    ],
+    summary: { workflowsTracked: 6, readOnlyRegistry: true, liveExecutionEnabled: false, credentialAccessEnabled: false, approvalsRequired: 6, evidenceMissing: 6, failedQueueInstrumented: false },
+    sections: [
+      { id: 'workflow-catalog', title: 'Workflow catalog / project mapping', status: 'approval_required', cards: [
+        card({ id: 'research-intake-workflows', title: 'Research intake and citation workflows', status: 'not_instrumented', owner: 'Karpathia / Atlas', summary: 'RSS/feed/news collection, source aggregation, daily digest, and citation vault intake planned as n8n workflows.', evidence: 'Not Instrumented Yet: no source connector, n8n host receipt, workflow ID, or citation execution receipt linked.', nextAction: 'Stage workflow specs and citation receipt schema before enabling connectors.', details: [{ label: 'Allowed class', value: 'Read-only source collection and draft digest preparation only.', status: 'read_only' }, { label: 'Execution gate', value: 'Not Instrumented Yet until read-only auth and source receipts are proven.', status: 'not_instrumented' }, { label: 'Promotion boundary', value: 'No research output promotes to tasks, marketing, trading, or memory without evidence plus scoped approval.', status: 'approval_required' }], links: [{ label: 'Research Command Center', href: '/research-command' }] }),
+        card({ id: 'marketing-draft-workflows', title: 'Marketing draft workflows', status: 'approval_required', owner: 'Growth / Knox', summary: 'Draft generation, campaign research, asset/brief aggregation, and approval packet preparation only.', evidence: 'Approval Required: no external sends/posts/spend or campaign mutation receipts exist.', nextAction: 'Keep workflows draft-only and create scoped approval packets before any public or paid action.', details: [{ label: 'Allowed class', value: 'Internal drafts, research, asset grouping, and approval packet assembly.', status: 'read_only' }, { label: 'Blocked external action', value: 'Email/SMS/social/marketplace/ad sends, posts, spend, and settings mutation require explicit Chris approval.', status: 'approval_required' }, { label: 'Analytics gate', value: 'Not Instrumented Yet until real analytics/source receipts are attached.', status: 'not_instrumented' }], links: [{ label: 'Marketing Command Center', href: '/marketing' }] }),
+        card({ id: 'security-audit-workflows', title: 'Security audit and hygiene workflows', status: 'evidence_missing', owner: 'Knox', summary: 'Scheduled security checks, workflow failure/stall detection, secret hygiene checks, and audit receipt generation.', evidence: 'Evidence Missing: no last execution receipt, failed queue hook, or redacted scan receipt is linked.', nextAction: 'Wire only redacted, read-only audit receipts; do not expose secrets or mutate credentials.', details: [{ label: 'Allowed class', value: 'Redacted receipt generation and failure/stall detection.', status: 'read_only' }, { label: 'Secrets boundary', value: 'Secrets must stay in credential stores; no .env/API key printing in UI or receipts.', status: 'blocked' }, { label: 'Failure queue', value: 'Not Instrumented Yet until failed execution queue source is linked.', status: 'not_instrumented' }], links: [{ label: 'Security Command Center', href: '/security-command' }] }),
+      ]},
+      { id: 'execution-boundaries', title: 'Trigger state / execution boundaries', status: 'blocked', cards: [
+        card({ id: 'trading-watch-workflows', title: 'Trading market/news watch workflows', status: 'blocked', owner: 'Herald / Atlas / Ledger', summary: 'Market/news feed ingest, watchlist update, and signal research aggregation may be planned, but execution stays hard-blocked.', evidence: 'Blocked: no trading connector, order path, wallet/account mutation, API-key access, positions, fills, or P&L receipt exists.', nextAction: 'Use read-only research/watch workflows only after source receipts; never trade from Mission Control without explicit approval.', details: [{ label: 'Allowed class', value: 'Read-only market/news research and watchlist draft updates.', status: 'read_only' }, { label: 'Hard block', value: 'No orders, cancellations, wallet movement, account mutation, API-key use, positions/fills/P&L claims, or automated execution.', status: 'blocked' }, { label: 'Approval gate', value: 'Any account-affecting or financial action requires explicit Chris approval with scope and stop plan.', status: 'approval_required' }], links: [{ label: 'Trading Operations Cockpit', href: '/trading' }] }),
+        card({ id: 'design-qa-workflows', title: 'Design QA and visual receipt workflows', status: 'evidence_missing', owner: 'Patch / Design', summary: 'Open Design/Noxu Labs hooks, screenshot capture, visual QA, and design receipt generation planned after install/review.', evidence: 'Evidence Missing: no screenshot workflow, visual QA run, or receipt capture is linked.', nextAction: 'Keep screenshots/QA read-only; attach visual receipts before claiming design proof.', details: [{ label: 'Allowed class', value: 'Screenshot capture and visual QA receipt generation only.', status: 'read_only' }, { label: 'Evidence gate', value: 'Evidence Missing until browser screenshots or design receipts are attached.', status: 'evidence_missing' }, { label: 'Authority boundary', value: 'No deploy, env, external publish, or customer-facing mutation authority.', status: 'approval_required' }], links: [{ label: 'Design Studio', href: '/design' }] }),
+        card({ id: 'receipt-and-failure-queue', title: 'Receipts and failed execution queue', status: 'not_instrumented', owner: 'Herm / Ledger', summary: 'Every workflow must emit a receipt and failed/stalled executions must surface in Command Truth and Security.', evidence: 'Not Instrumented Yet: no n8n execution log source, failure queue, or Mission Control receipt ingestion path connected.', nextAction: 'Define receipt schema and failed-execution source before enabling any live workflow.', details: [{ label: 'Receipt requirement', value: 'Each workflow needs workflow ID, owner, project, trigger, approval object, run result, evidence link, and rollback/stop note.', status: 'approval_required' }, { label: 'Failed queue', value: 'Not Instrumented Yet until n8n failure/stall queue is readable by Mission Control.', status: 'not_instrumented' }, { label: 'Done boundary', value: 'No workflow can mark Done without attached evidence/receipt.', status: 'blocked' }], links: [{ label: 'Command Truth', href: '/command-truth' }] }),
       ]},
     ],
   },
@@ -262,6 +291,9 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
   if (!snapshot) return null
   if (id === 'security-command') {
     const security = getSecurityCommandSnapshot()
+    const securitySystems = security.systems || []
+    const securityFindings = security.findings || []
+    const securityAuditHooks = security.auditHooks || []
     return {
       ...snapshot,
       generatedAt: security.generatedAt,
@@ -271,6 +303,10 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
         openFindings: security.posture.openFindings,
         criticalFindings: security.posture.severityCounts.critical || 0,
         highFindings: security.posture.severityCounts.high || 0,
+        auditHooks: security.posture.auditHooks,
+        notInstrumentedHooks: security.posture.notInstrumentedHooks,
+        evidenceMissingHooks: security.posture.evidenceMissingHooks,
+        approvalRequiredHooks: security.posture.approvalRequiredHooks,
         posture: security.posture.label === 'green' && security.posture.openFindings > 0 ? 'watch' : security.posture.label,
       },
       guardrails: Array.from(new Set([...snapshot.guardrails, ...security.guardrails])),
@@ -279,7 +315,7 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
           id: 'live-systems',
           title: 'DB-backed security systems',
           status: security.posture.label === 'green' ? 'read_only' : 'evidence_missing',
-          cards: security.systems.map((system) => card({
+          cards: securitySystems.map((system) => card({
             id: `system-${system.system_key}`,
             title: system.label,
             status: system.posture === 'green' ? 'read_only' : system.posture === 'watch' ? 'evidence_missing' : system.posture,
@@ -287,13 +323,30 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             summary: `${system.open_findings} open finding(s); ${system.critical_findings} critical / ${system.high_findings} high.`,
             evidence: system.evidence_path || 'Evidence Missing: no receipt linked.',
             nextAction: system.next_action,
+            details: system.details,
+          })),
+        },
+
+        {
+          id: 'audit-hook-inventory',
+          title: 'Daily / periodic audit hook inventory',
+          status: security.posture.notInstrumentedHooks > 0 || security.posture.evidenceMissingHooks > 0 ? 'evidence_missing' : 'read_only',
+          cards: securityAuditHooks.map((hook) => card({
+            id: `security-hook-${hook.id}`,
+            title: hook.title,
+            status: hook.status,
+            owner: 'Knox / Security',
+            summary: `${hook.cadence.replace(/_/g, ' ')} hook triggered by ${hook.trigger}.`,
+            evidence: hook.evidence,
+            nextAction: hook.nextAction,
+            details: hook.details,
           })),
         },
         {
           id: 'live-findings',
           title: 'Open findings / hooks',
           status: security.posture.openFindings > 0 ? 'evidence_missing' : 'read_only',
-          cards: security.findings.map((finding) => card({
+          cards: securityFindings.map((finding) => card({
             id: `finding-${finding.id}`,
             title: finding.title,
             status: finding.status === 'resolved' ? 'read_only' : finding.status === 'needs_verification' ? 'evidence_missing' : finding.status === 'triage' ? 'planned' : 'blocked',
@@ -301,6 +354,7 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             summary: `${finding.severity.toUpperCase()} / ${finding.status.replace(/_/g, ' ')} on ${finding.system_key}.`,
             evidence: finding.evidence_path || 'Evidence Missing: no receipt linked.',
             nextAction: finding.next_action,
+            details: finding.details,
           })),
         },
         ...snapshot.sections,
@@ -327,9 +381,10 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             title: brief.title,
             status: brief.status === 'researched' ? 'read_only' : brief.status === 'draft' ? 'planned' : brief.status,
             owner: brief.owner_agent,
-            summary: `${brief.lane.replace(/_/g, ' ')} brief owned by ${brief.owner_agent}.`,
+            summary: `${brief.lane.replace(/_/g, ' ')} brief owned by ${brief.owner_agent}. ${brief.readinessGate}`,
             evidence: brief.evidence_path || 'Evidence Missing: no source/citation/simulation receipt attached.',
             nextAction: brief.next_action,
+            details: brief.details,
           })),
         },
         ...snapshot.sections,
@@ -389,6 +444,7 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             summary: `${item.lane.replace(/_/g, ' ')} item owned by ${item.owner_agent}.`,
             evidence: item.evidence_path || item.screenshot_path || 'Evidence Missing: no screenshot, browser proof, decision receipt, or design QA receipt attached.',
             nextAction: item.next_action,
+            details: item.details,
             links: item.screenshot_path ? [{ label: 'Visual receipt', href: item.screenshot_path }] : undefined,
           })),
         },
@@ -463,10 +519,22 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             id: profile.id,
             title: profile.project,
             status: profile.analyticsStatus === 'Not Instrumented Yet' ? 'not_instrumented' : profile.status === 'live' ? 'read_only' : profile.status,
-            summary: `${profile.offer} — ${profile.audience}`,
+            summary: `${profile.offer} — ${profile.audience}; proof: ${profile.proofStatus}; safe drafts: ${profile.safeDraftsReady}.`,
             evidence: `Analytics: ${profile.analyticsStatus}; approvals required: ${profile.approvalsRequired.join(', ') || 'none listed'}`,
             nextAction: profile.nextAction,
           })),
+        },
+        {
+          id: 'project-tab-details',
+          title: 'Per-project tab details / proof gates',
+          cards: marketing.projectProfiles.flatMap((profile) => profile.tabs.map((tab) => card({
+            id: `${profile.id}-${tab.id}`,
+            title: `${profile.project}: ${tab.label}`,
+            status: tab.status === 'live' ? 'read_only' : tab.status,
+            summary: tab.detail,
+            evidence: tab.evidence,
+            nextAction: profile.nextAction,
+          }))),
         },
         ...snapshot.sections,
       ],
@@ -495,6 +563,7 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             summary: `${layer.layer_type.replace(/_/g, ' ')} layer for ${layer.domain}; runtime adoption: ${layer.runtime_adoption.replace(/_/g, ' ')}.`,
             evidence: layer.evidence_path || 'Evidence Missing: no storage, freshness, read-path, or runtime-adoption receipt linked.',
             nextAction: layer.next_action,
+            details: layer.details,
           })),
         },
         {
@@ -509,6 +578,7 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             summary: request.requested_change,
             evidence: request.evidence_path || 'Evidence Missing: correction cannot be applied without evidence.',
             nextAction: request.next_action,
+            details: request.details,
           })),
         },
         ...snapshot.sections,
@@ -538,6 +608,7 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             summary: `${asset.asset_type} asset for ${asset.owner_project}.`,
             evidence: asset.evidence_path || asset.source_url || 'Evidence Missing: no source file, receipt, or URL attached.',
             nextAction: asset.next_action,
+            details: asset.details,
             links: asset.source_url ? [{ label: 'Source', href: asset.source_url }] : undefined,
           })),
         },

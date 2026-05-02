@@ -6,12 +6,26 @@ vi.mock('../security-command-center', () => ({
     guardrails: ['Mock security guardrail'],
     posture: {
       systems: 0,
-      openFindings: 0,
+      openFindings: 1,
       severityCounts: {},
+      statusCounts: {},
+      hookCounts: { not_instrumented: 2, evidence_missing: 1 },
+      auditHooks: 3,
+      notInstrumentedHooks: 2,
+      evidenceMissingHooks: 1,
+      approvalRequiredHooks: 0,
       label: 'green',
     },
-    systems: [],
-    findings: [],
+    auditHooks: [
+      { id: 'secret-scan', title: 'Secret scan hook', status: 'evidence_missing', cadence: 'daily', trigger: 'daily audit', evidence: 'Evidence Missing: no scan receipt.', nextAction: 'Attach redacted scan receipt.', details: [{ label: 'Secret boundary', value: 'Never print raw secrets.', status: 'blocked' }] },
+      { id: 'auth-approval-boundary', title: 'Auth and approval bypass hook', status: 'not_instrumented', cadence: 'daily', trigger: 'protected API', evidence: 'Not Instrumented Yet.', nextAction: 'Probe protected APIs.', details: [{ label: 'Tier 2 boundary', value: 'Deploy/env/customer mutations need approval.', status: 'approval_required' }] },
+    ],
+    systems: [
+      { id: 1, workspace_id: 1, system_key: 'mission-control', label: 'Mission Control Runtime', posture: 'watch', owner_agent_id: 'Knox', last_audit_at: 1700000000, last_dependency_scan_at: null, last_secret_scan_at: null, last_auth_review_at: 1700000000, last_path_drift_check_at: 1700000000, evidence_path: '/receipts/security.md', next_action: 'Attach missing scan receipts.', open_findings: 1, critical_findings: 0, high_findings: 0, details: [{ label: 'Secret/dependency scan gate', value: 'Evidence Missing: scan receipts incomplete.', status: 'evidence_missing' }] },
+    ],
+    findings: [
+      { id: 1, workspace_id: 1, system_key: 'mission-control', title: 'Security hooks not fully instrumented', severity: 'medium', status: 'needs_verification', owner_agent_id: 'Knox', evidence_path: null, next_action: 'Keep Not Instrumented Yet until receipts attach.', created_at: 1700000000, updated_at: 1700000000, details: [{ label: 'False-green boundary', value: 'Not green without receipt-backed evidence.', status: 'evidence_missing' }] },
+    ],
   }),
 }))
 
@@ -22,11 +36,13 @@ vi.mock('../asset-library-command', () => ({
     summary: {
       totalAssets: 3,
       evidenceMissing: 1,
+      promotionGatesVisible: 2,
+      sourceReceiptsLinked: 1,
       externalPublishEnabled: false,
     },
     assets: [
-      { id: 1, asset_key: 'mission-control-local-mvp-proof', title: 'Mission Control local MVP proof', asset_type: 'receipt', status: 'verified', owner_project: 'Mission Control', evidence_path: '/receipts/mvp.md', source_url: null, next_action: 'Use as local proof baseline.' },
-      { id: 2, asset_key: 'design-visual-receipts', title: 'Design visual receipts', asset_type: 'screenshot', status: 'evidence_missing', owner_project: 'Mission Control', evidence_path: null, source_url: null, next_action: 'Capture visual receipt.' },
+      { id: 1, asset_key: 'mission-control-local-mvp-proof', title: 'Mission Control local MVP proof', asset_type: 'receipt', status: 'verified', owner_project: 'Mission Control', evidence_path: '/receipts/mvp.md', source_url: null, next_action: 'Use as local proof baseline.', details: [{ label: 'Verification gate', value: 'Verified read-only receipt.', status: 'read_only' }, { label: 'Promotion boundary', value: 'No external action without approval.', status: 'approval_required' }] },
+      { id: 2, asset_key: 'design-visual-receipts', title: 'Design visual receipts', asset_type: 'screenshot', status: 'evidence_missing', owner_project: 'Mission Control', evidence_path: null, source_url: null, next_action: 'Capture visual receipt.', details: [{ label: 'Verification gate', value: 'Evidence Missing: no screenshot attached.', status: 'evidence_missing' }, { label: 'Promotion boundary', value: 'No external action without approval.', status: 'approval_required' }] },
     ],
   }),
 }))
@@ -58,15 +74,21 @@ vi.mock('../brain-memory-command', () => ({
       evidenceMissing: 1,
       writeEnabled: false,
       correctionRequests: 1,
+      stagedCorrections: 1,
+      approvedCorrections: 0,
+      appliedCorrections: 0,
+      blockedCorrections: 0,
+      isolatedLayers: 1,
+      writeGatesVisible: 4,
       davidIsolationEnforced: true,
     },
     layers: [
-      { id: 1, layer_key: 'graphify-internal', label: 'Graphify internal project graph', layer_type: 'graphify', status: 'queried_manually', domain: 'Vortex / Blackwire', evidence_path: '/receipts/graphify.md', runtime_adoption: 'manual', next_action: 'Keep writes receipt-gated.' },
-      { id: 2, layer_key: 'david-msnj-brain', label: 'David Material Solutions brain', layer_type: 'david_brain', status: 'isolated', domain: 'Material Solutions / David', evidence_path: '/receipts/david.md', runtime_adoption: 'isolated', next_action: 'Never mix with Vortex project memory.' },
-      { id: 3, layer_key: 'unverified-memory-tool', label: 'Unverified memory tool', layer_type: 'candidate_tool', status: 'evidence_missing', domain: 'Candidate', evidence_path: null, runtime_adoption: 'not_adopted', next_action: 'Research before adoption.' },
+      { id: 1, layer_key: 'graphify-internal', label: 'Graphify internal project graph', layer_type: 'graphify', status: 'queried_manually', domain: 'Vortex / Blackwire', evidence_path: '/receipts/graphify.md', runtime_adoption: 'manual', next_action: 'Keep writes receipt-gated.', details: [{ label: 'Read-path gate', value: 'Read path visible; writes receipt-gated.', status: 'read_only' }, { label: 'Write authority boundary', value: 'Graphify/gBrain writes disabled without approval.', status: 'approval_required' }] },
+      { id: 2, layer_key: 'david-msnj-brain', label: 'David Material Solutions brain', layer_type: 'david_brain', status: 'isolated', domain: 'Material Solutions / David', evidence_path: '/receipts/david.md', runtime_adoption: 'isolated', next_action: 'Never mix with Vortex project memory.', details: [{ label: 'Isolation / block gate', value: 'David memory remains Material Solutions-only isolated.', status: 'blocked' }, { label: 'Write authority boundary', value: 'No Vortex/Blackwire/trading writes.', status: 'blocked' }] },
+      { id: 3, layer_key: 'unverified-memory-tool', label: 'Unverified memory tool', layer_type: 'candidate_tool', status: 'evidence_missing', domain: 'Candidate', evidence_path: null, runtime_adoption: 'not_adopted', next_action: 'Research before adoption.', details: [{ label: 'Evidence gate', value: 'Evidence Missing: storage proof absent.', status: 'evidence_missing' }, { label: 'Runtime adoption', value: 'Not Instrumented Yet.', status: 'not_instrumented' }] },
     ],
     correctionRequests: [
-      { id: 1, request_key: 'blackwire-false-green-correction', title: 'Blackwire false-green correction', status: 'staged', domain: 'Mission Control', evidence_path: '/receipts/false-green.md', requested_change: 'Keep done evidence-gated.', next_action: 'Review and ingest through approved correction flow.' },
+      { id: 1, request_key: 'blackwire-false-green-correction', title: 'Blackwire false-green correction', status: 'staged', domain: 'Mission Control', evidence_path: '/receipts/false-green.md', requested_change: 'Keep done evidence-gated.', next_action: 'Review and ingest through approved correction flow.', details: [{ label: 'Evidence requirement', value: 'Receipt attached: /receipts/false-green.md', status: 'read_only' }, { label: 'Approval / application gate', value: 'Approval Required: staged corrections cannot write memory.', status: 'approval_required' }, { label: 'Destination boundary', value: 'Cross-project corrections stay receipt-gated.', status: 'approval_required' }] },
     ],
   }),
 }))
@@ -83,9 +105,9 @@ vi.mock('../research-command', () => ({
       autoPromotionEnabled: false,
     },
     briefs: [
-      { id: 1, research_key: 'karpathia-source-plan', title: 'Karpathia source plan', lane: 'karpathia', status: 'planned', owner_agent: 'Karpathia', evidence_path: '/receipts/karpathia.md', next_action: 'Attach citations before action.' },
-      { id: 2, research_key: 'mirofish-paid-sim', title: 'MiroFish paid simulation brief', lane: 'mirofish', status: 'approval_required', owner_agent: 'MiroFish', evidence_path: '/receipts/mirofish.md', next_action: 'Ask Chris before paid simulation.' },
-      { id: 3, research_key: 'unverified-market-signal', title: 'Unverified market signal', lane: 'trading_research', status: 'evidence_missing', owner_agent: 'Atlas', evidence_path: null, next_action: 'Cite sources before promotion.' },
+      { id: 1, research_key: 'karpathia-source-plan', title: 'Karpathia source plan', lane: 'karpathia', status: 'planned', owner_agent: 'Karpathia', evidence_path: '/receipts/karpathia.md', next_action: 'Attach citations before action.', readinessGate: 'Not Instrumented Yet: source connector not active.', details: [{ label: 'Readiness gate', value: 'Not Instrumented Yet: source connector not active.', status: 'not_instrumented' }, { label: 'Promotion gate', value: 'Citations required before promotion.', status: 'planned' }] },
+      { id: 2, research_key: 'mirofish-paid-sim', title: 'MiroFish paid simulation brief', lane: 'mirofish', status: 'approval_required', owner_agent: 'MiroFish', evidence_path: '/receipts/mirofish.md', next_action: 'Ask Chris before paid simulation.', readinessGate: 'Approval Required: paid simulation blocked.', details: [{ label: 'Readiness gate', value: 'Approval Required: paid simulation blocked.', status: 'approval_required' }] },
+      { id: 3, research_key: 'unverified-market-signal', title: 'Unverified market signal', lane: 'trading_research', status: 'evidence_missing', owner_agent: 'Atlas', evidence_path: null, next_action: 'Cite sources before promotion.', readinessGate: 'Evidence Missing: citations absent.', details: [{ label: 'Citation plan', value: 'Market signal needs sources.', status: 'evidence_missing' }, { label: 'Promotion gate', value: 'No trades without approval.', status: 'planned' }] },
     ],
   }),
 }))
@@ -119,15 +141,17 @@ vi.mock('../design-studio-command', () => ({
       totalDesignItems: 4,
       evidenceMissing: 1,
       visualReceiptsLinked: 1,
+      qaGatesVisible: 4,
+      designReceiptsLinked: 3,
       externalPublishEnabled: false,
       visualQaProven: true,
       patchRuntimeAuthority: false,
     },
     items: [
-      { id: 1, item_key: 'mission-control-brand-system', title: 'Mission Control brand system', lane: 'brand', status: 'planned', owner_agent: 'Patch / Claw Design', evidence_path: '/receipts/design.md', screenshot_path: null, next_action: 'Attach token audit.' },
-      { id: 2, item_key: 'blackwire-room-visual-receipt', title: 'Blackwire room visual receipt', lane: 'visual_receipts', status: 'receipt_backed', owner_agent: 'Herm', evidence_path: '/receipts/blackwire-visual.md', screenshot_path: '/screenshots/blackwire.png', next_action: 'Use as QA baseline.' },
-      { id: 3, item_key: 'unproven-design-claim', title: 'Unproven design claim', lane: 'ui_qa', status: 'evidence_missing', owner_agent: 'Neon Forge', evidence_path: null, screenshot_path: null, next_action: 'Capture browser proof.' },
-      { id: 4, item_key: 'external-publish-guard', title: 'External publish guard', lane: 'publish_guard', status: 'blocked', owner_agent: 'Knox', evidence_path: '/receipts/no-publish.md', screenshot_path: null, next_action: 'Do not publish externally.' },
+      { id: 1, item_key: 'mission-control-brand-system', title: 'Mission Control brand system', lane: 'brand', status: 'planned', owner_agent: 'Patch / Claw Design', evidence_path: '/receipts/design.md', screenshot_path: null, next_action: 'Attach token audit.', details: [{ label: 'Visual QA gate', value: 'Evidence Missing: capture screenshot.', status: 'evidence_missing' }, { label: 'Authority boundary', value: 'No deploy authority.', status: 'approval_required' }] },
+      { id: 2, item_key: 'blackwire-room-visual-receipt', title: 'Blackwire room visual receipt', lane: 'visual_receipts', status: 'receipt_backed', owner_agent: 'Herm', evidence_path: '/receipts/blackwire-visual.md', screenshot_path: '/screenshots/blackwire.png', next_action: 'Use as QA baseline.', details: [{ label: 'Visual QA gate', value: 'Visual receipt linked.', status: 'read_only' }, { label: 'Authority boundary', value: 'No deploy authority.', status: 'approval_required' }] },
+      { id: 3, item_key: 'unproven-design-claim', title: 'Unproven design claim', lane: 'ui_qa', status: 'evidence_missing', owner_agent: 'Neon Forge', evidence_path: null, screenshot_path: null, next_action: 'Capture browser proof.', details: [{ label: 'Visual QA gate', value: 'Evidence Missing: no screenshot.', status: 'evidence_missing' }, { label: 'Authority boundary', value: 'No deploy authority.', status: 'approval_required' }] },
+      { id: 4, item_key: 'external-publish-guard', title: 'External publish guard', lane: 'publish_guard', status: 'blocked', owner_agent: 'Knox', evidence_path: '/receipts/no-publish.md', screenshot_path: null, next_action: 'Do not publish externally.', details: [{ label: 'Visual QA gate', value: 'Blocked from external publish.', status: 'blocked' }, { label: 'Authority boundary', value: 'No external publish authority.', status: 'blocked' }] },
     ],
   }),
 }))
@@ -141,6 +165,7 @@ describe('mission control surface snapshots', () => {
     expect(ids).toEqual(expect.arrayContaining([
       'mission-control',
       'research-command',
+      'automation-command',
       'trading',
       'design',
       'brain-memory',
@@ -149,6 +174,38 @@ describe('mission control surface snapshots', () => {
       'marketing',
       'security-command',
     ]))
+  })
+
+
+  it('surfaces Security Command audit hooks and false-green evidence gates', () => {
+    const security = getMissionControlSurfaceSnapshot('security-command')
+    const cards = security?.sections.flatMap((section) => section.cards) || []
+
+    expect(security?.summary.auditHooks).toBe(3)
+    expect(security?.summary.notInstrumentedHooks).toBe(2)
+    expect(security?.summary.evidenceMissingHooks).toBe(1)
+    expect(security?.guardrails.join(' ')).toContain('Mock security guardrail')
+    expect(cards.find((card) => card.id === 'security-hook-secret-scan')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'security-hook-secret-scan')?.details?.find((detail) => detail.label === 'Secret boundary')?.status).toBe('blocked')
+    expect(cards.find((card) => card.id === 'system-mission-control')?.details?.find((detail) => detail.label === 'Secret/dependency scan gate')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'finding-1')?.details?.find((detail) => detail.label === 'False-green boundary')?.value).toContain('Not green')
+  })
+
+  it('exposes n8n MCP automations as read-only approval-gated workflows without live execution', () => {
+    const automation = getMissionControlSurfaceSnapshot('automation-command')
+    const cards = automation?.sections.flatMap((section) => section.cards) || []
+
+    expect(automation?.status).toBe('approval_required')
+    expect(automation?.summary.readOnlyRegistry).toBe(true)
+    expect(automation?.summary.liveExecutionEnabled).toBe(false)
+    expect(automation?.summary.credentialAccessEnabled).toBe(false)
+    expect(automation?.summary.failedQueueInstrumented).toBe(false)
+    expect(automation?.guardrails.join(' ')).toContain('credential stores')
+    expect(cards.find((card) => card.id === 'research-intake-workflows')?.status).toBe('not_instrumented')
+    expect(cards.find((card) => card.id === 'marketing-draft-workflows')?.details?.find((detail) => detail.label === 'Blocked external action')?.status).toBe('approval_required')
+    expect(cards.find((card) => card.id === 'security-audit-workflows')?.details?.find((detail) => detail.label === 'Secrets boundary')?.status).toBe('blocked')
+    expect(cards.find((card) => card.id === 'trading-watch-workflows')?.status).toBe('blocked')
+    expect(cards.find((card) => card.id === 'receipt-and-failure-queue')?.details?.find((detail) => detail.label === 'Done boundary')?.value).toContain('No workflow can mark Done')
   })
 
   it('exposes Marketing as a surface snapshot with external action and analytics guardrails', () => {
@@ -180,10 +237,14 @@ describe('mission control surface snapshots', () => {
 
     expect(assetLibrary?.summary.totalAssets).toBe(3)
     expect(assetLibrary?.summary.evidenceMissing).toBe(1)
+    expect(assetLibrary?.summary.promotionGatesVisible).toBe(2)
+    expect(assetLibrary?.summary.sourceReceiptsLinked).toBe(1)
     expect(assetLibrary?.summary.externalPublishEnabled).toBe(false)
     expect(assetLibrary?.guardrails.join(' ')).toContain('Mock asset guardrail')
     expect(cards.find((card) => card.id === 'asset-mission-control-local-mvp-proof')?.status).toBe('read_only')
     expect(cards.find((card) => card.id === 'asset-design-visual-receipts')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'asset-design-visual-receipts')?.details?.find((detail) => detail.label === 'Verification gate')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'asset-mission-control-local-mvp-proof')?.details?.find((detail) => detail.label === 'Promotion boundary')?.value).toContain('No external action')
   })
 
   it('merges DB-backed Brainstorm Wall ideas into the shared surface with promotion gates visible', () => {
@@ -206,11 +267,18 @@ describe('mission control surface snapshots', () => {
     expect(brainMemory?.summary.totalLayers).toBe(4)
     expect(brainMemory?.summary.writeEnabled).toBe(false)
     expect(brainMemory?.summary.davidIsolationEnforced).toBe(true)
+    expect(brainMemory?.summary.stagedCorrections).toBe(1)
+    expect(brainMemory?.summary.writeGatesVisible).toBe(4)
+    expect(brainMemory?.summary.isolatedLayers).toBe(1)
     expect(brainMemory?.guardrails.join(' ')).toContain('Mock brain memory guardrail')
     expect(cards.find((card) => card.id === 'memory-layer-graphify-internal')?.status).toBe('read_only')
+    expect(cards.find((card) => card.id === 'memory-layer-graphify-internal')?.details?.find((detail) => detail.label === 'Write authority boundary')?.status).toBe('approval_required')
     expect(cards.find((card) => card.id === 'memory-layer-david-msnj-brain')?.status).toBe('blocked')
+    expect(cards.find((card) => card.id === 'memory-layer-david-msnj-brain')?.details?.find((detail) => detail.label === 'Isolation / block gate')?.value).toContain('Material Solutions-only')
     expect(cards.find((card) => card.id === 'memory-layer-unverified-memory-tool')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'memory-layer-unverified-memory-tool')?.details?.find((detail) => detail.label === 'Runtime adoption')?.status).toBe('not_instrumented')
     expect(cards.find((card) => card.id === 'memory-correction-blackwire-false-green-correction')?.status).toBe('approval_required')
+    expect(cards.find((card) => card.id === 'memory-correction-blackwire-false-green-correction')?.details?.find((detail) => detail.label === 'Approval / application gate')?.status).toBe('approval_required')
   })
 
   it('merges DB-backed Research Command briefs while keeping Karpathia/MiroFish no-fake-green gates visible', () => {
@@ -223,8 +291,11 @@ describe('mission control surface snapshots', () => {
     expect(research?.summary.autoPromotionEnabled).toBe(false)
     expect(research?.guardrails.join(' ')).toContain('Mock research guardrail')
     expect(cards.find((card) => card.id === 'research-karpathia-source-plan')?.status).toBe('planned')
+    expect(cards.find((card) => card.id === 'research-karpathia-source-plan')?.summary).toContain('Not Instrumented Yet')
+    expect(cards.find((card) => card.id === 'research-karpathia-source-plan')?.details?.find((detail) => detail.label === 'Readiness gate')?.status).toBe('not_instrumented')
     expect(cards.find((card) => card.id === 'research-mirofish-paid-sim')?.status).toBe('approval_required')
     expect(cards.find((card) => card.id === 'research-unverified-market-signal')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'research-unverified-market-signal')?.details?.find((detail) => detail.label === 'Promotion gate')?.value).toContain('No trades')
   })
 
   it('merges DB-backed Trading Operations watch items while keeping execution and wallet mutation blocked', () => {
@@ -250,6 +321,8 @@ describe('mission control surface snapshots', () => {
     expect(design?.summary.totalDesignItems).toBe(4)
     expect(design?.summary.evidenceMissing).toBe(1)
     expect(design?.summary.visualReceiptsLinked).toBe(1)
+    expect(design?.summary.qaGatesVisible).toBe(4)
+    expect(design?.summary.designReceiptsLinked).toBe(3)
     expect(design?.summary.externalPublishEnabled).toBe(false)
     expect(design?.summary.patchRuntimeAuthority).toBe(false)
     expect(design?.guardrails.join(' ')).toContain('Mock design guardrail')
@@ -257,5 +330,8 @@ describe('mission control surface snapshots', () => {
     expect(cards.find((card) => card.id === 'design-blackwire-room-visual-receipt')?.status).toBe('read_only')
     expect(cards.find((card) => card.id === 'design-unproven-design-claim')?.status).toBe('evidence_missing')
     expect(cards.find((card) => card.id === 'design-external-publish-guard')?.status).toBe('blocked')
+    expect(cards.find((card) => card.id === 'design-blackwire-room-visual-receipt')?.details?.find((detail) => detail.label === 'Visual QA gate')?.status).toBe('read_only')
+    expect(cards.find((card) => card.id === 'design-unproven-design-claim')?.details?.find((detail) => detail.label === 'Visual QA gate')?.value).toContain('Evidence Missing')
+    expect(cards.find((card) => card.id === 'design-external-publish-guard')?.details?.find((detail) => detail.label === 'Authority boundary')?.status).toBe('blocked')
   })
 })

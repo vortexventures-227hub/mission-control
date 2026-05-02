@@ -520,6 +520,7 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'mission-control':
     case 'security-command':
     case 'research-command':
+    case 'automation-command':
     case 'trading':
     case 'design':
     case 'brain-memory':

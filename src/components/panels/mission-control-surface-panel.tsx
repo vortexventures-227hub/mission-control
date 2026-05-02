@@ -14,6 +14,7 @@ interface SurfaceCard {
   summary: string
   evidence: string
   nextAction: string
+  details?: Array<{ label: string; value: string; status?: SurfaceStatus }>
   links?: Array<{ label: string; href: string }>
 }
 
@@ -49,6 +50,7 @@ const badgeClass: Record<string, string> = {
 const surfaceLinks = [
   { id: 'mission-control', label: 'MVP Home' },
   { id: 'research-command', label: 'Research' },
+  { id: 'automation-command', label: 'Automation' },
   { id: 'trading', label: 'Trading' },
   { id: 'design', label: 'Design' },
   { id: 'brain-memory', label: 'Brain/Memory' },
@@ -159,6 +161,19 @@ export function MissionControlSurfacePanel({ surfaceId }: { surfaceId: string })
                       <StatusBadge status={item.status} />
                     </div>
                     <p className="mt-3 text-xs leading-5 text-muted-foreground">{item.summary}</p>
+                    {item.details && item.details.length > 0 && (
+                      <div className="mt-3 grid gap-2">
+                        {item.details.map((detail) => (
+                          <div key={`${item.id}-${detail.label}`} className="rounded-lg border border-border bg-card/60 p-2">
+                            <div className="mb-1 flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{detail.label}</span>
+                              {detail.status && <StatusBadge status={detail.status} />}
+                            </div>
+                            <p className="text-xs leading-5 text-foreground">{detail.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <p className="mt-2 text-xs leading-5 text-orange-200">Evidence: {item.evidence}</p>
                     <p className="mt-2 text-xs leading-5 text-primary">Next: {item.nextAction}</p>
                     {item.links && item.links.length > 0 && (

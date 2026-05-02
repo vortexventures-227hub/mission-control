@@ -1,6 +1,6 @@
 import { getSecurityCommandSnapshot } from './security-command-center'
 
-export type MarketingStatus = 'live' | 'planned' | 'not_instrumented' | 'approval_required' | 'blocked'
+export type MarketingStatus = 'live' | 'planned' | 'not_instrumented' | 'approval_required' | 'blocked' | 'evidence_missing'
 
 export interface MarketingPrinciple {
   id: string
@@ -47,6 +47,14 @@ export interface MarketingExperiment {
   approvalRequired: boolean
 }
 
+export interface ProjectMarketingTab {
+  id: string
+  label: string
+  status: MarketingStatus
+  detail: string
+  evidence: string
+}
+
 export interface ProjectMarketingProfile {
   id: string
   project: string
@@ -56,6 +64,9 @@ export interface ProjectMarketingProfile {
   analyticsStatus: 'Live' | 'Imported' | 'Manual' | 'Not Instrumented Yet' | 'Stale'
   approvalsRequired: string[]
   nextAction: string
+  proofStatus: 'Evidence Missing' | 'Manual' | 'Drafted' | 'Not Instrumented Yet'
+  safeDraftsReady: number
+  tabs: ProjectMarketingTab[]
 }
 
 export interface MarketingLaunchSecurityGate {
@@ -208,9 +219,57 @@ export function getMarketingCommandCenterSnapshot(workspaceId = 1) {
   ]
 
   const projectProfiles: ProjectMarketingProfile[] = [
-    { id: 'blackwire', project: 'Blackwire', offer: 'Mission Control / agent-ops command system', audience: 'Founder/operator running multi-agent workflows', status: 'planned', analyticsStatus: 'Not Instrumented Yet', approvalsRequired: ['External publish', 'paid campaign spend'], nextAction: 'Draft offer/ICP and command-truth demo landing sequence.' },
-    { id: 'mission-control', project: 'Mission Control', offer: 'Daily-driver control plane for Vortex Ventures operations', audience: 'Internal Vortex/Blackwire operators first', status: 'planned', analyticsStatus: 'Manual', approvalsRequired: ['Public launch copy'], nextAction: 'Keep product proof ahead of public marketing claims.' },
-    { id: 'material-solutions', project: 'Material Solutions / David', offer: 'Equipment inventory, dealer outreach, AI intake/phone support', audience: 'Forklift/equipment buyers and dealers', status: 'approval_required', analyticsStatus: 'Not Instrumented Yet', approvalsRequired: ['Customer/dealer email', 'marketplace post', 'ad spend', 'David/customer-facing copy changes'], nextAction: 'Prepare drafts only; do not send/post/spend without approval.' },
+    {
+      id: 'blackwire',
+      project: 'Blackwire',
+      offer: 'Mission Control / agent-ops command system',
+      audience: 'Founder/operator running multi-agent workflows',
+      status: 'planned',
+      analyticsStatus: 'Not Instrumented Yet',
+      approvalsRequired: ['External publish', 'paid campaign spend'],
+      nextAction: 'Draft offer/ICP and command-truth demo landing sequence.',
+      proofStatus: 'Evidence Missing',
+      safeDraftsReady: 2,
+      tabs: [
+        { id: 'blackwire-offer', label: 'Offer / ICP', status: 'planned', detail: 'Command Truth demo promise for founder/operators coordinating multi-agent rooms.', evidence: 'Draft-only: offer and ICP are staged internally; no public landing analytics attached.' },
+        { id: 'blackwire-proof', label: 'Proof / receipts', status: 'evidence_missing', detail: 'Needs linked live Mission Control screenshots or route receipts before public claim.', evidence: 'Evidence Missing: no public proof bundle attached to marketing tab.' },
+        { id: 'blackwire-launch', label: 'Launch / approval', status: 'approval_required', detail: 'External publish and paid campaign spend remain gated.', evidence: 'Approval Required: Chris scope approval required before publish/spend.' },
+      ],
+    },
+    {
+      id: 'mission-control',
+      project: 'Mission Control',
+      offer: 'Daily-driver control plane for Vortex Ventures operations',
+      audience: 'Internal Vortex/Blackwire operators first',
+      status: 'planned',
+      analyticsStatus: 'Manual',
+      approvalsRequired: ['Public launch copy'],
+      nextAction: 'Keep product proof ahead of public marketing claims.',
+      proofStatus: 'Manual',
+      safeDraftsReady: 3,
+      tabs: [
+        { id: 'mission-control-product-proof', label: 'Product proof', status: 'planned', detail: 'Internal MVP surfaces are the copy source of truth; public copy must lag proven routes.', evidence: 'Manual: local route/build proof exists but public launch proof remains separate.' },
+        { id: 'mission-control-operator-story', label: 'Operator story', status: 'planned', detail: 'Position around command truth, approvals, receipts, and evidence-gated Done.', evidence: 'Draft-only: no external launch copy approved.' },
+        { id: 'mission-control-public-launch', label: 'Public launch gate', status: 'approval_required', detail: 'Public launch copy needs explicit scope and final claim review.', evidence: 'Approval Required: no auto-publish from Mission Control.' },
+      ],
+    },
+    {
+      id: 'material-solutions',
+      project: 'Material Solutions / David',
+      offer: 'Equipment inventory, dealer outreach, AI intake/phone support',
+      audience: 'Forklift/equipment buyers and dealers',
+      status: 'approval_required',
+      analyticsStatus: 'Not Instrumented Yet',
+      approvalsRequired: ['Customer/dealer email', 'marketplace post', 'ad spend', 'David/customer-facing copy changes'],
+      nextAction: 'Prepare drafts only; do not send/post/spend without approval.',
+      proofStatus: 'Not Instrumented Yet',
+      safeDraftsReady: 1,
+      tabs: [
+        { id: 'material-solutions-inventory-proof', label: 'Inventory proof', status: 'evidence_missing', detail: 'Listing claims need linked inventory/source receipts before buyer-facing use.', evidence: 'Evidence Missing: marketing tab does not assert live inventory analytics.' },
+        { id: 'material-solutions-outreach', label: 'Outreach drafts', status: 'approval_required', detail: 'Dealer/customer email and SMS can be drafted only; no send path enabled.', evidence: 'Approval Required: customer/dealer send requires scoped Chris approval.' },
+        { id: 'material-solutions-david-isolation', label: 'David isolation', status: 'blocked', detail: 'David memory/copy remains Material Solutions-only and cannot ingest Vortex/Blackwire memory.', evidence: 'Blocked: cross-domain Graphify/gBrain/David memory mixing is disallowed.' },
+      ],
+    },
   ]
 
   const externalActionGuardrails = [
@@ -231,6 +290,9 @@ export function getMarketingCommandCenterSnapshot(workspaceId = 1) {
       templates: templates.length,
       experiments: experiments.length,
       projectProfiles: projectProfiles.length,
+      projectTabCount: projectProfiles.reduce((count, profile) => count + profile.tabs.length, 0),
+      safeDraftsReady: projectProfiles.reduce((count, profile) => count + profile.safeDraftsReady, 0),
+      projectsWithEvidenceMissing: projectProfiles.filter((profile) => profile.proofStatus === 'Evidence Missing' || profile.proofStatus === 'Not Instrumented Yet').length,
       securityOpenFindings: launchSecurityGate.openFindings,
       securityCriticalFindings: launchSecurityGate.criticalFindings,
       publicLaunchBlocked: launchSecurityGate.status === 'blocked' || launchSecurityGate.status === 'not_instrumented',

@@ -9,6 +9,23 @@ type Posture = 'green' | 'watch' | 'blocked' | 'not_instrumented'
 type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info'
 type FindingStatus = 'new' | 'triage' | 'accepted_risk' | 'fixing' | 'needs_verification' | 'resolved' | 'superseded'
 
+interface SecurityDetail {
+  label: string
+  value: string
+  status?: string
+}
+
+interface SecurityAuditHook {
+  id: string
+  title: string
+  status: string
+  cadence: string
+  trigger: string
+  evidence: string
+  nextAction: string
+  details: SecurityDetail[]
+}
+
 interface SecuritySystem {
   id: number
   system_key: string
@@ -25,6 +42,7 @@ interface SecuritySystem {
   open_findings: number
   critical_findings: number
   high_findings: number
+  details: SecurityDetail[]
 }
 
 interface SecurityFinding {
@@ -37,6 +55,7 @@ interface SecurityFinding {
   evidence_path: string | null
   next_action: string
   updated_at: number
+  details: SecurityDetail[]
 }
 
 interface SecuritySnapshot {
@@ -47,8 +66,14 @@ interface SecuritySnapshot {
     openFindings: number
     severityCounts: Record<string, number>
     statusCounts: Record<string, number>
+    hookCounts?: Record<string, number>
+    auditHooks: number
+    notInstrumentedHooks: number
+    evidenceMissingHooks: number
+    approvalRequiredHooks: number
   }
   guardrails: string[]
+  auditHooks: SecurityAuditHook[]
   systems: SecuritySystem[]
   findings: SecurityFinding[]
 }
@@ -132,7 +157,11 @@ export function SecurityCommandCenterPanel() {
           <div className="text-2xl font-black text-foreground">{snapshot?.posture.openFindings || 0}</div>
           <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Open Findings</div>
         </div>
-        {(['critical', 'high', 'medium'] as const).map((severity) => (
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="text-2xl font-black text-foreground">{snapshot?.posture.auditHooks || 0}</div>
+          <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Audit Hooks</div>
+        </div>
+        {(['critical', 'high'] as const).map((severity) => (
           <div key={severity} className="rounded-xl border border-border bg-card p-3">
             <div className="text-2xl font-black text-foreground">{openBySeverity[severity] || 0}</div>
             <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{severity}</div>
@@ -162,6 +191,13 @@ export function SecurityCommandCenterPanel() {
                 </div>
                 <p className="mt-3 text-xs leading-5 text-muted-foreground">{system.next_action}</p>
                 {system.evidence_path && <p className="mt-2 break-all text-[11px] text-primary">{system.evidence_path}</p>}
+                <div className="mt-3 space-y-1">
+                  {system.details.map((detail) => (
+                    <div key={detail.label} className="rounded-lg border border-border bg-card/60 px-2 py-1 text-[11px] text-muted-foreground">
+                      <span className="font-semibold text-foreground">{detail.label}:</span> {detail.value}
+                    </div>
+                  ))}
+                </div>
               </article>
             ))}
           </div>
@@ -186,6 +222,33 @@ export function SecurityCommandCenterPanel() {
         </aside>
       </section>
 
+
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <h2 className="font-bold text-foreground">Daily / periodic audit hooks</h2>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">Hooks show live vs missing instrumentation. Missing receipts stay Not Instrumented Yet / Evidence Missing; they do not create green status.</p>
+        <div className="mt-3 grid gap-3 xl:grid-cols-3">
+          {(snapshot?.auditHooks || []).map((hook) => (
+            <article key={hook.id} className="rounded-xl border border-border bg-background p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge value={hook.status} />
+                <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{hook.cadence.replace(/_/g, ' ')}</span>
+              </div>
+              <h3 className="mt-3 text-sm font-semibold text-foreground">{hook.title}</h3>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">Trigger: {hook.trigger}</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{hook.evidence}</p>
+              <p className="mt-2 text-xs leading-5 text-primary">{hook.nextAction}</p>
+              <div className="mt-3 space-y-1">
+                {hook.details.map((detail) => (
+                  <div key={detail.label} className="rounded-lg border border-border bg-card/60 px-2 py-1 text-[11px] text-muted-foreground">
+                    <span className="font-semibold text-foreground">{detail.label}:</span> {detail.value}
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="rounded-2xl border border-border bg-card p-4">
         <h2 className="font-bold text-foreground">Findings board</h2>
         <div className="mt-3 grid gap-3 xl:grid-cols-3">
@@ -200,6 +263,13 @@ export function SecurityCommandCenterPanel() {
               <p className="mt-2 text-xs leading-5 text-muted-foreground">{finding.next_action}</p>
               <div className="mt-3 text-[11px] text-muted-foreground">Owner: @{finding.owner_agent_id}</div>
               {finding.evidence_path && <p className="mt-2 break-all text-[11px] text-primary">{finding.evidence_path}</p>}
+              <div className="mt-3 space-y-1">
+                {finding.details.map((detail) => (
+                  <div key={detail.label} className="rounded-lg border border-border bg-card/60 px-2 py-1 text-[11px] text-muted-foreground">
+                    <span className="font-semibold text-foreground">{detail.label}:</span> {detail.value}
+                  </div>
+                ))}
+              </div>
             </article>
           ))}
         </div>

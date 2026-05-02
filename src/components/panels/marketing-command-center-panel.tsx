@@ -14,7 +14,7 @@ interface MarketingSnapshot {
   tools: Array<{ id: string; name: string; category: string; status: string; safetyNote: string }>
   templates: Array<{ id: string; title: string; kind: string; status: MarketingStatus; useCase: string }>
   experiments: Array<{ id: string; project: string; hypothesis: string; channel: string; status: MarketingStatus; successMetric: string; evidence: string; approvalRequired: boolean }>
-  projectProfiles: Array<{ id: string; project: string; offer: string; audience: string; status: MarketingStatus; analyticsStatus: string; approvalsRequired: string[]; nextAction: string }>
+  projectProfiles: Array<{ id: string; project: string; offer: string; audience: string; status: MarketingStatus; analyticsStatus: string; approvalsRequired: string[]; nextAction: string; proofStatus: string; safeDraftsReady: number; tabs: Array<{ id: string; label: string; status: MarketingStatus; detail: string; evidence: string }> }>
   launchSecurityGate: { id: string; title: string; status: MarketingStatus; reason: string; evidence: string; nextAction: string; requiredApproval: string; securityPosture: string; openFindings: number; criticalFindings: number; highFindings: number }
   externalActionGuardrails: string[]
 }
@@ -25,6 +25,7 @@ const badgeClass: Record<string, string> = {
   not_instrumented: 'border-zinc-500/30 bg-zinc-500/10 text-zinc-300',
   approval_required: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   blocked: 'border-red-500/30 bg-red-500/10 text-red-300',
+  evidence_missing: 'border-orange-500/30 bg-orange-500/10 text-orange-300',
   installed: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
   staged: 'border-violet-500/30 bg-violet-500/10 text-violet-300',
   researched: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
@@ -182,9 +183,21 @@ export function MarketingCommandCenterPanel() {
               <div className="flex items-start justify-between gap-3"><h3 className="text-sm font-semibold text-foreground">{profile.project}</h3><StatusBadge status={profile.status} /></div>
               <p className="mt-2 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Offer:</span> {profile.offer}</p>
               <p className="mt-1 text-xs text-muted-foreground"><span className="font-semibold text-foreground">Audience:</span> {profile.audience}</p>
-              <p className="mt-1 text-xs text-zinc-300">Analytics: {profile.analyticsStatus}</p>
+              <p className="mt-1 text-xs text-zinc-300">Analytics: {profile.analyticsStatus} · Proof: {profile.proofStatus} · Safe drafts: {profile.safeDraftsReady}</p>
               <p className="mt-1 text-xs text-amber-200">Approvals: {profile.approvalsRequired.join(', ') || 'None'}</p>
               <p className="mt-1 text-xs text-primary">Next: {profile.nextAction}</p>
+              <div className="mt-3 space-y-2">
+                {profile.tabs.map((tab) => (
+                  <div key={tab.id} className="rounded-lg border border-border/70 bg-card/60 p-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="text-[11px] font-bold uppercase tracking-wide text-foreground">{tab.label}</div>
+                      <StatusBadge status={tab.status} />
+                    </div>
+                    <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{tab.detail}</p>
+                    <p className="mt-1 text-[10px] leading-4 text-amber-200">{tab.evidence}</p>
+                  </div>
+                ))}
+              </div>
             </article>
           ))}
         </div>
