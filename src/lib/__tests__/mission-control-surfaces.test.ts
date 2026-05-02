@@ -111,6 +111,27 @@ vi.mock('../trading-operations-command', () => ({
   }),
 }))
 
+vi.mock('../design-studio-command', () => ({
+  getDesignStudioSnapshot: () => ({
+    generatedAt: 1700000030000,
+    guardrails: ['Mock design guardrail'],
+    summary: {
+      totalDesignItems: 4,
+      evidenceMissing: 1,
+      visualReceiptsLinked: 1,
+      externalPublishEnabled: false,
+      visualQaProven: true,
+      patchRuntimeAuthority: false,
+    },
+    items: [
+      { id: 1, item_key: 'mission-control-brand-system', title: 'Mission Control brand system', lane: 'brand', status: 'planned', owner_agent: 'Patch / Claw Design', evidence_path: '/receipts/design.md', screenshot_path: null, next_action: 'Attach token audit.' },
+      { id: 2, item_key: 'blackwire-room-visual-receipt', title: 'Blackwire room visual receipt', lane: 'visual_receipts', status: 'receipt_backed', owner_agent: 'Herm', evidence_path: '/receipts/blackwire-visual.md', screenshot_path: '/screenshots/blackwire.png', next_action: 'Use as QA baseline.' },
+      { id: 3, item_key: 'unproven-design-claim', title: 'Unproven design claim', lane: 'ui_qa', status: 'evidence_missing', owner_agent: 'Neon Forge', evidence_path: null, screenshot_path: null, next_action: 'Capture browser proof.' },
+      { id: 4, item_key: 'external-publish-guard', title: 'External publish guard', lane: 'publish_guard', status: 'blocked', owner_agent: 'Knox', evidence_path: '/receipts/no-publish.md', screenshot_path: null, next_action: 'Do not publish externally.' },
+    ],
+  }),
+}))
+
 import { getMissionControlSurfaceIndex, getMissionControlSurfaceSnapshot } from '../mission-control-surfaces'
 
 describe('mission control surface snapshots', () => {
@@ -220,5 +241,21 @@ describe('mission control surface snapshots', () => {
     expect(cards.find((card) => card.id === 'trading-execution-hard-block')?.status).toBe('blocked')
     expect(cards.find((card) => card.id === 'trading-approval-gated-risk-note')?.status).toBe('approval_required')
     expect(cards.find((card) => card.id === 'trading-uncited-market-signal')?.status).toBe('evidence_missing')
+  })
+
+  it('merges DB-backed Design Studio items while keeping visual QA and external publish gates honest', () => {
+    const design = getMissionControlSurfaceSnapshot('design')
+    const cards = design?.sections.flatMap((section) => section.cards) || []
+
+    expect(design?.summary.totalDesignItems).toBe(4)
+    expect(design?.summary.evidenceMissing).toBe(1)
+    expect(design?.summary.visualReceiptsLinked).toBe(1)
+    expect(design?.summary.externalPublishEnabled).toBe(false)
+    expect(design?.summary.patchRuntimeAuthority).toBe(false)
+    expect(design?.guardrails.join(' ')).toContain('Mock design guardrail')
+    expect(cards.find((card) => card.id === 'design-mission-control-brand-system')?.status).toBe('planned')
+    expect(cards.find((card) => card.id === 'design-blackwire-room-visual-receipt')?.status).toBe('read_only')
+    expect(cards.find((card) => card.id === 'design-unproven-design-claim')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'design-external-publish-guard')?.status).toBe('blocked')
   })
 })
