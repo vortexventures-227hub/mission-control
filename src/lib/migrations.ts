@@ -2092,6 +2092,93 @@ const migrations: Migration[] = [
         )
       }
     }
+  },
+  {
+    id: '050_mission_control_research_command_v0',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS mission_control_research_briefs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          research_key TEXT NOT NULL,
+          title TEXT NOT NULL,
+          lane TEXT NOT NULL DEFAULT 'research_queue' CHECK(lane IN ('research_queue', 'karpathia', 'mirofish', 'citation_vault', 'trading_research', 'memory_harmony', 'design_research')),
+          status TEXT NOT NULL DEFAULT 'evidence_missing' CHECK(status IN ('planned', 'draft', 'evidence_missing', 'approval_required', 'blocked', 'researched')),
+          owner_agent TEXT NOT NULL,
+          evidence_path TEXT,
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, research_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mc_research_briefs_workspace ON mission_control_research_briefs(workspace_id, status, lane);
+      `)
+
+      const now = Math.floor(Date.now() / 1000)
+      const briefs = [
+        {
+          key: 'karpathia-auto-research-source-plan',
+          title: 'Karpathia Auto-Research source/citation instrumentation plan',
+          lane: 'karpathia',
+          status: 'planned',
+          owner: 'Karpathia',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_RESEARCH_KARPATHIA_MIROFISH_DESIGN_CONTRACT.md',
+          action: 'Wire source-backed read-only research plans and citation receipts before claiming autonomous research is live.'
+        },
+        {
+          key: 'mirofish-simulation-lab-paid-run-gate',
+          title: 'MiroFish Simulation Lab paid-run approval gate',
+          lane: 'mirofish',
+          status: 'approval_required',
+          owner: 'MiroFish',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_RESEARCH_KARPATHIA_MIROFISH_DESIGN_CONTRACT.md',
+          action: 'Prepare simulation briefs only; explicit Chris approval is required before paid simulations or external compute spend.'
+        },
+        {
+          key: 'blackwire-command-truth-research-findings',
+          title: 'Blackwire Command Truth research findings board',
+          lane: 'research_queue',
+          status: 'researched',
+          owner: 'Herm',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_HERM_MISSION_CONTROL_MVP_PROOF_RECEIPT_0854.md',
+          action: 'Keep findings tied to receipts before they promote into board tasks, approvals, or Command Truth claims.'
+        },
+        {
+          key: 'trading-polymarket-signal-citations',
+          title: 'Trading / Polymarket signal citation gate',
+          lane: 'trading_research',
+          status: 'evidence_missing',
+          owner: 'Atlas',
+          evidence: null,
+          action: 'Do not promote market signals into trades or P&L claims until source citations and approval receipts exist.'
+        }
+      ]
+      const insertBrief = db.prepare(`
+        INSERT INTO mission_control_research_briefs (
+          workspace_id, research_key, title, lane, status, owner_agent,
+          evidence_path, next_action, created_at, updated_at
+        )
+        SELECT 1, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM mission_control_research_briefs
+          WHERE workspace_id = 1 AND research_key = ?
+        )
+      `)
+      for (const brief of briefs) {
+        insertBrief.run(
+          brief.key,
+          brief.title,
+          brief.lane,
+          brief.status,
+          brief.owner,
+          brief.evidence,
+          brief.action,
+          now,
+          now,
+          brief.key
+        )
+      }
+    }
   }
 ]
 
