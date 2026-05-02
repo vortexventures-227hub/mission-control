@@ -9,7 +9,13 @@ import {
   listGroupChatQueuedAlerts,
   listGroupChatRooms,
 } from './group-chat'
+import { getAssetLibrarySnapshot } from './asset-library-command'
+import { getBrainstormSnapshot } from './brainstorm-command'
+import { getBrainMemorySnapshot } from './brain-memory-command'
+import { getDesignStudioSnapshot } from './design-studio-command'
+import { getResearchCommandSnapshot } from './research-command'
 import { getSecurityCommandSnapshot } from './security-command-center'
+import { getTradingOperationsSnapshot } from './trading-operations-command'
 
 export interface MvpSurfaceStatus {
   id: string
@@ -80,10 +86,22 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
   const tasks = safeCount(`SELECT COUNT(*) as count FROM tasks WHERE workspace_id = ?`, workspaceId)
   const doneWithEvidence = safeCount(`SELECT COUNT(*) as count FROM group_chat_assignment_tracker_items WHERE workspace_id = ? AND status = 'done' AND evidence IS NOT NULL AND TRIM(evidence) != ''`, workspaceId)
   const approvalsPending = safeCount(`SELECT COUNT(*) as count FROM exec_approval_requests WHERE workspace_id = ? AND status IN ('pending','requested')`, workspaceId)
-  const assets = safeCount(`SELECT COUNT(*) as count FROM artifacts WHERE workspace_id = ?`, workspaceId) || safeCount(`SELECT COUNT(*) as count FROM agent_artifacts WHERE workspace_id = ?`, workspaceId)
-  const memories = safeCount(`SELECT COUNT(*) as count FROM memory_items WHERE workspace_id = ?`, workspaceId) || safeCount(`SELECT COUNT(*) as count FROM memories WHERE workspace_id = ?`, workspaceId)
   const messageDeliveryStates = messages.flatMap((message) => message.delivery.map((delivery) => delivery.state))
   const security = getSecurityCommandSnapshot(workspaceId)
+  const assetLibrarySurface = getAssetLibrarySnapshot(workspaceId)
+  const brainstormSurface = getBrainstormSnapshot(workspaceId)
+  const brainMemorySurface = getBrainMemorySnapshot(workspaceId)
+  const researchSurface = getResearchCommandSnapshot(workspaceId)
+  const tradingSurface = getTradingOperationsSnapshot(workspaceId)
+  const designSurface = getDesignStudioSnapshot(workspaceId)
+  const dbBackedCommandSurfaces = [
+    assetLibrarySurface.summary.totalAssets,
+    brainstormSurface.summary.totalIdeas,
+    brainMemorySurface.summary.totalLayers,
+    researchSurface.summary.totalBriefs,
+    tradingSurface.summary.totalWatchItems,
+    designSurface.summary.totalDesignItems,
+  ].filter((count) => Number(count) > 0).length
   const memoryInventory: MvpEvidenceRow[] = [
     pathRow('koda-graphify', 'Koda Graphify / mailbox memory', '/Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/graphify-out', 'manual', 'Inventory-only graph output exists; not automatic long-term runtime memory.'),
     pathRow('koda-vault', 'KodaVault', '/Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/KodaVault', 'manual', 'Operator-owned Koda context folder exists.'),
@@ -142,10 +160,13 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
     { id: 'receipts-evidence-search', label: 'Receipts / Evidence / Search', status: 'live', detail: 'Group Chat search covers messages, task evidence, assignees, and decision receipts.', href: '/group-chat' },
     { id: 'notifications-queues', label: 'Notifications / Queues', status: queuedAlerts.length ? 'live' : 'partial', detail: `${queuedAlerts.length} queued agent alerts for offline or unproven recipients.`, href: '/group-chat' },
     { id: 'metrics-cockpit', label: 'Metrics Cockpit', status: 'live', detail: `${projects} active projects, ${tasks} tasks, ${messages.length} Blackwire messages, ${agents.filter((a) => a.status === 'online_proven').length} online-proven agents.`, href: '/command-truth' },
-    { id: 'brain-memory', label: 'Brain / Memory Surfaces', status: memories > 0 ? 'live' : 'not_instrumented', detail: memories > 0 ? `${memories} memory records detected.` : 'Not Instrumented Yet: no local memory table data counted; isolated from chat truth.', href: '/memory' },
-    { id: 'asset-library', label: 'Asset Library', status: assets > 0 ? 'live' : 'not_instrumented', detail: assets > 0 ? `${assets} assets/artifacts detected.` : 'Not Instrumented Yet: asset library UI shell is visible; no artifact table data counted.' },
+    { id: 'brain-memory', label: 'Brain / Memory Surfaces', status: brainMemorySurface.summary.totalLayers ? 'partial' : 'not_instrumented', detail: brainMemorySurface.summary.totalLayers ? `${brainMemorySurface.summary.totalLayers} memory layers and ${brainMemorySurface.summary.correctionRequests} correction requests; writes disabled, David isolation enforced: ${brainMemorySurface.summary.davidIsolationEnforced ? 'yes' : 'no'}.` : 'Not Instrumented Yet: no DB-backed memory-layer inventory counted; isolated from chat truth.', href: '/brain-memory' },
+    { id: 'asset-library', label: 'Asset Library', status: assetLibrarySurface.summary.totalAssets ? 'partial' : 'not_instrumented', detail: assetLibrarySurface.summary.totalAssets ? `${assetLibrarySurface.summary.totalAssets} asset records; ${assetLibrarySurface.summary.evidenceMissing} Evidence Missing; external publish enabled: ${assetLibrarySurface.summary.externalPublishEnabled ? 'yes' : 'no'}.` : 'Not Instrumented Yet: asset library UI shell is visible; no asset-library records counted.', href: '/asset-library' },
     { id: 'marketing-command-center', label: 'Marketing Command Center', status: 'partial', detail: 'Global marketing OS and per-project Marketing tab data are runtime-visible; external sends/posts/spend are approval-gated and analytics remain Not Instrumented Yet.', href: '/marketing' },
-    { id: 'brainstorm-wall', label: 'Brainstorm Wall', status: 'isolated', detail: 'Isolated MVP surface: local idea capture is intentionally separated from command truth until wired.' },
+    { id: 'research-command', label: 'Research Command Center / Karpathia / MiroFish', status: researchSurface.summary.totalBriefs ? 'partial' : 'not_instrumented', detail: researchSurface.summary.totalBriefs ? `${researchSurface.summary.totalBriefs} research briefs; Karpathia connector Not Instrumented Yet: ${researchSurface.summary.karpathiaConnectorInstrumented ? 'no' : 'yes'}; MiroFish paid simulations require approval: ${researchSurface.summary.paidSimulationApprovalRequired ? 'yes' : 'no'}.` : 'Not Instrumented Yet: no research-brief inventory counted.', href: '/research-command' },
+    { id: 'design-studio', label: 'Design Studio', status: designSurface.summary.totalDesignItems ? 'partial' : 'not_instrumented', detail: designSurface.summary.totalDesignItems ? `${designSurface.summary.totalDesignItems} design inventory rows; ${designSurface.summary.visualReceiptsLinked} visual receipts linked; external publish enabled: ${designSurface.summary.externalPublishEnabled ? 'yes' : 'no'}.` : 'Not Instrumented Yet: no design inventory counted.', href: '/design' },
+    { id: 'trading-operations', label: 'Trading Operations Cockpit', status: tradingSurface.summary.totalWatchItems ? 'partial' : 'not_instrumented', detail: tradingSurface.summary.totalWatchItems ? `${tradingSurface.summary.totalWatchItems} watch/risk rows; execution blocked: ${tradingSurface.summary.executionEnabled ? 'no' : 'yes'}; wallet mutation enabled: ${tradingSurface.summary.walletMutationEnabled ? 'yes' : 'no'}.` : 'Not Instrumented Yet: no trading watch/risk inventory counted.', href: '/trading' },
+    { id: 'brainstorm-wall', label: 'Brainstorm Wall', status: brainstormSurface.summary.totalIdeas ? 'partial' : 'isolated', detail: brainstormSurface.summary.totalIdeas ? `${brainstormSurface.summary.totalIdeas} ideas; ${brainstormSurface.summary.evidenceMissing} Evidence Missing; auto-promotion enabled: ${brainstormSurface.summary.autoPromotionEnabled ? 'yes' : 'no'}.` : 'Isolated MVP surface: local idea capture is intentionally separated from command truth until wired.', href: '/brainstorm' },
     { id: 'new-project', label: 'New Project Creation', status: 'live', detail: 'POST /api/projects is available from the Command Truth quick-create form.', href: '/command-truth' },
     { id: 'canonical-roots', label: 'Canonical Roots / Legacy Rollback', status: 'live', detail: 'Active path: /Desktop/Vortex Ventures/VVMissionControlOps/mission-control. Legacy rollback: git history + existing origin/main ahead state.' },
   ]
@@ -169,6 +190,7 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
       doneWithEvidence,
       securityOpenFindings: security.posture.openFindings,
       securitySystems: security.posture.systems,
+      dbBackedCommandSurfaces,
     },
     blackwireFlow: [
       'Command Truth dashboard',
