@@ -1,6 +1,7 @@
 import { getAssetLibrarySnapshot } from './asset-library-command'
 import { getBrainstormSnapshot } from './brainstorm-command'
 import { getBrainMemorySnapshot } from './brain-memory-command'
+import { getDesignStudioSnapshot } from './design-studio-command'
 import { getMarketingCommandCenterSnapshot } from './marketing-command-center'
 import { getResearchCommandSnapshot } from './research-command'
 import { getSecurityCommandSnapshot } from './security-command-center'
@@ -359,6 +360,36 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             evidence: item.evidence_path || item.market_url || 'Evidence Missing: no citation, market URL, ledger, or approval receipt attached.',
             nextAction: item.next_action,
             links: item.market_url ? [{ label: 'Market reference', href: item.market_url }] : undefined,
+          })),
+        },
+        ...snapshot.sections,
+      ],
+    }
+  }
+  if (id === 'design') {
+    const design = getDesignStudioSnapshot()
+    return {
+      ...snapshot,
+      generatedAt: design.generatedAt,
+      summary: {
+        ...snapshot.summary,
+        ...design.summary,
+      },
+      guardrails: Array.from(new Set([...snapshot.guardrails, ...design.guardrails])),
+      sections: [
+        {
+          id: 'db-backed-design-items',
+          title: 'DB-backed design inventory / visual receipt gates',
+          status: design.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+          cards: design.items.map((item) => card({
+            id: `design-${item.item_key}`,
+            title: item.title,
+            status: item.status === 'receipt_backed' || item.status === 'qa_ready' ? 'read_only' : item.status,
+            owner: item.owner_agent,
+            summary: `${item.lane.replace(/_/g, ' ')} item owned by ${item.owner_agent}.`,
+            evidence: item.evidence_path || item.screenshot_path || 'Evidence Missing: no screenshot, browser proof, decision receipt, or design QA receipt attached.',
+            nextAction: item.next_action,
+            links: item.screenshot_path ? [{ label: 'Visual receipt', href: item.screenshot_path }] : undefined,
           })),
         },
         ...snapshot.sections,
