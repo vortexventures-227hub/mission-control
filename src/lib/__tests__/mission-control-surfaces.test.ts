@@ -90,6 +90,27 @@ vi.mock('../research-command', () => ({
   }),
 }))
 
+vi.mock('../trading-operations-command', () => ({
+  getTradingOperationsSnapshot: () => ({
+    generatedAt: 1700000025000,
+    guardrails: ['Mock trading guardrail'],
+    summary: {
+      totalWatchItems: 4,
+      evidenceMissing: 1,
+      executionEnabled: false,
+      connectorInstrumented: false,
+      walletMutationEnabled: false,
+      approvalRequiredForTrades: true,
+    },
+    watchItems: [
+      { id: 1, item_key: 'polymarket-watchlist-shell', title: 'Polymarket watchlist shell', lane: 'watchlist', status: 'planned', owner_agent: 'Herald', market_url: null, evidence_path: '/receipts/watch.md', next_action: 'Add sourced watch items only.' },
+      { id: 2, item_key: 'execution-hard-block', title: 'Execution hard block', lane: 'execution_guard', status: 'blocked', owner_agent: 'Ledger', market_url: null, evidence_path: '/receipts/block.md', next_action: 'No trades from Mission Control.' },
+      { id: 3, item_key: 'approval-gated-risk-note', title: 'Approval-gated risk note', lane: 'risk', status: 'approval_required', owner_agent: 'Knox', market_url: null, evidence_path: '/receipts/risk.md', next_action: 'Ask Chris before account-affecting action.' },
+      { id: 4, item_key: 'uncited-market-signal', title: 'Uncited market signal', lane: 'signals', status: 'evidence_missing', owner_agent: 'Atlas', market_url: null, evidence_path: null, next_action: 'Attach citations.' },
+    ],
+  }),
+}))
+
 import { getMissionControlSurfaceIndex, getMissionControlSurfaceSnapshot } from '../mission-control-surfaces'
 
 describe('mission control surface snapshots', () => {
@@ -183,5 +204,21 @@ describe('mission control surface snapshots', () => {
     expect(cards.find((card) => card.id === 'research-karpathia-source-plan')?.status).toBe('planned')
     expect(cards.find((card) => card.id === 'research-mirofish-paid-sim')?.status).toBe('approval_required')
     expect(cards.find((card) => card.id === 'research-unverified-market-signal')?.status).toBe('evidence_missing')
+  })
+
+  it('merges DB-backed Trading Operations watch items while keeping execution and wallet mutation blocked', () => {
+    const trading = getMissionControlSurfaceSnapshot('trading')
+    const cards = trading?.sections.flatMap((section) => section.cards) || []
+
+    expect(trading?.summary.totalWatchItems).toBe(4)
+    expect(trading?.summary.executionEnabled).toBe(false)
+    expect(trading?.summary.connectorInstrumented).toBe(false)
+    expect(trading?.summary.walletMutationEnabled).toBe(false)
+    expect(trading?.summary.approvalRequiredForTrades).toBe(true)
+    expect(trading?.guardrails.join(' ')).toContain('Mock trading guardrail')
+    expect(cards.find((card) => card.id === 'trading-polymarket-watchlist-shell')?.status).toBe('planned')
+    expect(cards.find((card) => card.id === 'trading-execution-hard-block')?.status).toBe('blocked')
+    expect(cards.find((card) => card.id === 'trading-approval-gated-risk-note')?.status).toBe('approval_required')
+    expect(cards.find((card) => card.id === 'trading-uncited-market-signal')?.status).toBe('evidence_missing')
   })
 })

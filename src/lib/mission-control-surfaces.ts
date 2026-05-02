@@ -4,6 +4,7 @@ import { getBrainMemorySnapshot } from './brain-memory-command'
 import { getMarketingCommandCenterSnapshot } from './marketing-command-center'
 import { getResearchCommandSnapshot } from './research-command'
 import { getSecurityCommandSnapshot } from './security-command-center'
+import { getTradingOperationsSnapshot } from './trading-operations-command'
 
 export type SurfaceStatus = 'read_only' | 'not_instrumented' | 'approval_required' | 'evidence_missing' | 'planned' | 'blocked'
 
@@ -328,6 +329,36 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             summary: `${brief.lane.replace(/_/g, ' ')} brief owned by ${brief.owner_agent}.`,
             evidence: brief.evidence_path || 'Evidence Missing: no source/citation/simulation receipt attached.',
             nextAction: brief.next_action,
+          })),
+        },
+        ...snapshot.sections,
+      ],
+    }
+  }
+  if (id === 'trading') {
+    const trading = getTradingOperationsSnapshot()
+    return {
+      ...snapshot,
+      generatedAt: trading.generatedAt,
+      summary: {
+        ...snapshot.summary,
+        ...trading.summary,
+      },
+      guardrails: Array.from(new Set([...snapshot.guardrails, ...trading.guardrails])),
+      sections: [
+        {
+          id: 'db-backed-trading-watch-items',
+          title: 'DB-backed trading watch items / no-execution ledger',
+          status: trading.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+          cards: trading.watchItems.map((item) => card({
+            id: `trading-${item.item_key}`,
+            title: item.title,
+            status: item.status === 'watching' || item.status === 'researched' ? 'read_only' : item.status,
+            owner: item.owner_agent,
+            summary: `${item.lane.replace(/_/g, ' ')} item owned by ${item.owner_agent}.`,
+            evidence: item.evidence_path || item.market_url || 'Evidence Missing: no citation, market URL, ledger, or approval receipt attached.',
+            nextAction: item.next_action,
+            links: item.market_url ? [{ label: 'Market reference', href: item.market_url }] : undefined,
           })),
         },
         ...snapshot.sections,

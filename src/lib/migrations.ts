@@ -2179,6 +2179,99 @@ const migrations: Migration[] = [
         )
       }
     }
+  },
+  {
+    id: '051_mission_control_trading_operations_v0',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS mission_control_trading_watch_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          item_key TEXT NOT NULL,
+          title TEXT NOT NULL,
+          lane TEXT NOT NULL DEFAULT 'watchlist' CHECK(lane IN ('watchlist', 'signals', 'risk', 'spread', 'ledger', 'execution_guard')),
+          status TEXT NOT NULL DEFAULT 'evidence_missing' CHECK(status IN ('planned', 'evidence_missing', 'approval_required', 'blocked', 'watching', 'researched')),
+          owner_agent TEXT NOT NULL,
+          market_url TEXT,
+          evidence_path TEXT,
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, item_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mc_trading_watch_items_workspace ON mission_control_trading_watch_items(workspace_id, status, lane);
+      `)
+
+      const now = Math.floor(Date.now() / 1000)
+      const items = [
+        {
+          key: 'polymarket-watchlist-shell',
+          title: 'Polymarket / approved-market watchlist shell',
+          lane: 'watchlist',
+          status: 'planned',
+          owner: 'Herald',
+          marketUrl: null,
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_TRADING_OPERATIONS_CONTRACT.md',
+          action: 'Add sourced watch items only; no connector or live quote claim exists yet.'
+        },
+        {
+          key: 'uncited-market-signal',
+          title: 'Uncited market signal citation gate',
+          lane: 'signals',
+          status: 'evidence_missing',
+          owner: 'Atlas',
+          marketUrl: null,
+          evidence: null,
+          action: 'Attach research citations and simulation/approval receipts before any market signal can promote.'
+        },
+        {
+          key: 'approval-gated-risk-note',
+          title: 'Approval-gated risk and sizing note',
+          lane: 'risk',
+          status: 'approval_required',
+          owner: 'Knox',
+          marketUrl: null,
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_TRADING_OPERATIONS_CONTRACT.md',
+          action: 'Require explicit Chris approval before any account-affecting, financial, paid-data, or trading action.'
+        },
+        {
+          key: 'execution-hard-block',
+          title: 'Mission Control trading execution hard block',
+          lane: 'execution_guard',
+          status: 'blocked',
+          owner: 'Ledger',
+          marketUrl: null,
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_TRADING_OPERATIONS_CONTRACT.md',
+          action: 'Keep order placement, cancellation, wallet movement, account mutation, API-key use, fills, and P&L out of this MVP surface.'
+        }
+      ]
+      const insertItem = db.prepare(`
+        INSERT INTO mission_control_trading_watch_items (
+          workspace_id, item_key, title, lane, status, owner_agent,
+          market_url, evidence_path, next_action, created_at, updated_at
+        )
+        SELECT 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM mission_control_trading_watch_items
+          WHERE workspace_id = 1 AND item_key = ?
+        )
+      `)
+      for (const item of items) {
+        insertItem.run(
+          item.key,
+          item.title,
+          item.lane,
+          item.status,
+          item.owner,
+          item.marketUrl,
+          item.evidence,
+          item.action,
+          now,
+          now,
+          item.key
+        )
+      }
+    }
   }
 ]
 
