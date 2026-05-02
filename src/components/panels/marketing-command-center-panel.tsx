@@ -15,6 +15,7 @@ interface MarketingSnapshot {
   templates: Array<{ id: string; title: string; kind: string; status: MarketingStatus; useCase: string }>
   experiments: Array<{ id: string; project: string; hypothesis: string; channel: string; status: MarketingStatus; successMetric: string; evidence: string; approvalRequired: boolean }>
   projectProfiles: Array<{ id: string; project: string; offer: string; audience: string; status: MarketingStatus; analyticsStatus: string; approvalsRequired: string[]; nextAction: string }>
+  launchSecurityGate: { id: string; title: string; status: MarketingStatus; reason: string; evidence: string; nextAction: string; requiredApproval: string; securityPosture: string; openFindings: number; criticalFindings: number; highFindings: number }
   externalActionGuardrails: string[]
 }
 
@@ -104,6 +105,34 @@ export function MarketingCommandCenterPanel() {
           {(snapshot?.externalActionGuardrails || []).map((guardrail) => <div key={guardrail} className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-100">{guardrail}</div>)}
         </div>
       </PanelCard>
+
+      {snapshot?.launchSecurityGate && (
+        <PanelCard title="Security Command Center launch gate" action={<StatusBadge status={snapshot.launchSecurityGate.status} />}>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
+            <div className="rounded-xl border border-border bg-background p-3">
+              <h3 className="text-sm font-semibold text-foreground">{snapshot.launchSecurityGate.title}</h3>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{snapshot.launchSecurityGate.reason}</p>
+              <p className="mt-2 text-xs leading-5 text-amber-200">Evidence: {snapshot.launchSecurityGate.evidence}</p>
+              <p className="mt-2 text-xs leading-5 text-primary">Next: {snapshot.launchSecurityGate.nextAction}</p>
+              <p className="mt-2 text-[11px] leading-5 text-zinc-300">Approval: {snapshot.launchSecurityGate.requiredApproval}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+              <div className="rounded-xl border border-border bg-background p-3">
+                <div className="text-xl font-black text-foreground">{snapshot.launchSecurityGate.securityPosture.replace(/_/g, ' ')}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Security posture</div>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-3">
+                <div className="text-xl font-black text-foreground">{snapshot.launchSecurityGate.openFindings}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Open findings</div>
+              </div>
+              <div className="rounded-xl border border-border bg-background p-3">
+                <div className="text-xl font-black text-foreground">{snapshot.launchSecurityGate.criticalFindings}/{snapshot.launchSecurityGate.highFindings}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Critical / high</div>
+              </div>
+            </div>
+          </div>
+        </PanelCard>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <PanelCard title="Psychology & persuasion library">

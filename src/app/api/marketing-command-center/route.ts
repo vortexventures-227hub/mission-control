@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
   try {
-    return NextResponse.json(getMarketingCommandCenterSnapshot())
+    return NextResponse.json(getMarketingCommandCenterSnapshot(auth.user.workspace_id || 1))
   } catch (error) {
     logger.error({ err: error }, 'GET /api/marketing-command-center error')
     return NextResponse.json({ error: 'Failed to load Marketing Command Center snapshot' }, { status: 500 })

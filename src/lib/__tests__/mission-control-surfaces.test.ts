@@ -71,6 +71,25 @@ vi.mock('../brain-memory-command', () => ({
   }),
 }))
 
+vi.mock('../research-command', () => ({
+  getResearchCommandSnapshot: () => ({
+    generatedAt: 1700000020000,
+    guardrails: ['Mock research guardrail'],
+    summary: {
+      totalBriefs: 4,
+      evidenceMissing: 1,
+      paidSimulationApprovalRequired: true,
+      karpathiaConnectorInstrumented: false,
+      autoPromotionEnabled: false,
+    },
+    briefs: [
+      { id: 1, research_key: 'karpathia-source-plan', title: 'Karpathia source plan', lane: 'karpathia', status: 'planned', owner_agent: 'Karpathia', evidence_path: '/receipts/karpathia.md', next_action: 'Attach citations before action.' },
+      { id: 2, research_key: 'mirofish-paid-sim', title: 'MiroFish paid simulation brief', lane: 'mirofish', status: 'approval_required', owner_agent: 'MiroFish', evidence_path: '/receipts/mirofish.md', next_action: 'Ask Chris before paid simulation.' },
+      { id: 3, research_key: 'unverified-market-signal', title: 'Unverified market signal', lane: 'trading_research', status: 'evidence_missing', owner_agent: 'Atlas', evidence_path: null, next_action: 'Cite sources before promotion.' },
+    ],
+  }),
+}))
+
 import { getMissionControlSurfaceIndex, getMissionControlSurfaceSnapshot } from '../mission-control-surfaces'
 
 describe('mission control surface snapshots', () => {
@@ -95,7 +114,10 @@ describe('mission control surface snapshots', () => {
 
     expect(marketing?.status).toBe('approval_required')
     expect(marketing?.summary.externalActionsApprovalGated).toBe(true)
+    expect(marketing?.summary.publicLaunchBlocked).toBe(true)
     expect(marketing?.guardrails.join(' ')).toContain('No auto-send')
+    expect(marketing?.guardrails.join(' ')).toContain('Security Command Center posture')
+    expect(marketing?.sections.flatMap((section) => section.cards).find((card) => card.id === 'security-launch-gate')?.status).toBe('not_instrumented')
     expect(marketing?.sections.flatMap((section) => section.cards).find((card) => card.id === 'analytics-sources')?.status).toBe('not_instrumented')
   })
 
@@ -147,5 +169,19 @@ describe('mission control surface snapshots', () => {
     expect(cards.find((card) => card.id === 'memory-layer-david-msnj-brain')?.status).toBe('blocked')
     expect(cards.find((card) => card.id === 'memory-layer-unverified-memory-tool')?.status).toBe('evidence_missing')
     expect(cards.find((card) => card.id === 'memory-correction-blackwire-false-green-correction')?.status).toBe('approval_required')
+  })
+
+  it('merges DB-backed Research Command briefs while keeping Karpathia/MiroFish no-fake-green gates visible', () => {
+    const research = getMissionControlSurfaceSnapshot('research-command')
+    const cards = research?.sections.flatMap((section) => section.cards) || []
+
+    expect(research?.summary.totalBriefs).toBe(4)
+    expect(research?.summary.paidSimulationApprovalRequired).toBe(true)
+    expect(research?.summary.karpathiaConnectorInstrumented).toBe(false)
+    expect(research?.summary.autoPromotionEnabled).toBe(false)
+    expect(research?.guardrails.join(' ')).toContain('Mock research guardrail')
+    expect(cards.find((card) => card.id === 'research-karpathia-source-plan')?.status).toBe('planned')
+    expect(cards.find((card) => card.id === 'research-mirofish-paid-sim')?.status).toBe('approval_required')
+    expect(cards.find((card) => card.id === 'research-unverified-market-signal')?.status).toBe('evidence_missing')
   })
 })

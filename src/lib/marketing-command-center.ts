@@ -1,3 +1,5 @@
+import { getSecurityCommandSnapshot } from './security-command-center'
+
 export type MarketingStatus = 'live' | 'planned' | 'not_instrumented' | 'approval_required' | 'blocked'
 
 export interface MarketingPrinciple {
@@ -56,8 +58,93 @@ export interface ProjectMarketingProfile {
   nextAction: string
 }
 
-export function getMarketingCommandCenterSnapshot() {
+export interface MarketingLaunchSecurityGate {
+  id: string
+  title: string
+  status: Exclude<MarketingStatus, 'live'>
+  reason: string
+  evidence: string
+  nextAction: string
+  requiredApproval: string
+  securityPosture: string
+  openFindings: number
+  criticalFindings: number
+  highFindings: number
+}
+
+function buildLaunchSecurityGate(workspaceId: number): MarketingLaunchSecurityGate {
+  const security = getSecurityCommandSnapshot(workspaceId)
+  const criticalFindings = security.posture.severityCounts.critical || 0
+  const highFindings = security.posture.severityCounts.high || 0
+  const hasBlockingRisk = security.posture.label === 'blocked' || criticalFindings > 0 || highFindings > 0
+  const hasOpenRisk = security.posture.openFindings > 0 || security.posture.label === 'watch'
+
+  if (security.posture.systems === 0) {
+    return {
+      id: 'security-launch-gate',
+      title: 'Security launch gate',
+      status: 'not_instrumented',
+      reason: 'Security systems are not instrumented for this workspace.',
+      evidence: 'Not Instrumented Yet: no security systems were returned by the Security Command Center snapshot.',
+      nextAction: 'Instrument or link a security posture receipt before any public marketing launch claim.',
+      requiredApproval: 'Chris explicit approval required for any external publish while security evidence is missing.',
+      securityPosture: security.posture.label,
+      openFindings: security.posture.openFindings,
+      criticalFindings,
+      highFindings,
+    }
+  }
+
+  if (hasBlockingRisk) {
+    return {
+      id: 'security-launch-gate',
+      title: 'Security launch gate',
+      status: 'blocked',
+      reason: 'Open critical/high security risk or blocked posture prevents public-launch marketing execution.',
+      evidence: `${security.posture.openFindings} open security finding(s); ${criticalFindings} critical / ${highFindings} high.`,
+      nextAction: 'Resolve or explicitly accept risk with evidence before staging public launch, paid ads, outreach, or marketplace posting.',
+      requiredApproval: 'Chris explicit approval plus security evidence receipt required before external marketing action.',
+      securityPosture: security.posture.label,
+      openFindings: security.posture.openFindings,
+      criticalFindings,
+      highFindings,
+    }
+  }
+
+  if (hasOpenRisk) {
+    return {
+      id: 'security-launch-gate',
+      title: 'Security launch gate',
+      status: 'approval_required',
+      reason: 'Security findings remain open; marketing may draft internally only.',
+      evidence: `${security.posture.openFindings} open security finding(s); no critical/high blockers reported.`,
+      nextAction: 'Keep campaigns in draft and attach security review notes before requesting external-action approval.',
+      requiredApproval: 'Operator/Chris approval required before any external send/post/spend.',
+      securityPosture: security.posture.label,
+      openFindings: security.posture.openFindings,
+      criticalFindings,
+      highFindings,
+    }
+  }
+
+  return {
+    id: 'security-launch-gate',
+    title: 'Security launch gate',
+    status: 'planned',
+    reason: 'No open Security Command Center findings are currently reported; execution still remains approval-gated.',
+    evidence: 'Security Command Center returned zero open findings for tracked systems. This is not permission to publish.',
+    nextAction: 'Prepare launch drafts and an explicit approval request with scope, blast radius, proof plan, and rollback/stop plan.',
+    requiredApproval: 'Chris explicit approval required for external send/post/spend even when security is clear.',
+    securityPosture: security.posture.label,
+    openFindings: security.posture.openFindings,
+    criticalFindings,
+    highFindings,
+  }
+}
+
+export function getMarketingCommandCenterSnapshot(workspaceId = 1) {
   const generatedAt = Date.now()
+  const launchSecurityGate = buildLaunchSecurityGate(workspaceId)
 
   const principles: MarketingPrinciple[] = [
     {
@@ -129,6 +216,7 @@ export function getMarketingCommandCenterSnapshot() {
   const externalActionGuardrails = [
     'No auto-send email/SMS/customer/dealer outreach without explicit approval object.',
     'No social post, marketplace listing, paid ad, campaign setting mutation, or spend without explicit approval/scope.',
+    'Public launch marketing is blocked or approval-gated by Security Command Center posture until security evidence is clean or explicitly accepted.',
     'Missing analytics must say Not Instrumented Yet; campaign status must not imply live results.',
     'David/Material Solutions marketing remains isolated from Vortex/Blackwire internal memory.',
   ]
@@ -143,6 +231,9 @@ export function getMarketingCommandCenterSnapshot() {
       templates: templates.length,
       experiments: experiments.length,
       projectProfiles: projectProfiles.length,
+      securityOpenFindings: launchSecurityGate.openFindings,
+      securityCriticalFindings: launchSecurityGate.criticalFindings,
+      publicLaunchBlocked: launchSecurityGate.status === 'blocked' || launchSecurityGate.status === 'not_instrumented',
       externalActionsApprovalGated: true,
     },
     principles,
@@ -151,6 +242,7 @@ export function getMarketingCommandCenterSnapshot() {
     templates,
     experiments,
     projectProfiles,
+    launchSecurityGate,
     externalActionGuardrails,
   }
 }

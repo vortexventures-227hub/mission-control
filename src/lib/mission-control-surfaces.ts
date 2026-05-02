@@ -2,6 +2,7 @@ import { getAssetLibrarySnapshot } from './asset-library-command'
 import { getBrainstormSnapshot } from './brainstorm-command'
 import { getBrainMemorySnapshot } from './brain-memory-command'
 import { getMarketingCommandCenterSnapshot } from './marketing-command-center'
+import { getResearchCommandSnapshot } from './research-command'
 import { getSecurityCommandSnapshot } from './security-command-center'
 
 export type SurfaceStatus = 'read_only' | 'not_instrumented' | 'approval_required' | 'evidence_missing' | 'planned' | 'blocked'
@@ -304,6 +305,35 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
       ],
     }
   }
+  if (id === 'research-command') {
+    const research = getResearchCommandSnapshot()
+    return {
+      ...snapshot,
+      generatedAt: research.generatedAt,
+      summary: {
+        ...snapshot.summary,
+        ...research.summary,
+      },
+      guardrails: Array.from(new Set([...snapshot.guardrails, ...research.guardrails])),
+      sections: [
+        {
+          id: 'db-backed-research-briefs',
+          title: 'DB-backed research briefs',
+          status: research.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+          cards: research.briefs.map((brief) => card({
+            id: `research-${brief.research_key}`,
+            title: brief.title,
+            status: brief.status === 'researched' ? 'read_only' : brief.status === 'draft' ? 'planned' : brief.status,
+            owner: brief.owner_agent,
+            summary: `${brief.lane.replace(/_/g, ' ')} brief owned by ${brief.owner_agent}.`,
+            evidence: brief.evidence_path || 'Evidence Missing: no source/citation/simulation receipt attached.',
+            nextAction: brief.next_action,
+          })),
+        },
+        ...snapshot.sections,
+      ],
+    }
+  }
   if (id === 'marketing') {
     const marketing = getMarketingCommandCenterSnapshot()
     return {
@@ -315,6 +345,21 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
       },
       guardrails: Array.from(new Set([...snapshot.guardrails, ...marketing.externalActionGuardrails])),
       sections: [
+        {
+          id: 'security-launch-gate',
+          title: 'Security Command Center launch gate',
+          status: marketing.launchSecurityGate.status === 'blocked' ? 'blocked' : marketing.launchSecurityGate.status === 'not_instrumented' ? 'not_instrumented' : marketing.launchSecurityGate.status === 'approval_required' ? 'approval_required' : 'read_only',
+          cards: [card({
+            id: marketing.launchSecurityGate.id,
+            title: marketing.launchSecurityGate.title,
+            status: marketing.launchSecurityGate.status === 'blocked' ? 'blocked' : marketing.launchSecurityGate.status === 'not_instrumented' ? 'not_instrumented' : marketing.launchSecurityGate.status === 'approval_required' ? 'approval_required' : 'read_only',
+            owner: 'Knox / Growth',
+            summary: marketing.launchSecurityGate.reason,
+            evidence: marketing.launchSecurityGate.evidence,
+            nextAction: marketing.launchSecurityGate.nextAction,
+            links: [{ label: 'Security Command Center', href: '/security-command' }],
+          })],
+        },
         {
           id: 'principles',
           title: 'Psychology / persuasion library',
