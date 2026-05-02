@@ -2272,6 +2272,99 @@ const migrations: Migration[] = [
         )
       }
     }
+  },
+  {
+    id: '052_mission_control_design_studio_v0',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS mission_control_design_studio_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          item_key TEXT NOT NULL,
+          title TEXT NOT NULL,
+          lane TEXT NOT NULL DEFAULT 'ui_qa' CHECK(lane IN ('brand', 'ui_qa', 'visual_receipts', 'component_inventory', 'decision_log', 'publish_guard')),
+          status TEXT NOT NULL DEFAULT 'evidence_missing' CHECK(status IN ('planned', 'evidence_missing', 'approval_required', 'blocked', 'receipt_backed', 'qa_ready')),
+          owner_agent TEXT NOT NULL,
+          evidence_path TEXT,
+          screenshot_path TEXT,
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, item_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mc_design_studio_items_workspace ON mission_control_design_studio_items(workspace_id, status, lane);
+      `)
+
+      const now = Math.floor(Date.now() / 1000)
+      const items = [
+        {
+          key: 'mission-control-brand-system',
+          title: 'Mission Control brand system / token audit',
+          lane: 'brand',
+          status: 'planned',
+          owner: 'Patch / Claw Design',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_RESEARCH_KARPATHIA_MIROFISH_DESIGN_CONTRACT.md',
+          screenshot: null,
+          action: 'Audit tokens, typography, spacing, and hierarchy against the premium command-center baseline before claiming design approved.'
+        },
+        {
+          key: 'blackwire-room-visual-receipt-gate',
+          title: 'Blackwire room visual receipt gate',
+          lane: 'visual_receipts',
+          status: 'evidence_missing',
+          owner: 'Neon Forge / Herm',
+          evidence: null,
+          screenshot: null,
+          action: 'Capture browser-visible Blackwire room, board, receipts, and queued-alert screenshots before using them as design proof.'
+        },
+        {
+          key: 'component-inventory-command-surfaces',
+          title: 'Command surface component inventory',
+          lane: 'component_inventory',
+          status: 'qa_ready',
+          owner: 'Herm',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/mission_control_continuity_runs/2026-05-02_1425_mission_control_trading_operations_db_slice.md',
+          screenshot: null,
+          action: 'Keep the reusable MissionControlSurfacePanel as the shared component baseline; add visual receipts as they are captured.'
+        },
+        {
+          key: 'external-publish-design-guard',
+          title: 'External publish / customer-facing design guard',
+          lane: 'publish_guard',
+          status: 'blocked',
+          owner: 'Knox',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/HANDOFF.md',
+          screenshot: null,
+          action: 'Do not publish, post, deploy, send, or mutate customer-facing design surfaces without explicit scoped approval.'
+        }
+      ]
+      const insertItem = db.prepare(`
+        INSERT INTO mission_control_design_studio_items (
+          workspace_id, item_key, title, lane, status, owner_agent,
+          evidence_path, screenshot_path, next_action, created_at, updated_at
+        )
+        SELECT 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM mission_control_design_studio_items
+          WHERE workspace_id = 1 AND item_key = ?
+        )
+      `)
+      for (const item of items) {
+        insertItem.run(
+          item.key,
+          item.title,
+          item.lane,
+          item.status,
+          item.owner,
+          item.evidence,
+          item.screenshot,
+          item.action,
+          now,
+          now,
+          item.key
+        )
+      }
+    }
   }
 ]
 
