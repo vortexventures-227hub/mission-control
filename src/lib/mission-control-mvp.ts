@@ -34,6 +34,16 @@ export interface MvpEvidenceRow {
   evidence: string
 }
 
+export interface MvpTruthGate {
+  id: string
+  label: string
+  status: 'approval_required' | 'not_instrumented' | 'blocked' | 'evidence_missing' | 'read_only'
+  detail: string
+  blockedAction: string
+  evidence: string
+  href?: string
+}
+
 function scalarCount(sql: string, ...params: unknown[]): number {
   const db = getDatabase()
   const row = db.prepare(sql).get(...params) as { count?: number } | undefined
@@ -150,6 +160,63 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
     },
   ]
 
+  const truthGates: MvpTruthGate[] = [
+    {
+      id: 'external-marketing-actions',
+      label: 'External marketing sends / posts / spend',
+      status: 'approval_required',
+      detail: 'Marketing Command Center can stage drafts and approvals only; analytics remain Not Instrumented Yet until wired.',
+      blockedAction: 'No email/SMS/social/marketplace/ad sends, posts, campaign mutation, or spend.',
+      evidence: 'Marketing summary externalActionsApprovalGated=true; public launch remains blocked behind Security Command Center posture and scoped approval.',
+      href: '/marketing',
+    },
+    {
+      id: 'karpathia-auto-research',
+      label: 'Karpathia Auto-Research connector',
+      status: 'not_instrumented',
+      detail: 'Research briefs are visible, but autonomous source collection/citation connectors are Not Instrumented Yet.',
+      blockedAction: 'No autonomous external research claims or source-backed promotion without receipts.',
+      evidence: `karpathiaConnectorInstrumented=${researchSurface.summary.karpathiaConnectorInstrumented ? 'true' : 'false'}`,
+      href: '/research-command',
+    },
+    {
+      id: 'mirofish-paid-simulations',
+      label: 'MiroFish paid simulations',
+      status: 'approval_required',
+      detail: 'Simulation Lab can stage briefs only; paid runs, external compute spend, or account mutation require explicit Chris approval.',
+      blockedAction: 'No paid simulation execution or external compute spend.',
+      evidence: `paidSimulationApprovalRequired=${researchSurface.summary.paidSimulationApprovalRequired ? 'true' : 'false'}`,
+      href: '/research-command',
+    },
+    {
+      id: 'trading-execution',
+      label: 'Trading execution / wallet mutation',
+      status: 'blocked',
+      detail: 'Trading Operations is a watch/risk shell only; no connector, order route, positions/fills/P&L, wallet, account, or API-key mutation is enabled.',
+      blockedAction: 'No real trades, order placement/cancel, wallet/account mutation, or market API-key use.',
+      evidence: `executionEnabled=${tradingSurface.summary.executionEnabled ? 'true' : 'false'}; walletMutationEnabled=${tradingSurface.summary.walletMutationEnabled ? 'true' : 'false'}`,
+      href: '/trading',
+    },
+    {
+      id: 'graphify-gbrain-writes',
+      label: 'Graphify / gBrain writes',
+      status: 'approval_required',
+      detail: 'Brain/Memory browse and correction staging are visible; writes only through approved ingestion/correction receipts.',
+      blockedAction: 'No Graphify/gBrain writes from Mission Control without approved correction receipt.',
+      evidence: `writeEnabled=${brainMemorySurface.summary.writeEnabled ? 'true' : 'false'}; correctionRequests=${brainMemorySurface.summary.correctionRequests}`,
+      href: '/brain-memory',
+    },
+    {
+      id: 'david-memory-isolation',
+      label: 'David memory isolation',
+      status: 'blocked',
+      detail: 'David memory remains Material Solutions-only and must not mix with Vortex/Blackwire internal memory.',
+      blockedAction: 'No David memory cross-write or context mixing.',
+      evidence: `davidIsolationEnforced=${brainMemorySurface.summary.davidIsolationEnforced ? 'true' : 'false'}`,
+      href: '/brain-memory',
+    },
+  ]
+
   const surfaces: MvpSurfaceStatus[] = [
     { id: 'command-truth', label: 'Command Truth Dashboard', status: 'live', detail: `${commandMessages.length} command-room messages; canonical root active, legacy rollback path visible.`, href: '/command-truth' },
     { id: 'security-command', label: 'Security Command Center', status: security.posture.openFindings ? 'partial' : 'live', detail: `${security.posture.systems} systems, ${security.posture.openFindings} open findings; missing hooks stay Not Instrumented Yet.`, href: '/security' },
@@ -211,6 +278,7 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
     queuedAlerts,
     agents,
     surfaces,
+    truthGates,
     security,
     memoryInventory,
     assetLibrary,

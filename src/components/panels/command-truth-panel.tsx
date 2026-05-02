@@ -24,6 +24,16 @@ interface EvidenceRow {
   evidence: string
 }
 
+interface TruthGate {
+  id: string
+  label: string
+  status: 'approval_required' | 'not_instrumented' | 'blocked' | 'evidence_missing' | 'read_only'
+  detail: string
+  blockedAction: string
+  evidence: string
+  href?: string
+}
+
 interface MvpSnapshot {
   generatedAt: number
   canonical: {
@@ -39,6 +49,7 @@ interface MvpSnapshot {
   receipts: Array<{ id: number; decision: string; approval_tier: string; approved_by: string; evidence: string | null; created_at: number }>
   queuedAlerts: Array<{ id: number; target_agent_id: string; reason: string; alert_state: string }>
   messages: Array<{ id: number; sender_id: string; body: string; delivery: Array<{ state: string; recipient_id: string; evidence: string | null }> }>
+  truthGates: TruthGate[]
   memoryInventory: EvidenceRow[]
   assetLibrary: EvidenceRow[]
   brainstormWall: EvidenceRow[]
@@ -207,6 +218,30 @@ export function CommandTruthPanel() {
                 </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">{surface.detail}</p>
                 {surface.href && <Link className="mt-2 inline-block text-xs font-semibold text-primary hover:underline" href={surface.href}>Open surface →</Link>}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-red-500/20 bg-card p-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-foreground">No-fake-green truth gates</h2>
+              <p className="text-xs text-muted-foreground">Approval-required, Not Instrumented Yet, Evidence Missing, and blocked actions stay visible before any surface can claim Done.</p>
+            </div>
+            <StatusBadge status="evidence_missing" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            {(snapshot?.truthGates || []).map((gate) => (
+              <article key={gate.id} className="rounded-xl border border-border bg-background p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-sm font-semibold text-foreground">{gate.label}</h3>
+                  <StatusBadge status={gate.status} />
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{gate.detail}</p>
+                <p className="mt-2 text-xs leading-5 text-red-200">Blocked: {gate.blockedAction}</p>
+                <p className="mt-2 text-xs leading-5 text-orange-200">Evidence: {gate.evidence}</p>
+                {gate.href && <Link className="mt-2 inline-block text-xs font-semibold text-primary hover:underline" href={gate.href}>Open gate surface →</Link>}
               </article>
             ))}
           </div>

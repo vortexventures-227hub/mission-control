@@ -84,4 +84,16 @@ describe('Mission Control MVP snapshot', () => {
     expect(byId['design-studio'].status).toBe('partial')
     expect(byId['design-studio'].detail).toContain('4 design inventory rows')
   })
+
+  it('exposes explicit no-fake-green truth gates for approval and missing integrations', () => {
+    const snapshot = getMissionControlMvpSnapshot(1)
+    const gates = Object.fromEntries(snapshot.truthGates.map((gate) => [gate.id, gate]))
+
+    expect(gates['external-marketing-actions'].status).toBe('approval_required')
+    expect(gates['karpathia-auto-research'].status).toBe('not_instrumented')
+    expect(gates['mirofish-paid-simulations'].status).toBe('approval_required')
+    expect(gates['trading-execution'].status).toBe('blocked')
+    expect(gates['graphify-gbrain-writes'].detail).toContain('approved ingestion/correction receipts')
+    expect(gates['david-memory-isolation'].detail).toContain('Material Solutions-only')
+  })
 })
