@@ -165,9 +165,9 @@ async function runHeartbeatCheck(): Promise<{ ok: boolean; message: string }> {
 
     // Find agents that are not offline but haven't been seen recently
     const staleAgents = db.prepare(`
-      SELECT id, name, status, last_seen FROM agents
+      SELECT id, name, status, last_seen, config FROM agents
       WHERE status != 'offline' AND (last_seen IS NULL OR last_seen < ?)
-    `).all(threshold) as Array<{ id: number; name: string; status: string; last_seen: number | null }>
+    `).all(threshold) as Array<{ id: number; name: string; status: string; last_seen: number | null; config: string | null }>
 
     if (staleAgents.length === 0) {
       return { ok: true, message: 'All agents healthy' }
@@ -184,7 +184,13 @@ async function runHeartbeatCheck(): Promise<{ ok: boolean; message: string }> {
     db.transaction(() => {
       for (const agent of staleAgents) {
         markOffline.run('offline', now, agent.id)
-        logActivity.run(agent.id, `Agent "${agent.name}" marked offline (no heartbeat for ${timeoutMinutes}m)`)
+        // Extract primary model from config if available
+        let agentModel = 'unknown'
+        try {
+          const cfg = agent.config ? JSON.parse(agent.config) : {}
+          agentModel = cfg?.model?.primary || cfg?.model || 'unknown'
+        } catch { /* ignore */ }
+        logActivity.run(agent.id, `Agent "${agent.name}" marked offline (no heartbeat for ${timeoutMinutes}m) · model: ${agentModel}`)
         names.push(agent.name)
 
         // Create notification for each stale agent

@@ -82,7 +82,7 @@ async function handleActivitiesRequest(request: NextRequest, workspaceId: number
     
     // Prepare entity detail statements once (avoids N+1)
     const taskDetailStmt = db.prepare('SELECT id, title, status FROM tasks WHERE id = ? AND workspace_id = ?');
-    const agentDetailStmt = db.prepare('SELECT id, name, role, status FROM agents WHERE id = ? AND workspace_id = ?');
+    const agentDetailStmt = db.prepare('SELECT id, name, role, status, config FROM agents WHERE id = ? AND workspace_id = ?');
     const commentDetailStmt = db.prepare(`
       SELECT c.id, c.content, c.task_id, t.title as task_title
       FROM comments c
@@ -106,7 +106,14 @@ async function handleActivitiesRequest(request: NextRequest, workspaceId: number
           case 'agent': {
             const agent = agentDetailStmt.get(activity.entity_id, workspaceId) as any;
             if (agent) {
-              entityDetails = { type: 'agent', ...agent };
+              // Extract primary model from config
+              let agentModel: string | undefined
+              try {
+                const cfg = agent.config ? JSON.parse(agent.config) : {}
+                agentModel = cfg?.model?.primary || (typeof cfg?.model === 'string' ? cfg.model : undefined)
+              } catch { /* ignore */ }
+              const { config: _config, ...agentWithoutConfig } = agent
+              entityDetails = { type: 'agent', ...agentWithoutConfig, ...(agentModel ? { model: agentModel } : {}) };
             }
             break;
           }

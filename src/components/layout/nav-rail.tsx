@@ -28,14 +28,33 @@ const navGroups: NavGroup[] = [
   {
     id: 'core',
     items: [
-      { id: 'overview', label: 'Overview', icon: <OverviewIcon />, priority: true, essential: true },
+      { id: 'overview', label: 'Command', icon: <OverviewIcon />, priority: true, essential: true },
+      { id: 'group-chat', label: 'Group Chat', icon: <ChatIcon />, priority: true, essential: true },
+      { id: 'tasks', label: 'Boards', icon: <TasksIcon />, priority: true, essential: true },
       { id: 'agents', label: 'Agents', icon: <AgentsIcon />, priority: true, essential: true },
-      { id: 'tasks', label: 'Tasks', icon: <TasksIcon />, priority: true, essential: true },
-      { id: 'chat', label: 'Chat', icon: <ChatIcon />, priority: false, essential: true },
-      { id: 'channels', label: 'Channels', icon: <ChannelsIcon />, priority: false },
-      { id: 'skills', label: 'Skills', icon: <SkillsIcon />, priority: false },
+      { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
+      { id: 'command-truth', label: 'Command Truth', icon: <DispatchIcon />, priority: true, essential: true },
+      { id: 'notifications', label: 'Notifications', icon: <AlertIcon />, priority: false, essential: true },
+      { id: 'chat', label: 'Direct Chat', icon: <ChatIcon />, priority: false, essential: true },
+    ],
+  },
+  {
+    id: 'knowledge',
+    label: 'KNOWLEDGE',
+    items: [
       { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
-      { id: 'research', label: 'Research', icon: <ResearchIcon />, priority: false },
+      { id: 'brain-memory', label: 'Brain / Memory', icon: <MemoryIcon />, priority: false },
+      { id: 'documents', label: 'Receipts & Search', icon: <ContentIcon />, priority: false },
+      { id: 'research-command', label: 'Research Command', icon: <ResearchIcon />, priority: false },
+      { id: 'research', label: 'Research Intake', icon: <ResearchIcon />, priority: false },
+      { id: 'brainstorm', label: 'Brainstorm Wall', icon: <ResearchIcon />, priority: false },
+      { id: 'content-research', label: 'Content', icon: <ContentIcon />, priority: false },
+      { id: 'office', label: 'Office', icon: <OfficeIcon />, priority: false },
+      { id: 'asset-library', label: 'Asset Library', icon: <OfficeIcon />, priority: false },
+      { id: 'design', label: 'Design Studio', icon: <ContentIcon />, priority: false },
+      { id: 'marketing', label: 'Marketing', icon: <ContentIcon />, priority: false },
+      { id: 'app-factory', label: 'App Factory', icon: <AppFactoryIcon />, priority: false },
+      { id: 'skills', label: 'Skills', icon: <SkillsIcon />, priority: false },
     ],
   },
   {
@@ -43,14 +62,14 @@ const navGroups: NavGroup[] = [
     label: 'OBSERVE',
     items: [
       { id: 'activity', label: 'Activity', icon: <ActivityIcon />, priority: true, essential: true },
+      { id: 'trading', label: 'Trading Ops', icon: <TokensIcon />, priority: false },
+      { id: 'history', label: 'Timeline', icon: <TimelineIcon />, priority: true, essential: true },
+      { id: 'cost-tracker', label: 'Metrics', icon: <TokensIcon />, priority: false },
+      { id: 'monitor', label: 'System Monitor', icon: <MonitorIcon />, priority: false },
       { id: 'logs', label: 'Logs', icon: <LogsIcon />, priority: false, essential: true },
-      { id: 'cost-tracker', label: 'Cost Tracker', icon: <TokensIcon />, priority: false },
+      { id: 'expenses', label: 'Expenses', icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="14" height="10" rx="1.5" /><path d="M1 6h14" /><circle cx="8" cy="10" r="1.5" /></svg>, priority: true },
+      { id: 'channels', label: 'Channels', icon: <ChannelsIcon />, priority: false },
       { id: 'nodes', label: 'Nodes', icon: <NodesIcon />, priority: false },
-      { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
-      { id: 'content-research', label: 'Content', icon: <ContentIcon />, priority: false },
-      { id: 'office', label: 'Office', icon: <OfficeIcon />, priority: false },
-      { id: 'app-factory', label: 'App Factory', icon: <AppFactoryIcon />, priority: false },
-      { id: 'monitor', label: 'Monitor', icon: <MonitorIcon />, priority: false },
     ],
   },
   {
@@ -67,7 +86,8 @@ const navGroups: NavGroup[] = [
     id: 'admin',
     label: 'ADMIN',
     items: [
-      { id: 'security', label: 'Security', icon: <SecurityIcon />, priority: false },
+      { id: 'security-command', label: 'Security Center', icon: <SecurityIcon />, priority: false },
+      { id: 'security', label: 'Security Audit', icon: <SecurityIcon />, priority: false },
       { id: 'users', label: 'Users', icon: <UsersIcon />, priority: false },
       { id: 'audit', label: 'Audit', icon: <AuditIcon />, priority: false },
       {
@@ -87,25 +107,40 @@ const navGroups: NavGroup[] = [
 // Map nav item IDs to translation keys in the 'nav' namespace
 const navItemTranslationKeys: Record<string, string> = {
   overview: 'overview',
+  'command-truth': 'commandTruth',
   agents: 'agents',
   tasks: 'tasks',
+  'group-chat': 'groupChat',
   chat: 'chat',
+  notifications: 'notifications',
   channels: 'channels',
   skills: 'skills',
   memory: 'memory',
+  'brain-memory': 'brainMemory',
+  documents: 'documents',
+  'research-command': 'researchCommand',
   research: 'research',
+  brainstorm: 'brainstorm',
   activity: 'activity',
   logs: 'logs',
   'cost-tracker': 'costTracker',
+  'expenses': 'expenses',
   nodes: 'nodes',
   'exec-approvals': 'approvals',
   'content-research': 'contentResearch',
   office: 'office',
+  'asset-library': 'assetLibrary',
+  design: 'design',
+  trading: 'trading',
+  marketing: 'marketing',
   'app-factory': 'appFactory',
+  dispatch: 'dispatch',
+  monitor: 'monitor',
   cron: 'cron',
   webhooks: 'webhooks',
   alerts: 'alerts',
   github: 'github',
+  'security-command': 'securityCommand',
   security: 'security',
   users: 'users',
   audit: 'audit',
@@ -119,6 +154,7 @@ const navItemTranslationKeys: Record<string, string> = {
 
 // Map group IDs to translation keys in the 'nav.group' namespace
 const groupTranslationKeys: Record<string, string> = {
+  knowledge: 'knowledge',
   observe: 'observe',
   automate: 'automate',
   admin: 'admin',
@@ -936,7 +972,7 @@ function ContextSwitcher({ currentUser, isAdmin, isLocal, isConnected, tenants, 
                   onClick={async () => {
                     if (interfaceMode === 'essential') return
                     setInterfaceMode('essential')
-                    const essentialIds = new Set(['overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings'])
+                    const essentialIds = new Set(['overview', 'agents', 'tasks', 'chat', 'activity', 'history', 'logs', 'settings'])
                     if (!essentialIds.has(activeTab)) navigateToPanel('overview')
                     try { await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ settings: { 'general.interface_mode': 'essential' } }) }) } catch {}
                   }}
@@ -1266,6 +1302,16 @@ function ActivityIcon() {
   )
 }
 
+function TimelineIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 5v3l2 2" />
+      <path d="M3 8h1M12 8h1M8 3v1M8 12v1" strokeWidth="1" />
+    </svg>
+  )
+}
+
 function LogsIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1543,6 +1589,27 @@ function AppFactoryIcon() {
       <rect x="2" y="2" width="12" height="12" rx="2" />
       <path d="M5 6h6M5 8h4M5 10h5" />
       <circle cx="11" cy="11" r="1" fill="currentColor" />
+    </svg>
+  )
+}
+
+function DispatchIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="9" height="11" rx="1" />
+      <path d="M11 6h2.5a1 1 0 0 1 .9 1.45l-.9 2.1a1 1 0 0 0 .9 1.45H11" />
+      <path d="M5 6h4M5 8h3M5 10h2" />
+    </svg>
+  )
+}
+
+function ExpensesIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1" y="3" width="14" height="10" rx="1.5" />
+      <path d="M1 6h14" />
+      <path d="M5 9.5h2M9 9.5h2" />
+      <circle cx="8" cy="9.5" r="1.5" />
     </svg>
   )
 }

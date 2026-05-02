@@ -25,6 +25,7 @@ const navGroups: NavGroup[] = [
       { id: 'overview', label: 'Overview', icon: <OverviewIcon />, priority: true },
       { id: 'agents', label: 'Agents', icon: <AgentsIcon />, priority: true },
       { id: 'tasks', label: 'Tasks', icon: <TasksIcon />, priority: true },
+      { id: 'group-chat', label: 'Group Chat', icon: <SessionsIcon />, priority: true },
       { id: 'chat', label: 'Chat', icon: <SessionsIcon />, priority: false },
     ],
   },
@@ -46,6 +47,7 @@ const navGroups: NavGroup[] = [
       { id: 'cron', label: 'Cron', icon: <CronIcon />, priority: false },
       { id: 'spawn', label: 'Spawn', icon: <SpawnIcon />, priority: false },
       { id: 'webhooks', label: 'Webhooks', icon: <WebhookIcon />, priority: false },
+      { id: 'dispatch', label: 'Dispatch', icon: <DispatchIcon />, priority: true },
       { id: 'alerts', label: 'Alerts', icon: <AlertIcon />, priority: false },
     ],
   },
@@ -394,6 +396,16 @@ function CronIcon() {
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="8" cy="8" r="6.5" />
       <path d="M8 4v4l2.5 2.5" />
+    </svg>
+  )
+}
+
+function DispatchIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
+      <path d="M5.5 3.5V2.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1" />
+      <path d="M8 7v4M6.5 8.5 8 10l1.5-1.5" />
     </svg>
   )
 }

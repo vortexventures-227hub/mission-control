@@ -41,6 +41,11 @@ function readNumber(value: unknown): number | undefined {
   return typeof value === 'number' ? value : undefined
 }
 
+function readNullableString(value: unknown): string | null | undefined {
+  if (value === null) return null
+  return typeof value === 'string' ? value : undefined
+}
+
 function readSessionPrefs(payload: unknown): SessionPrefs {
   const record = asRecord(payload)
   const prefsRecord = asRecord(record?.prefs)
@@ -78,8 +83,8 @@ function readSessions(payload: unknown): SessionRecord[] {
       active: typeof session?.active === 'boolean' ? session.active : undefined,
       startTime: readNumber(session?.startTime),
       lastActivity: readNumber(session?.lastActivity),
-      workingDir: typeof session?.workingDir === 'string' || session?.workingDir === null ? session.workingDir : undefined,
-      lastUserPrompt: typeof session?.lastUserPrompt === 'string' || session?.lastUserPrompt === null ? session.lastUserPrompt : undefined,
+      workingDir: readNullableString(session?.workingDir),
+      lastUserPrompt: readNullableString(session?.lastUserPrompt),
     }]
   })
 }

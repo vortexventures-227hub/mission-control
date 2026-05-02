@@ -453,15 +453,22 @@ export function AgentSquadPanelPhase3() {
           </div>
         ) : (() => {
           // Separate Axis (orchestrator) from team agents
-          const axisAgent = agents.find(a => {
+          // Axis is specifically the 'main' agent
+          const axisAgent = agents.find(a => a.name === 'main')
+          // Command team (excluding Axis) - shown as separate section
+          const commandTeam = agents.filter(a => {
             const meta = getAgentMeta(a)
-            return meta.team === 'command'
+            return meta.team === 'command' && a.name !== 'main'
           })
           const teamAgents = agents.filter(a => {
             const meta = getAgentMeta(a)
             return meta.team !== 'command'
           })
           const valphaOps = teamAgents.filter(a => getAgentMeta(a).team === 'valphaops')
+          const researchAgents = teamAgents.filter(a => getAgentMeta(a).team === 'research')
+          const appFactoryAgents = teamAgents.filter(a => getAgentMeta(a).team === 'appfactory')
+          const tradingOpsAgents = teamAgents.filter(a => getAgentMeta(a).team === 'tradingops')
+          const davidsCrewAgents = teamAgents.filter(a => getAgentMeta(a).team === 'davidscrew')
           const otherAgents = teamAgents.filter(a => getAgentMeta(a).team === 'other')
 
           return (
@@ -494,14 +501,154 @@ export function AgentSquadPanelPhase3() {
                 </div>
               )}
 
+              {/* Command Team (other command agents like Rook) */}
+              {commandTeam.length > 0 && (
+                <div>
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-semibold text-sky-400/80 uppercase tracking-wider">🎯 Command</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {commandTeam.map(agent => (
+                      <AgentOrgCard
+                        key={agent.id}
+                        agent={agent}
+                        variant="team"
+                        onClick={() => setSelectedAgent(agent)}
+                        onWake={() => agent.session_key
+                          ? wakeAgent(agent.name, agent.session_key!)
+                          : updateAgentStatus(agent.name, 'idle', 'Manually activated')
+                        }
+                        onSpawn={() => { setSelectedAgent(agent); setShowQuickSpawnModal(true) }}
+                        onToggleHidden={() => toggleAgentHidden(agent.id, !agent.hidden)}
+                        hasRecentHeartbeat={hasRecentHeartbeat(agent)}
+                        formatLastSeen={formatLastSeen}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* VAlphaOps Team */}
               {valphaOps.length > 0 && (
                 <div>
                   <div className="text-center mb-3">
-                    <span className="text-xs font-semibold text-purple-400/80 uppercase tracking-wider">VAlphaOps Team</span>
+                    <span className="text-xs font-semibold text-purple-400/80 uppercase tracking-wider">⚡ VAlphaOps Team</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {valphaOps.map(agent => (
+                      <AgentOrgCard
+                        key={agent.id}
+                        agent={agent}
+                        variant="team"
+                        onClick={() => setSelectedAgent(agent)}
+                        onWake={() => agent.session_key
+                          ? wakeAgent(agent.name, agent.session_key!)
+                          : updateAgentStatus(agent.name, 'idle', 'Manually activated')
+                        }
+                        onSpawn={() => { setSelectedAgent(agent); setShowQuickSpawnModal(true) }}
+                        onToggleHidden={() => toggleAgentHidden(agent.id, !agent.hidden)}
+                        hasRecentHeartbeat={hasRecentHeartbeat(agent)}
+                        formatLastSeen={formatLastSeen}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Research Division */}
+              {researchAgents.length > 0 && (
+                <div>
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-semibold text-violet-400/80 uppercase tracking-wider">🔬 Research Division</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {researchAgents.map(agent => (
+                      <AgentOrgCard
+                        key={agent.id}
+                        agent={agent}
+                        variant="team"
+                        onClick={() => setSelectedAgent(agent)}
+                        onWake={() => agent.session_key
+                          ? wakeAgent(agent.name, agent.session_key!)
+                          : updateAgentStatus(agent.name, 'idle', 'Manually activated')
+                        }
+                        onSpawn={() => { setSelectedAgent(agent); setShowQuickSpawnModal(true) }}
+                        onToggleHidden={() => toggleAgentHidden(agent.id, !agent.hidden)}
+                        hasRecentHeartbeat={hasRecentHeartbeat(agent)}
+                        formatLastSeen={formatLastSeen}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* App Factory */}
+              {appFactoryAgents.length > 0 && (
+                <div>
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-semibold text-purple-400/80 uppercase tracking-wider">🏭 App Factory</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {appFactoryAgents.map(agent => (
+                      <AgentOrgCard
+                        key={agent.id}
+                        agent={agent}
+                        variant="team"
+                        onClick={() => setSelectedAgent(agent)}
+                        onWake={() => agent.session_key
+                          ? wakeAgent(agent.name, agent.session_key!)
+                          : updateAgentStatus(agent.name, 'idle', 'Manually activated')
+                        }
+                        onSpawn={() => { setSelectedAgent(agent); setShowQuickSpawnModal(true) }}
+                        onToggleHidden={() => toggleAgentHidden(agent.id, !agent.hidden)}
+                        hasRecentHeartbeat={hasRecentHeartbeat(agent)}
+                        formatLastSeen={formatLastSeen}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Trading Ops */}
+              {tradingOpsAgents.length > 0 && (
+                <div>
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-semibold text-green-400/80 uppercase tracking-wider">📈 Trading Ops (Gekko)</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {tradingOpsAgents.map(agent => (
+                      <AgentOrgCard
+                        key={agent.id}
+                        agent={agent}
+                        variant="team"
+                        onClick={() => setSelectedAgent(agent)}
+                        onWake={() => agent.session_key
+                          ? wakeAgent(agent.name, agent.session_key!)
+                          : updateAgentStatus(agent.name, 'idle', 'Manually activated')
+                        }
+                        onSpawn={() => { setSelectedAgent(agent); setShowQuickSpawnModal(true) }}
+                        onToggleHidden={() => toggleAgentHidden(agent.id, !agent.hidden)}
+                        hasRecentHeartbeat={hasRecentHeartbeat(agent)}
+                        formatLastSeen={formatLastSeen}
+                        t={t}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* David's Crew */}
+              {davidsCrewAgents.length > 0 && (
+                <div>
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-semibold text-orange-400/80 uppercase tracking-wider">🔨 David's Crew</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {davidsCrewAgents.map(agent => (
                       <AgentOrgCard
                         key={agent.id}
                         agent={agent}
@@ -526,7 +673,7 @@ export function AgentSquadPanelPhase3() {
               {otherAgents.length > 0 && (
                 <div>
                   <div className="text-center mb-3">
-                    <span className="text-xs font-semibold text-slate-400/80 uppercase tracking-wider">Other Agents</span>
+                    <span className="text-xs font-semibold text-slate-400/80 uppercase tracking-wider">🤖 Other Agents</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {otherAgents.map(agent => (

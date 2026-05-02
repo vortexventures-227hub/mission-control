@@ -1,0 +1,45 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { requireRole } from '@/lib/auth'
+import { mutationLimiter } from '@/lib/rate-limit'
+import { updateGroupChatDeliveryState } from '@/lib/group-chat'
+import { logger } from '@/lib/logger'
+
+export const dynamic = 'force-dynamic'
+
+export async function PATCH(request: NextRequest) {
+  const auth = requireRole(request, 'operator')
+  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  const rateCheck = mutationLimiter(request)
+  if (rateCheck) return rateCheck
+
+  try {
+    const body = await request.json()
+    if (typeof body.messageId !== 'number') {
+      return NextResponse.json({ error: 'messageId is required' }, { status: 400 })
+    }
+    if (!['sent', 'delivered', 'seen'].includes(body.state)) {
+      return NextResponse.json({ error: 'state must be sent, delivered, or seen' }, { status: 400 })
+    }
+    if (!['human', 'agent', 'room'].includes(body.recipientType)) {
+      return NextResponse.json({ error: 'recipientType must be human, agent, or room' }, { status: 400 })
+    }
+    if (typeof body.recipientId !== 'string' || !body.recipientId.trim()) {
+      return NextResponse.json({ error: 'recipientId is required' }, { status: 400 })
+    }
+
+    const delivery = updateGroupChatDeliveryState({
+      messageId: body.messageId,
+      recipientType: body.recipientType,
+      recipientId: body.recipientId.trim().toLowerCase(),
+      state: body.state,
+      evidence: typeof body.evidence === 'string' ? body.evidence : undefined,
+      workspaceId: auth.user.workspace_id || 1,
+    })
+
+    return NextResponse.json({ delivery })
+  } catch (error) {
+    logger.error({ err: error }, 'PATCH /api/group-chat/delivery error')
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update delivery' }, { status: 500 })
+  }
+}

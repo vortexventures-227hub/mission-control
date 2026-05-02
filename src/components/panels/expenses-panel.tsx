@@ -1,671 +1,459 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useTranslations } from 'next-intl'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
-import { useMissionControl } from '@/store'
-import { createClientLogger } from '@/lib/client-logger'
-import { getAgentProfile } from '@/lib/agent-roster'
-import {
-  PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend,
-} from 'recharts'
 
-const log = createClientLogger('ExpensesPanel')
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-// ── Types ──────────────────────────────────────────
-
-interface ExpenseEntry {
-  id: string
+interface Expense {
+  id: number
   amount: number
   currency: string
   category: string
   description: string
-  timestamp: number
-  source: 'manual' | 'voice' | 'auto'
-  agentId?: string
+  vendor: string | null
+  source: string
+  agent_id: string | null
+  expense_date: number
+  is_recurring: number
+  recurrence: string | null
 }
 
-interface ExpenseSummary {
-  totalSpent: number
-  byCategory: Record<string, number>
-  byAgent: Record<string, number>
-  thisMonth: number
-  lastMonth: number
+interface Subscription {
+  id: number
+  name: string
+  vendor: string
+  amount: number
+  currency: string
+  billing_cycle: string
+  category: string
+  status: string
+  next_billing_date: number | null
+  notes: string | null
 }
 
-type ViewMode = 'overview' | 'list' | 'voice'
-type TimeFilter = 'day' | 'week' | 'month' | 'all'
+interface Summary {
+  total: number
+  byCategory: { category: string; total: number }[]
+  recurring: number
+  monthlySubscriptions: number
+}
 
-const EXPENSE_COLORS = [
-  '#8884d8', '#82ca9d', '#ffc658', '#ff6b6b', '#00C49F',
-  '#FFBB28', '#FF8042', '#0088FE', '#a78bfa', '#f472b6',
-]
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const CATEGORIES = [
-  { id: 'api', label: 'API Costs', icon: '🔌' },
-  { id: 'compute', label: 'Compute', icon: '💻' },
-  { id: 'storage', label: 'Storage', icon: '💾' },
-  { id: 'tools', label: 'Tools & SaaS', icon: '🛠️' },
-  { id: 'infrastructure', label: 'Infrastructure', icon: '🏗️' },
-  { id: 'other', label: 'Other', icon: '📦' },
-]
+function fmt(amount: number, currency = 'USD') {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
+}
 
-// ── Voice Recording Hook ──────────────────────────────────────────
+function relDate(ms: number) {
+  const d = new Date(ms)
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
 
-function useVoiceRecorder() {
-  const [isRecording, setIsRecording] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+const CATEGORY_COLORS: Record<string, string> = {
+  ai_api: 'text-violet-400',
+  api: 'text-violet-400',
+  subscription: 'text-blue-400',
+  saas: 'text-blue-400',
+  tool: 'text-cyan-400',
+  infrastructure: 'text-orange-400',
+  other: 'text-muted-foreground',
+}
 
-  const startRecording = useCallback(async () => {
-    try {
-      setError(null)
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mediaRecorder = new MediaRecorder(stream)
-      mediaRecorderRef.current = mediaRecorder
-      chunksRef.current = []
+const STATUS_COLORS: Record<string, string> = {
+  active: 'bg-green-500/15 text-green-400 border-green-500/30',
+  paused: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
+  cancelled: 'bg-red-500/15 text-red-400 border-red-500/30',
+}
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data)
-        }
-      }
+// ─── Add Expense Form ─────────────────────────────────────────────────────────
 
-      mediaRecorder.start()
-      setIsRecording(true)
-    } catch (err) {
-      setError('Could not access microphone')
-      log.error('Failed to start recording:', err)
-    }
-  }, [])
+function AddExpenseForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+  const [form, setForm] = useState({ amount: '', category: 'api', description: '', vendor: '', expense_date: new Date().toISOString().split('T')[0], is_recurring: false, recurrence: 'monthly' })
+  const [saving, setSaving] = useState(false)
 
-  const stopRecording = useCallback(async (): Promise<Blob | null> => {
-    return new Promise((resolve) => {
-      if (!mediaRecorderRef.current) {
-        resolve(null)
-        return
-      }
-
-      mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        setIsRecording(false)
-        
-        // Stop all tracks
-        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop())
-        
-        resolve(blob)
-      }
-
-      mediaRecorderRef.current.stop()
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch('/api/expenses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, amount: parseFloat(form.amount), expense_date: new Date(form.expense_date).getTime(), is_recurring: form.is_recurring ? 1 : 0 }),
     })
-  }, [])
-
-  return {
-    isRecording,
-    isProcessing,
-    setIsProcessing,
-    error,
-    startRecording,
-    stopRecording,
+    setSaving(false)
+    onSave()
   }
+
+  return (
+    <form onSubmit={submit} className="p-4 bg-card border border-border rounded-lg space-y-3">
+      <h3 className="font-semibold text-sm text-foreground">Add Expense</h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Amount (USD)</label>
+          <input type="number" step="0.01" required value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" placeholder="0.00" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+          <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground">
+            <option value="api">API</option>
+            <option value="subscription">Subscription</option>
+            <option value="tool">Tool</option>
+            <option value="infrastructure">Infrastructure</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Description</label>
+        <input type="text" required value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+          className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" placeholder="e.g. Anthropic API usage" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Vendor</label>
+          <input type="text" value={form.vendor} onChange={e => setForm(p => ({ ...p, vendor: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" placeholder="Anthropic" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Date</label>
+          <input type="date" required value={form.expense_date} onChange={e => setForm(p => ({ ...p, expense_date: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" />
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="recurring" checked={form.is_recurring} onChange={e => setForm(p => ({ ...p, is_recurring: e.target.checked }))} className="rounded" />
+        <label htmlFor="recurring" className="text-xs text-muted-foreground">Recurring</label>
+        {form.is_recurring && (
+          <select value={form.recurrence} onChange={e => setForm(p => ({ ...p, recurrence: e.target.value }))}
+            className="ml-2 px-2 py-1 text-xs bg-secondary border border-border rounded-md text-foreground">
+            <option value="monthly">Monthly</option>
+            <option value="annual">Annual</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        )}
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" size="sm" disabled={saving} className="h-8 text-xs">{saving ? <Loader variant="inline" /> : 'Save'}</Button>
+        <Button type="button" variant="outline" size="sm" onClick={onCancel} className="h-8 text-xs">Cancel</Button>
+      </div>
+    </form>
+  )
 }
 
-// ── Main Component ──────────────────────────────────────────
+// ─── Add Subscription Form ────────────────────────────────────────────────────
+
+function AddSubscriptionForm({ onSave, onCancel }: { onSave: () => void; onCancel: () => void }) {
+  const [form, setForm] = useState({ name: '', vendor: '', amount: '', billing_cycle: 'monthly', category: 'ai_api', status: 'active', next_billing_date: '', notes: '' })
+  const [saving, setSaving] = useState(false)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    await fetch('/api/subscriptions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, amount: parseFloat(form.amount), next_billing_date: form.next_billing_date ? new Date(form.next_billing_date).getTime() : null }),
+    })
+    setSaving(false)
+    onSave()
+  }
+
+  return (
+    <form onSubmit={submit} className="p-4 bg-card border border-border rounded-lg space-y-3">
+      <h3 className="font-semibold text-sm text-foreground">Add Subscription</h3>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+          <input type="text" required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" placeholder="Anthropic Max" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Vendor</label>
+          <input type="text" required value={form.vendor} onChange={e => setForm(p => ({ ...p, vendor: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" placeholder="Anthropic" />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Amount</label>
+          <input type="number" step="0.01" required value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" placeholder="0.00" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Billing Cycle</label>
+          <select value={form.billing_cycle} onChange={e => setForm(p => ({ ...p, billing_cycle: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground">
+            <option value="monthly">Monthly</option>
+            <option value="annual">Annual</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Category</label>
+          <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground">
+            <option value="ai_api">AI / API</option>
+            <option value="saas">SaaS</option>
+            <option value="infrastructure">Infrastructure</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Next Billing Date</label>
+          <input type="date" value={form.next_billing_date} onChange={e => setForm(p => ({ ...p, next_billing_date: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" />
+        </div>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Notes</label>
+          <input type="text" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+            className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground" placeholder="Optional notes" />
+        </div>
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Button type="submit" size="sm" disabled={saving} className="h-8 text-xs">{saving ? <Loader variant="inline" /> : 'Save'}</Button>
+        <Button type="button" variant="outline" size="sm" onClick={onCancel} className="h-8 text-xs">Cancel</Button>
+      </div>
+    </form>
+  )
+}
+
+// ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function ExpensesPanel() {
-  const t = useTranslations('expenses')
-  const { dashboardMode } = useMissionControl()
-  const isLocal = dashboardMode === 'local'
+  const [tab, setTab] = useState<'overview' | 'subscriptions' | 'log'>('overview')
+  const [summary, setSummary] = useState<Summary | null>(null)
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
+  const [subTotals, setSubTotals] = useState({ monthly: 0, annual: 0 })
+  const [loading, setLoading] = useState(true)
+  const [showAddExpense, setShowAddExpense] = useState(false)
+  const [showAddSub, setShowAddSub] = useState(false)
 
-  const [view, setView] = useState<ViewMode>('overview')
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('month')
-  const [isLoading, setIsLoading] = useState(false)
-  const [expenses, setExpenses] = useState<ExpenseEntry[]>([])
-  const [summary, setSummary] = useState<ExpenseSummary | null>(null)
-  
-  // Voice input state
-  const voice = useVoiceRecorder()
-  const [voiceTranscript, setVoiceTranscript] = useState('')
-  const [voiceParsed, setVoiceParsed] = useState<Partial<ExpenseEntry> | null>(null)
-
-  // Manual entry form
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newExpense, setNewExpense] = useState({
-    amount: '',
-    category: 'other',
-    description: '',
-  })
-
-  // Load expenses data
-  const loadExpenses = useCallback(async () => {
-    setIsLoading(true)
+  const fetchAll = useCallback(async () => {
+    setLoading(true)
     try {
-      // In a real implementation, this would fetch from an API
-      // For now, we'll use mock data or integrate with Ledger agent
-      const res = await fetch(`/api/expenses?timeframe=${timeFilter}`)
-      if (res.ok) {
-        const data = await res.json()
-        setExpenses(data.expenses || [])
-        setSummary(data.summary || null)
-      } else {
-        // Fallback: Create sample data for demo
-        const mockExpenses: ExpenseEntry[] = [
-          { id: '1', amount: 45.50, currency: 'USD', category: 'api', description: 'OpenAI API usage', timestamp: Date.now() - 3600000, source: 'auto', agentId: 'main' },
-          { id: '2', amount: 12.30, currency: 'USD', category: 'api', description: 'Anthropic API', timestamp: Date.now() - 7200000, source: 'auto', agentId: 'cipher' },
-          { id: '3', amount: 25.00, currency: 'USD', category: 'tools', description: 'GitHub Copilot', timestamp: Date.now() - 86400000, source: 'manual' },
-        ]
-        setExpenses(mockExpenses)
-        
-        const mockSummary: ExpenseSummary = {
-          totalSpent: 82.80,
-          byCategory: { api: 57.80, tools: 25.00 },
-          byAgent: { main: 45.50, cipher: 12.30 },
-          thisMonth: 82.80,
-          lastMonth: 150.00,
-        }
-        setSummary(mockSummary)
-      }
-    } catch (err) {
-      log.error('Failed to load expenses:', err)
+      const [sumRes, expRes, subRes] = await Promise.all([
+        fetch('/api/expenses?action=summary&days=30'),
+        fetch('/api/expenses?days=90'),
+        fetch('/api/subscriptions?status=all'),
+      ])
+      if (sumRes.ok) setSummary(await sumRes.json())
+      if (expRes.ok) { const d = await expRes.json(); setExpenses(d.expenses || []) }
+      if (subRes.ok) { const d = await subRes.json(); setSubscriptions(d.subscriptions || []); setSubTotals({ monthly: d.monthlyTotal || 0, annual: d.annualTotal || 0 }) }
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
-  }, [timeFilter])
+  }, [])
 
-  useEffect(() => {
-    loadExpenses()
-  }, [loadExpenses])
+  useEffect(() => { fetchAll() }, [fetchAll])
 
-  // Handle voice recording
-  const handleVoiceToggle = async () => {
-    if (voice.isRecording) {
-      const audioBlob = await voice.stopRecording()
-      if (audioBlob) {
-        voice.setIsProcessing(true)
-        try {
-          // Send to Ledger agent for processing
-          const formData = new FormData()
-          formData.append('audio', audioBlob, 'expense.webm')
-          
-          const res = await fetch('/api/expenses/voice', {
-            method: 'POST',
-            body: formData,
-          })
-          
-          if (res.ok) {
-            const result = await res.json()
-            setVoiceTranscript(result.transcript || '')
-            setVoiceParsed(result.parsed || null)
-          } else {
-            // Demo fallback
-            setVoiceTranscript('Spent $25 on API calls today')
-            setVoiceParsed({ amount: 25, category: 'api', description: 'API calls' })
-          }
-        } catch (err) {
-          log.error('Failed to process voice:', err)
-        } finally {
-          voice.setIsProcessing(false)
-        }
-      }
-    } else {
-      await voice.startRecording()
-    }
+  async function cancelSub(id: number) {
+    await fetch(`/api/subscriptions/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'cancelled' }) })
+    fetchAll()
   }
 
-  const confirmVoiceExpense = async () => {
-    if (!voiceParsed?.amount) return
-    
-    const expense: ExpenseEntry = {
-      id: `voice-${Date.now()}`,
-      amount: voiceParsed.amount,
-      currency: 'USD',
-      category: voiceParsed.category || 'other',
-      description: voiceParsed.description || voiceTranscript,
-      timestamp: Date.now(),
-      source: 'voice',
-    }
-    
-    setExpenses(prev => [expense, ...prev])
-    setVoiceTranscript('')
-    setVoiceParsed(null)
-    setView('overview')
+  async function deleteExpense(id: number) {
+    await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
+    fetchAll()
   }
 
-  const addManualExpense = () => {
-    const amount = parseFloat(newExpense.amount)
-    if (isNaN(amount) || amount <= 0) return
-
-    const expense: ExpenseEntry = {
-      id: `manual-${Date.now()}`,
-      amount,
-      currency: 'USD',
-      category: newExpense.category,
-      description: newExpense.description,
-      timestamp: Date.now(),
-      source: 'manual',
-    }
-
-    setExpenses(prev => [expense, ...prev])
-    setNewExpense({ amount: '', category: 'other', description: '' })
-    setShowAddForm(false)
-  }
-
-  // Chart data
-  const categoryChartData = summary 
-    ? Object.entries(summary.byCategory).map(([name, value]) => ({ name, value }))
-    : []
-
-  const agentChartData = summary
-    ? Object.entries(summary.byAgent).map(([agentId, value]) => {
-        const profile = getAgentProfile(agentId)
-        return { name: profile.displayName, value, agentId }
-      })
-    : []
+  const activeSubs = subscriptions.filter(s => s.status === 'active')
+  const inactiveSubs = subscriptions.filter(s => s.status !== 'active')
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="border-b border-border pb-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              💰 {t('title') || 'Expenses'}
-            </h1>
-            <p className="text-muted-foreground mt-1">{t('subtitle') || 'Track and manage your AI operational costs'}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* View tabs */}
-            <div className="flex rounded-xl border border-border overflow-hidden shadow-lg">
-              {(['overview', 'list', 'voice'] as const).map(v => (
-                <button
-                  key={v}
-                  onClick={() => setView(v)}
-                  className={`px-4 py-2 text-xs font-semibold transition-all ${
-                    view === v 
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white' 
-                      : 'bg-card text-muted-foreground hover:text-foreground hover:bg-secondary'
-                  }`}
-                >
-                  {v === 'voice' ? '🎙️ Voice' : v.charAt(0).toUpperCase() + v.slice(1)}
-                </button>
-              ))}
-            </div>
-            {/* Time filter */}
-            <div className="flex gap-1">
-              {(['day', 'week', 'month', 'all'] as const).map(tf => (
-                <Button 
-                  key={tf} 
-                  onClick={() => setTimeFilter(tf)} 
-                  variant={timeFilter === tf ? 'default' : 'outline'} 
-                  size="sm"
-                  className="text-xs"
-                >
-                  {tf.charAt(0).toUpperCase() + tf.slice(1)}
-                </Button>
-              ))}
-            </div>
-          </div>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+        <div>
+          <h2 className="font-semibold text-sm text-foreground">Expenses</h2>
+          <p className="text-xs text-muted-foreground">
+            {loading ? 'Loading...' : `${fmt(subTotals.monthly)}/mo subscriptions · ${fmt(summary?.total || 0)} expenses (30d)`}
+          </p>
         </div>
-      </div>
-
-      {isLoading && !summary ? (
-        <Loader variant="panel" label="Loading expenses..." />
-      ) : view === 'overview' ? (
-        <OverviewView 
-          summary={summary} 
-          categoryData={categoryChartData}
-          agentData={agentChartData}
-          expenses={expenses.slice(0, 5)}
-          onAddExpense={() => setShowAddForm(true)}
-        />
-      ) : view === 'list' ? (
-        <ListView 
-          expenses={expenses} 
-          onAddExpense={() => setShowAddForm(true)}
-        />
-      ) : (
-        <VoiceView
-          isRecording={voice.isRecording}
-          isProcessing={voice.isProcessing}
-          error={voice.error}
-          transcript={voiceTranscript}
-          parsed={voiceParsed}
-          onToggleRecording={handleVoiceToggle}
-          onConfirm={confirmVoiceExpense}
-          onCancel={() => { setVoiceTranscript(''); setVoiceParsed(null); }}
-        />
-      )}
-
-      {/* Add Expense Modal */}
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowAddForm(false)}>
-          <div className="bg-card border border-border rounded-xl max-w-md w-full p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold mb-4">Add Expense</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Amount (USD)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={newExpense.amount}
-                  onChange={e => setNewExpense(prev => ({ ...prev, amount: e.target.value }))}
-                  className="w-full mt-1 px-3 py-2 bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="0.00"
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Category</label>
-                <select
-                  value={newExpense.category}
-                  onChange={e => setNewExpense(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full mt-1 px-3 py-2 bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  {CATEGORIES.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">Description</label>
-                <input
-                  type="text"
-                  value={newExpense.description}
-                  onChange={e => setNewExpense(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full mt-1 px-3 py-2 bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="What was this expense for?"
-                />
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={() => setShowAddForm(false)}>Cancel</Button>
-              <Button onClick={addManualExpense} className="bg-gradient-to-r from-emerald-500 to-teal-500">Add Expense</Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Sub-components ──────────────────────────────────────────
-
-function OverviewView({ summary, categoryData, agentData, expenses, onAddExpense }: {
-  summary: ExpenseSummary | null
-  categoryData: { name: string; value: number }[]
-  agentData: { name: string; value: number; agentId: string }[]
-  expenses: ExpenseEntry[]
-  onAddExpense: () => void
-}) {
-  if (!summary) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-6xl mb-4">📊</div>
-        <h3 className="text-xl font-semibold">No expenses yet</h3>
-        <p className="text-muted-foreground mt-2">Start tracking your AI operational costs</p>
-        <Button onClick={onAddExpense} className="mt-4 bg-gradient-to-r from-emerald-500 to-teal-500">
-          Add First Expense
+        <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="h-8 text-xs">
+          {loading ? <Loader variant="inline" /> : 'Refresh'}
         </Button>
       </div>
-    )
-  }
 
-  const monthChange = summary.lastMonth > 0 
-    ? ((summary.thisMonth - summary.lastMonth) / summary.lastMonth * 100).toFixed(1)
-    : null
-
-  return (
-    <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <SummaryCard 
-          label="Total Spent" 
-          value={`$${summary.totalSpent.toFixed(2)}`} 
-          color="emerald"
-        />
-        <SummaryCard 
-          label="This Month" 
-          value={`$${summary.thisMonth.toFixed(2)}`}
-          subtitle={monthChange ? `${parseFloat(monthChange) > 0 ? '+' : ''}${monthChange}% vs last month` : undefined}
-          color={parseFloat(monthChange || '0') > 0 ? 'red' : 'green'}
-        />
-        <SummaryCard 
-          label="Categories" 
-          value={Object.keys(summary.byCategory).length.toString()}
-          color="violet"
-        />
-        <SummaryCard 
-          label="Agents" 
-          value={Object.keys(summary.byAgent).length.toString()}
-          color="blue"
-        />
+      {/* Tabs */}
+      <div className="flex border-b border-border shrink-0">
+        {(['overview', 'subscriptions', 'log'] as const).map(t => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-4 py-2.5 text-xs font-medium capitalize transition-colors ${tab === t ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+            {t === 'log' ? 'Expense Log' : t}
+            {t === 'subscriptions' && activeSubs.length > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground text-[10px]">{activeSubs.length}</span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Charts */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-lg font-semibold mb-4">By Category</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
-                  paddingAngle={2}
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                >
-                  {categoryData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={EXPENSE_COLORS[index % EXPENSE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h3 className="text-lg font-semibold mb-4">By Agent</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={agentData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={(v) => `$${v}`} />
-                <YAxis type="category" dataKey="name" width={80} />
-                <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
-                <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Expenses */}
-      <div className="bg-card border border-border rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Recent Expenses</h3>
-          <Button variant="outline" size="sm" onClick={onAddExpense}>+ Add</Button>
-        </div>
-        <div className="space-y-2">
-          {expenses.map(exp => (
-            <ExpenseRow key={exp.id} expense={exp} />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ListView({ expenses, onAddExpense }: { expenses: ExpenseEntry[]; onAddExpense: () => void }) {
-  return (
-    <div className="bg-card border border-border rounded-xl">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <h3 className="font-semibold">All Expenses</h3>
-        <Button variant="outline" size="sm" onClick={onAddExpense}>+ Add Expense</Button>
-      </div>
-      <div className="divide-y divide-border">
-        {expenses.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">No expenses to display</div>
-        ) : (
-          expenses.map(exp => (
-            <ExpenseRow key={exp.id} expense={exp} detailed />
-          ))
-        )}
-      </div>
-    </div>
-  )
-}
-
-function VoiceView({ isRecording, isProcessing, error, transcript, parsed, onToggleRecording, onConfirm, onCancel }: {
-  isRecording: boolean
-  isProcessing: boolean
-  error: string | null
-  transcript: string
-  parsed: Partial<ExpenseEntry> | null
-  onToggleRecording: () => void
-  onConfirm: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 space-y-8">
-      {/* Microphone Button */}
-      <button
-        onClick={onToggleRecording}
-        disabled={isProcessing}
-        className={`relative w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${
-          isRecording 
-            ? 'bg-gradient-to-br from-red-500 to-rose-600 animate-pulse shadow-[0_0_60px_rgba(239,68,68,0.5)]' 
-            : 'bg-gradient-to-br from-emerald-500 to-teal-600 hover:shadow-[0_0_40px_rgba(16,185,129,0.4)] hover:scale-105'
-        } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
-      >
-        <div className="text-5xl">
-          {isProcessing ? '⏳' : isRecording ? '⏹️' : '🎙️'}
-        </div>
-        {isRecording && (
-          <div className="absolute inset-0 rounded-full border-4 border-red-400 animate-ping opacity-50" />
-        )}
-      </button>
-
-      {/* Instructions */}
-      <div className="text-center max-w-md">
-        {error ? (
-          <p className="text-red-400">{error}</p>
-        ) : isProcessing ? (
-          <p className="text-muted-foreground">Processing your voice input...</p>
-        ) : isRecording ? (
-          <p className="text-lg font-medium text-emerald-400">Listening... Tap to stop</p>
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {loading ? (
+          <div className="flex items-center justify-center h-32"><Loader variant="inline" /></div>
         ) : (
           <>
-            <p className="text-lg font-medium">Tap to record an expense</p>
-            <p className="text-muted-foreground mt-2">
-              Say something like &ldquo;I spent $50 on API calls today&rdquo; or &ldquo;$25 for GitHub subscription&rdquo;
-            </p>
+            {/* OVERVIEW TAB */}
+            {tab === 'overview' && (
+              <div className="space-y-4">
+                {/* Stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {[
+                    { label: 'Monthly Subscriptions', value: fmt(subTotals.monthly), sub: `${fmt(subTotals.annual)}/yr` },
+                    { label: 'Expenses (30d)', value: fmt(summary?.total || 0), sub: 'one-time & misc' },
+                    { label: 'Total Monthly Burn', value: fmt(subTotals.monthly + (summary?.total || 0)), sub: 'subscriptions + expenses' },
+                  ].map(s => (
+                    <div key={s.label} className="p-3 bg-card border border-border rounded-lg">
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <p className="text-lg font-bold text-foreground mt-1">{s.value}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{s.sub}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Active Subscriptions summary */}
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <h3 className="text-xs font-semibold text-foreground mb-3">Active Subscriptions</h3>
+                  {activeSubs.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No active subscriptions.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {activeSubs.map(s => (
+                        <div key={s.id} className="flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-medium text-foreground">{s.name}</span>
+                            <span className="text-xs text-muted-foreground ml-2">{s.vendor}</span>
+                          </div>
+                          <span className="text-xs font-mono text-foreground">{fmt(s.amount)}/{s.billing_cycle === 'monthly' ? 'mo' : 'yr'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Category breakdown */}
+                {summary && summary.byCategory.length > 0 && (
+                  <div className="bg-card border border-border rounded-lg p-4">
+                    <h3 className="text-xs font-semibold text-foreground mb-3">By Category (30d Expenses)</h3>
+                    <div className="space-y-2">
+                      {summary.byCategory.map(c => (
+                        <div key={c.category} className="flex items-center justify-between">
+                          <span className={`text-xs capitalize ${CATEGORY_COLORS[c.category] || 'text-muted-foreground'}`}>{c.category.replace('_', ' ')}</span>
+                          <span className="text-xs font-mono text-foreground">{fmt(c.total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* SUBSCRIPTIONS TAB */}
+            {tab === 'subscriptions' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground">{fmt(subTotals.monthly)}/month · {fmt(subTotals.annual)}/year</p>
+                  </div>
+                  <Button size="sm" onClick={() => setShowAddSub(v => !v)} className="h-8 text-xs">
+                    {showAddSub ? 'Cancel' : '+ Add Subscription'}
+                  </Button>
+                </div>
+
+                {showAddSub && <AddSubscriptionForm onSave={() => { setShowAddSub(false); fetchAll() }} onCancel={() => setShowAddSub(false)} />}
+
+                {/* Active */}
+                <div className="space-y-2">
+                  {activeSubs.map(s => (
+                    <div key={s.id} className="flex items-start justify-between p-3 bg-card border border-border rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm text-foreground">{s.name}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.vendor} · {s.category.replace('_', ' ')}</p>
+                        {s.next_billing_date && (
+                          <p className="text-xs text-muted-foreground mt-0.5">Next billing: {relDate(s.next_billing_date)}</p>
+                        )}
+                        {s.notes && <p className="text-[10px] text-muted-foreground/70 mt-1 italic">{s.notes}</p>}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0 ml-3">
+                        <span className="font-bold text-sm text-foreground">{fmt(s.amount)}</span>
+                        <span className="text-[10px] text-muted-foreground">/{s.billing_cycle === 'monthly' ? 'mo' : 'yr'}</span>
+                        <button onClick={() => cancelSub(s.id)} className="text-[10px] text-red-400 hover:text-red-300 mt-1">Cancel</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Inactive */}
+                {inactiveSubs.length > 0 && (
+                  <div className="opacity-50 space-y-2">
+                    <p className="text-xs text-muted-foreground">Cancelled / Paused</p>
+                    {inactiveSubs.map(s => (
+                      <div key={s.id} className="flex items-start justify-between p-3 bg-card border border-border rounded-lg">
+                        <div>
+                          <span className="font-medium text-xs text-foreground">{s.name}</span>
+                          <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full border ${STATUS_COLORS[s.status]}`}>{s.status}</span>
+                          <p className="text-xs text-muted-foreground">{s.vendor}</p>
+                        </div>
+                        <span className="text-xs font-mono text-foreground">{fmt(s.amount)}/{s.billing_cycle === 'monthly' ? 'mo' : 'yr'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {subscriptions.length === 0 && !showAddSub && (
+                  <p className="text-sm text-muted-foreground text-center py-8">No subscriptions yet. Add one above.</p>
+                )}
+              </div>
+            )}
+
+            {/* EXPENSE LOG TAB */}
+            {tab === 'log' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">{expenses.length} expenses (last 90 days)</p>
+                  <Button size="sm" onClick={() => setShowAddExpense(v => !v)} className="h-8 text-xs">
+                    {showAddExpense ? 'Cancel' : '+ Add Expense'}
+                  </Button>
+                </div>
+
+                {showAddExpense && <AddExpenseForm onSave={() => { setShowAddExpense(false); fetchAll() }} onCancel={() => setShowAddExpense(false)} />}
+
+                {expenses.length === 0 && !showAddExpense ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">No expenses logged. Add one above.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {expenses.map(e => (
+                      <div key={e.id} className="flex items-start justify-between p-3 bg-card border border-border rounded-lg group">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-xs text-foreground">{e.description}</span>
+                            <span className={`text-[10px] capitalize ${CATEGORY_COLORS[e.category] || 'text-muted-foreground'}`}>{e.category.replace('_', ' ')}</span>
+                            {e.is_recurring === 1 && <span className="text-[10px] text-blue-400">↺ {e.recurrence}</span>}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {e.vendor && `${e.vendor} · `}{relDate(e.expense_date)} · {e.source}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <span className="font-bold text-sm text-foreground">{fmt(e.amount, e.currency)}</span>
+                          <button onClick={() => deleteExpense(e.id)} className="opacity-0 group-hover:opacity-100 text-[10px] text-red-400 hover:text-red-300">×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
-      </div>
-
-      {/* Parsed Result */}
-      {transcript && parsed && (
-        <div className="bg-card border border-border rounded-xl p-6 max-w-md w-full space-y-4">
-          <div className="text-sm text-muted-foreground">Heard:</div>
-          <div className="text-lg font-medium">&ldquo;{transcript}&rdquo;</div>
-          
-          <div className="border-t border-border pt-4 space-y-2">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Amount:</span>
-              <span className="font-bold text-emerald-400">${parsed.amount?.toFixed(2)}</span>
-            </div>
-            {parsed.category && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Category:</span>
-                <span>{parsed.category}</span>
-              </div>
-            )}
-            {parsed.description && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Description:</span>
-                <span className="truncate ml-4">{parsed.description}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" onClick={onCancel} className="flex-1">Cancel</Button>
-            <Button onClick={onConfirm} className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500">
-              Add Expense
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function SummaryCard({ label, value, subtitle, color }: {
-  label: string
-  value: string
-  subtitle?: string
-  color: 'emerald' | 'green' | 'red' | 'violet' | 'blue'
-}) {
-  const colorStyles = {
-    emerald: 'from-emerald-500/20 to-emerald-500/5 border-emerald-500/30 text-emerald-400',
-    green: 'from-green-500/20 to-green-500/5 border-green-500/30 text-green-400',
-    red: 'from-red-500/20 to-red-500/5 border-red-500/30 text-red-400',
-    violet: 'from-violet-500/20 to-violet-500/5 border-violet-500/30 text-violet-400',
-    blue: 'from-blue-500/20 to-blue-500/5 border-blue-500/30 text-blue-400',
-  }
-
-  return (
-    <div className={`rounded-xl border p-5 bg-gradient-to-br ${colorStyles[color]} shadow-lg`}>
-      <div className="text-xs font-semibold uppercase tracking-wider opacity-80">{label}</div>
-      <div className="text-3xl font-bold mt-2">{value}</div>
-      {subtitle && <div className="text-xs mt-1 opacity-70">{subtitle}</div>}
-    </div>
-  )
-}
-
-function ExpenseRow({ expense, detailed }: { expense: ExpenseEntry; detailed?: boolean }) {
-  const category = CATEGORIES.find(c => c.id === expense.category) || CATEGORIES[CATEGORIES.length - 1]
-  const profile = expense.agentId ? getAgentProfile(expense.agentId) : null
-
-  return (
-    <div className="flex items-center gap-4 p-4 hover:bg-secondary/30 transition-colors">
-      <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-lg">
-        {category.icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{expense.description || category.label}</div>
-        <div className="text-xs text-muted-foreground flex items-center gap-2">
-          <span>{new Date(expense.timestamp).toLocaleDateString()}</span>
-          {profile && (
-            <>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                {profile.emoji} {profile.displayName}
-              </span>
-            </>
-          )}
-          {detailed && (
-            <>
-              <span>•</span>
-              <span className="capitalize">{expense.source}</span>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="text-lg font-bold text-emerald-400">
-        ${expense.amount.toFixed(2)}
       </div>
     </div>
   )

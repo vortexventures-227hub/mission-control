@@ -133,6 +133,22 @@ export const AGENT_ROSTER: Record<string, AgentProfile> = {
     color: '#f472b6', // pink-400
     team: 'valphaops',
   },
+  stark: {
+    displayName: 'Stark',
+    role: 'Senior Engineer',
+    description: 'Full-stack development, complex builds, and technical problem-solving.',
+    emoji: '⚡',
+    color: '#facc15', // yellow-400
+    team: 'valphaops',
+  },
+  forger: {
+    displayName: 'Forger',
+    role: 'Build Specialist',
+    description: 'App compilation, packaging, and deployment automation.',
+    emoji: '🔨',
+    color: '#fb923c', // orange-400
+    team: 'appfactory',
+  },
   
   // ═══════════════════════════════════════════════════════════════════
   // DAVID'S CREW - App development team
@@ -310,7 +326,168 @@ export const AGENT_ROSTER: Record<string, AgentProfile> = {
     description: 'Expense tracking, financial analysis, and budget management.',
     emoji: '💰',
     color: '#4ade80', // green-400
-    team: 'other',
+    team: 'valphaops',
+  },
+  rook: {
+    displayName: 'Rook',
+    role: 'Strategic Notes Companion',
+    description: 'Thinking partner for strategic planning, ideas, and note-taking sessions.',
+    emoji: '♜',
+    color: '#6366f1', // indigo-500
+    team: 'command',
+  },
+  // ═══════════════════════════════════════════════════════════════════
+  // INCEPTION TEAM - System architecture and deep builds
+  // ═══════════════════════════════════════════════════════════════════
+  cobb: {
+    displayName: 'Cobb',
+    role: 'Inception Dream Builder',
+    description: 'Designs entire systems, coordinates team, sees big picture architecture.',
+    emoji: '🎯',
+    color: '#0ea5e9', // sky-500
+    team: 'valphaops',
+  },
+  arthur: {
+    displayName: 'Arthur',
+    role: 'Inception Execution Specialist',
+    description: 'Deployment, operations, makes everything run smooth.',
+    emoji: '💼',
+    color: '#64748b', // slate-500
+    team: 'valphaops',
+  },
+  ariadne: {
+    displayName: 'Ariadne',
+    role: 'Inception Builder',
+    description: 'System architecture, data structures, core infrastructure.',
+    emoji: '🏛️',
+    color: '#f59e0b', // amber-500
+    team: 'valphaops',
+  },
+  eames: {
+    displayName: 'Eames',
+    role: 'Inception Transformer',
+    description: 'Refactoring, optimization, creative problem solving.',
+    emoji: '🎭',
+    color: '#ec4899', // pink-500
+    team: 'valphaops',
+  },
+  yusuf: {
+    displayName: 'Yusuf',
+    role: 'Inception Enabler',
+    description: 'DevOps, infrastructure, tooling, environment management.',
+    emoji: '🧪',
+    color: '#14b8a6', // teal-500
+    team: 'valphaops',
+  },
+  // ═══════════════════════════════════════════════════════════════════
+  // MATRIX TEAM - Marketing and content
+  // ═══════════════════════════════════════════════════════════════════
+  morpheus: {
+    displayName: 'Morpheus',
+    role: 'Matrix Mentor',
+    description: 'Shows the truth — market intelligence, positioning, competitive analysis.',
+    emoji: '🕶️',
+    color: '#3b82f6', // blue-500
+    team: 'research',
+  },
+  neo: {
+    displayName: 'Neo',
+    role: 'Matrix Hero',
+    description: 'Tells the story — landing pages, blogs, ad copy, content creation.',
+    emoji: '👨‍💻',
+    color: '#22c55e', // green-500
+    team: 'research',
+  },
+  oracle: {
+    displayName: 'Oracle',
+    role: 'Matrix Seer',
+    description: 'Sees the future via data — tracks performance, predicts trends.',
+    emoji: '🔮',
+    color: '#a855f7', // purple-500
+    team: 'research',
+  },
+  trinity: {
+    displayName: 'Trinity',
+    role: 'Matrix Execution',
+    description: 'ProductHunt, Reddit, email, social launches, campaign execution.',
+    emoji: '🚀',
+    color: '#06b6d4', // cyan-500
+    team: 'research',
+  },
+  switch: {
+    displayName: 'Switch',
+    role: 'Matrix Adapter',
+    description: 'Smooth, adaptable — community engagement, Reddit/Twitter presence.',
+    emoji: '🔀',
+    color: '#eab308', // yellow-500
+    team: 'research',
+  },
+  tank: {
+    displayName: 'Tank',
+    role: 'Matrix Operator',
+    description: 'Keywords, schema markup, App Store optimization, SEO.',
+    emoji: '🛠️',
+    color: '#78716c', // stone-500
+    team: 'research',
+  },
+  // ═══════════════════════════════════════════════════════════════════
+  // OOMPA LOOMPAS - App Factory pipeline stages
+  // ═══════════════════════════════════════════════════════════════════
+  'oompa alpha': {
+    displayName: 'Oompa Alpha',
+    role: 'App Factory Stage 1',
+    description: 'Scaffold, dependencies, project structure.',
+    emoji: '🟠',
+    color: '#f97316', // orange-500
+    team: 'appfactory',
+  },
+  'oompa beta': {
+    displayName: 'Oompa Beta',
+    role: 'App Factory Stage 2',
+    description: 'Business logic, main functionality.',
+    emoji: '🟡',
+    color: '#eab308', // yellow-500
+    team: 'appfactory',
+  },
+  'oompa gamma': {
+    displayName: 'Oompa Gamma',
+    role: 'App Factory Stage 3',
+    description: 'Interface design, user experience, polish.',
+    emoji: '🟢',
+    color: '#22c55e', // green-500
+    team: 'appfactory',
+  },
+  'oompa delta': {
+    displayName: 'Oompa Delta',
+    role: 'App Factory Stage 4',
+    description: 'Testing, debugging, quality assurance.',
+    emoji: '🔵',
+    color: '#3b82f6', // blue-500
+    team: 'appfactory',
+  },
+  'oompa omega': {
+    displayName: 'Oompa Omega',
+    role: 'App Factory Stage 5',
+    description: 'Packaging, App Store submission, release.',
+    emoji: '🟣',
+    color: '#8b5cf6', // violet-500
+    team: 'appfactory',
+  },
+  'oompa-loompas': {
+    displayName: 'Oompa Loompas',
+    role: 'App Factory Collective',
+    description: 'The full Oompa Loompa team for app builds.',
+    emoji: '🍫',
+    color: '#d946ef', // fuchsia-500
+    team: 'appfactory',
+  },
+  mrwonka: {
+    displayName: 'Mr. Wonka',
+    role: 'App Factory Overseer',
+    description: 'Coordinates Oompa Loompas, manages the factory floor.',
+    emoji: '🎩',
+    color: '#7c3aed', // violet-600
+    team: 'appfactory',
   },
 }
 
@@ -331,6 +508,23 @@ const AGENT_ALIASES: Record<string, string> = {
   'mr steel': 'mrsteel',
   'mr. steel': 'mrsteel',
   'steel': 'mrsteel',
+  'mr wonka': 'mrwonka',
+  'mr. wonka': 'mrwonka',
+  'wonka': 'mrwonka',
+  'mr orange': 'mrorange',
+  'mr. orange': 'mrorange',
+  'orange': 'mrorange',
+  // Oompa aliases for DB naming
+  'oompa-alpha': 'oompa alpha',
+  'oompaalpha': 'oompa alpha',
+  'oompa-beta': 'oompa beta',
+  'oompabeta': 'oompa beta',
+  'oompa-gamma': 'oompa gamma',
+  'oompagamma': 'oompa gamma',
+  'oompa-delta': 'oompa delta',
+  'oompadelta': 'oompa delta',
+  'oompa-omega': 'oompa omega',
+  'oompaomega': 'oompa omega',
 }
 
 /**

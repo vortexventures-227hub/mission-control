@@ -7,9 +7,7 @@ describe('parseMentions', () => {
   })
 
   it('returns empty array for null/undefined-like input', () => {
-    // @ts-expect-error testing non-string
     expect(parseMentions(null)).toEqual([])
-    // @ts-expect-error testing non-string
     expect(parseMentions(undefined)).toEqual([])
   })
 

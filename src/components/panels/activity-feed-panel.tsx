@@ -140,13 +140,29 @@ function ActivityRow({ activity }: { activity: Activity }) {
                     </div>
                   )}
                   {activity.entity.type === 'agent' && (
-                    <div>
-                      <span className="text-muted-foreground">{t('entityAgent')}</span>
-                      <span className="text-foreground ml-1">{activity.entity.name}</span>
-                      {activity.entity.status && (
-                        <span className="ml-2 px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded text-[10px]">
-                          {activity.entity.status}
-                        </span>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-muted-foreground">{t('entityAgent')}</span>
+                        <span className="text-foreground font-medium">{activity.entity.name}</span>
+                        {activity.entity.status && (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                            activity.entity.status === 'offline'
+                              ? 'bg-red-500/10 text-red-400'
+                              : activity.entity.status === 'active'
+                                ? 'bg-green-500/10 text-green-400'
+                                : 'bg-yellow-500/10 text-yellow-400'
+                          }`}>
+                            {activity.entity.status}
+                          </span>
+                        )}
+                      </div>
+                      {(activity.entity as any).model && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+                          </svg>
+                          <span className="font-mono">{(activity.entity as any).model}</span>
+                        </div>
                       )}
                     </div>
                   )}

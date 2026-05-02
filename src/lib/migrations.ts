@@ -503,6 +503,17 @@ const migrations: Migration[] = [
     }
   },
   {
+    id: '026_token_usage_session_unique_index',
+    up: (db) => {
+      // UNIQUE index on session_id enables ON CONFLICT DO UPDATE in forward-sync,
+      // preventing duplicate rows when the session scanner runs repeatedly.
+      db.exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_token_usage_session_unique
+        ON token_usage(session_id);
+      `)
+    }
+  },
+  {
     id: '019_webhook_retry',
     up: (db) => {
       // Add retry columns to webhook_deliveries
@@ -1267,6 +1278,819 @@ const migrations: Migration[] = [
     id: '042_agent_hidden',
     up(db: Database.Database) {
       db.exec(`ALTER TABLE agents ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0`)
+    }
+  },
+  {
+    id: '043_expenses_subscriptions',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS expenses (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          amount REAL NOT NULL,
+          currency TEXT NOT NULL DEFAULT 'USD',
+          category TEXT NOT NULL,
+          description TEXT NOT NULL,
+          vendor TEXT,
+          source TEXT DEFAULT 'manual',
+          agent_id TEXT,
+          expense_date INTEGER NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+          is_recurring INTEGER DEFAULT 0,
+          recurrence TEXT
+        )
+      `)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_expenses_workspace_id ON expenses(workspace_id)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_expenses_expense_date ON expenses(expense_date)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category)`)
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS subscriptions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          name TEXT NOT NULL,
+          vendor TEXT NOT NULL,
+          amount REAL NOT NULL,
+          currency TEXT NOT NULL DEFAULT 'USD',
+          billing_cycle TEXT NOT NULL,
+          category TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active',
+          next_billing_date INTEGER,
+          notes TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch() * 1000)
+        )
+      `)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_subscriptions_workspace_id ON subscriptions(workspace_id)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status)`)
+      // Seed known VV subscriptions
+      const now = Date.now()
+      const nextMonth = now + 30 * 24 * 60 * 60 * 1000
+      const seedSubs = [
+        { name: 'Anthropic Max', vendor: 'Anthropic', amount: 100, billing_cycle: 'monthly', category: 'ai_api', notes: 'Claude Sonnet 4.6 primary model — 2 subscriptions' },
+        { name: 'OpenAI Plus', vendor: 'OpenAI', amount: 20, billing_cycle: 'monthly', category: 'ai_api', notes: 'TTS, Whisper, image generation' },
+        { name: 'MiniMax API', vendor: 'MiniMax', amount: 0, billing_cycle: 'monthly', category: 'ai_api', notes: 'Pay-as-you-go — AppFactory coding agents' },
+      ]
+      const insertSub = db.prepare(`INSERT OR IGNORE INTO subscriptions (name, vendor, amount, currency, billing_cycle, category, status, next_billing_date, notes, created_at, updated_at) VALUES (?, ?, ?, 'USD', ?, ?, 'active', ?, ?, ?, ?)`)
+      for (const s of seedSubs) {
+        insertSub.run(s.name, s.vendor, s.amount, s.billing_cycle, s.category, nextMonth, s.notes, now, now)
+      }
+    }
+  },
+  {
+    id: '044_token_usage_unique_session',
+    up(db: Database.Database) {
+      // Add unique constraint on session_id to prevent duplicate rows from session scanner
+      // Also add cost_usd and agent_name columns if missing (added in earlier migration patch)
+      const cols = db.prepare('PRAGMA table_info(token_usage)').all() as Array<{ name: string }>
+      const hasCol = (name: string) => cols.some((c) => c.name === name)
+      if (!hasCol('cost_usd')) db.exec(`ALTER TABLE token_usage ADD COLUMN cost_usd REAL`)
+      if (!hasCol('agent_name')) db.exec(`ALTER TABLE token_usage ADD COLUMN agent_name TEXT`)
+      if (!hasCol('workspace_id')) db.exec(`ALTER TABLE token_usage ADD COLUMN workspace_id INTEGER NOT NULL DEFAULT 1`)
+      if (!hasCol('task_id')) db.exec(`ALTER TABLE token_usage ADD COLUMN task_id INTEGER`)
+      // Dedup existing rows before adding unique index
+      db.exec(`
+        DELETE FROM token_usage
+        WHERE id NOT IN (
+          SELECT MAX(id) FROM token_usage GROUP BY session_id
+        )
+      `)
+      // Add unique index — enables ON CONFLICT DO UPDATE in session scanner forward sync
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_token_usage_session_unique ON token_usage(session_id)`)
+    }
+  },
+  {
+    id: '045_blackwire_group_chat_v0',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS group_chat_rooms (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          slug TEXT NOT NULL,
+          name TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK(kind IN ('command', 'project', 'agent_dm', 'system')),
+          project_key TEXT,
+          pinned_finish_line TEXT,
+          pinned_owner TEXT,
+          pinned_blocker TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, slug)
+        );
+
+        CREATE TABLE IF NOT EXISTS group_chat_messages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          room_id INTEGER NOT NULL,
+          sender_type TEXT NOT NULL CHECK(sender_type IN ('human', 'agent', 'system')),
+          sender_id TEXT NOT NULL,
+          body TEXT NOT NULL,
+          message_type TEXT NOT NULL DEFAULT 'normal' CHECK(message_type IN ('normal', 'task_event', 'decision_receipt', 'attachment', 'alert')),
+          parent_message_id INTEGER,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY(room_id) REFERENCES group_chat_rooms(id) ON DELETE CASCADE,
+          FOREIGN KEY(parent_message_id) REFERENCES group_chat_messages(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS group_chat_message_delivery_state (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          message_id INTEGER NOT NULL,
+          recipient_type TEXT NOT NULL CHECK(recipient_type IN ('human', 'agent', 'room')),
+          recipient_id TEXT NOT NULL,
+          state TEXT NOT NULL CHECK(state IN ('sent', 'delivered', 'seen')),
+          state_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          evidence TEXT,
+          FOREIGN KEY(message_id) REFERENCES group_chat_messages(id) ON DELETE CASCADE,
+          UNIQUE(workspace_id, message_id, recipient_type, recipient_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS group_chat_assignment_tracker_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          room_id INTEGER NOT NULL,
+          source_message_id INTEGER,
+          title TEXT NOT NULL,
+          description TEXT,
+          assignee_agent_id TEXT,
+          status TEXT NOT NULL DEFAULT 'created' CHECK(status IN ('created', 'accepted', 'working', 'blocked', 'done')),
+          priority TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('normal', 'priority', 'blocker', 'approval_needed')),
+          evidence TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY(room_id) REFERENCES group_chat_rooms(id) ON DELETE CASCADE,
+          FOREIGN KEY(source_message_id) REFERENCES group_chat_messages(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS group_chat_decision_receipts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          room_id INTEGER NOT NULL,
+          source_message_id INTEGER,
+          decision TEXT NOT NULL,
+          approved_by TEXT NOT NULL,
+          approval_tier TEXT NOT NULL CHECK(approval_tier IN ('none', 'mission_control', 'chris_explicit')),
+          evidence TEXT,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY(room_id) REFERENCES group_chat_rooms(id) ON DELETE CASCADE,
+          FOREIGN KEY(source_message_id) REFERENCES group_chat_messages(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS group_chat_agent_profile_cards (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          agent_id TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL,
+          runtime_type TEXT NOT NULL CHECK(runtime_type IN ('hermes', 'openclaw', 'david_runtime', 'claude_code', 'human', 'other')),
+          model TEXT,
+          status TEXT NOT NULL DEFAULT 'unknown' CHECK(status IN ('online_proven', 'offline', 'queued', 'blocked', 'unknown')),
+          current_assignment TEXT,
+          last_proof TEXT,
+          capabilities_summary TEXT,
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, agent_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS group_chat_queued_alerts (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          room_id INTEGER NOT NULL,
+          target_agent_id TEXT NOT NULL,
+          source_message_id INTEGER,
+          reason TEXT NOT NULL,
+          alert_state TEXT NOT NULL DEFAULT 'queued' CHECK(alert_state IN ('queued', 'alert_sent', 'delivered', 'blocked')),
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          FOREIGN KEY(room_id) REFERENCES group_chat_rooms(id) ON DELETE CASCADE,
+          FOREIGN KEY(source_message_id) REFERENCES group_chat_messages(id) ON DELETE SET NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_group_chat_rooms_workspace ON group_chat_rooms(workspace_id, slug);
+        CREATE INDEX IF NOT EXISTS idx_group_chat_messages_room ON group_chat_messages(workspace_id, room_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_group_chat_delivery_message ON group_chat_message_delivery_state(workspace_id, message_id);
+        CREATE INDEX IF NOT EXISTS idx_group_chat_assignments_room ON group_chat_assignment_tracker_items(workspace_id, room_id, status);
+        CREATE INDEX IF NOT EXISTS idx_group_chat_receipts_room ON group_chat_decision_receipts(workspace_id, room_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_group_chat_agent_cards_status ON group_chat_agent_profile_cards(workspace_id, status);
+        CREATE INDEX IF NOT EXISTS idx_group_chat_queued_alerts_state ON group_chat_queued_alerts(workspace_id, alert_state);
+      `)
+
+      const now = Math.floor(Date.now() / 1000)
+      const rooms = [
+        {
+          slug: 'command',
+          name: 'Command',
+          kind: 'command',
+          finish: 'Mission Control becomes the ground-zero source of truth for Blackwire Ops.',
+          owner: 'Chris + Herm + Koda',
+          blocker: 'No fake green. Empty metrics must say Not Instrumented Yet.'
+        },
+        {
+          slug: 'blackwire-ops',
+          name: 'Blackwire Ops',
+          kind: 'project',
+          finish: 'Replace user-facing Mailman with Mission Control group chat v0.',
+          owner: 'Chris / Herm / Koda',
+          blocker: 'Must prove sent / delivered / seen plus @mention task creation.'
+        },
+        {
+          slug: 'dm-koda',
+          name: 'DM: Koda',
+          kind: 'agent_dm',
+          finish: 'Direct Koda communication without mailbox drift.',
+          owner: 'Koda',
+          blocker: 'Queued if Koda is offline.'
+        },
+        {
+          slug: 'dm-herm',
+          name: 'DM: Herm',
+          kind: 'agent_dm',
+          finish: 'Direct Herm communication for truth/verification packets.',
+          owner: 'Herm',
+          blocker: 'Queued if Herm is offline.'
+        }
+      ]
+      const insertRoom = db.prepare(`
+        INSERT OR IGNORE INTO group_chat_rooms (
+          workspace_id, slug, name, kind, project_key, pinned_finish_line,
+          pinned_owner, pinned_blocker, created_at, updated_at
+        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      for (const room of rooms) {
+        insertRoom.run(room.slug, room.name, room.kind, room.slug, room.finish, room.owner, room.blocker, now, now)
+      }
+
+      const profiles = [
+        ['chris', 'Chris', 'Owner / decision authority', 'human', null, 'online_proven', 'Mission Control acceptance and explicit approvals', 'User is active in current thread', 'Approves public/risky actions and evaluates daily-driver usability.'],
+        ['koda', 'Koda', 'Implementation owner', 'other', 'GPT-5.5', 'online_proven', 'Group chat v0 implementation', 'Active Codex lane in VVKodaOps', 'Code, architecture, fixtures, APIs, UI, receipts.'],
+        ['herm', 'Herm', 'Truth contract / verification owner', 'hermes', null, 'online_proven', 'Mission Control truth contract and acceptance gates', 'Herm packet received 2026-05-01', 'Prevents fake green and owns source-of-truth semantics.'],
+        ['patch', 'Patch', 'UI/product design coordination', 'other', null, 'unknown', 'Premium command-center UI guidance only', 'Trust scope limited by Chris until restored', 'Design flow coordination; not runtime truth owner.'],
+        ['neon-forge', 'Neon Forge', 'QA / false-green checks', 'other', null, 'queued', 'Fixture-driven QA after first slice', 'Outputs should be receipts, not chat noise', 'Visual sanity, proof gates, failure cases.']
+      ]
+      const insertProfile = db.prepare(`
+        INSERT OR IGNORE INTO group_chat_agent_profile_cards (
+          workspace_id, agent_id, display_name, role, runtime_type, model, status,
+          current_assignment, last_proof, capabilities_summary, updated_at
+        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      for (const profile of profiles) insertProfile.run(...profile, now)
+
+      const blackwireRoom = db.prepare(`SELECT id FROM group_chat_rooms WHERE workspace_id = 1 AND slug = 'blackwire-ops'`).get() as { id: number } | undefined
+      if (blackwireRoom) {
+        const existing = db.prepare(`SELECT COUNT(*) as count FROM group_chat_messages WHERE workspace_id = 1 AND room_id = ?`).get(blackwireRoom.id) as { count: number }
+        if (existing.count === 0) {
+          const result = db.prepare(`
+            INSERT INTO group_chat_messages (workspace_id, room_id, sender_type, sender_id, body, message_type, created_at)
+            VALUES (1, ?, 'system', 'mission-control', ?, 'normal', ?)
+          `).run(
+            blackwireRoom.id,
+            'Blackwire Ops room initialized from Herm contract. Demo goal: sent/delivered/seen, @mention task, decision receipt, offline queue.',
+            now
+          )
+          const messageId = Number(result.lastInsertRowid)
+          const delivery = db.prepare(`
+            INSERT OR REPLACE INTO group_chat_message_delivery_state (
+              workspace_id, message_id, recipient_type, recipient_id, state, state_at, evidence
+            ) VALUES (1, ?, ?, ?, ?, ?, ?)
+          `)
+          delivery.run(messageId, 'room', 'blackwire-ops', 'sent', now, 'seeded fixture')
+          delivery.run(messageId, 'human', 'chris', 'seen', now, 'seeded fixture')
+          delivery.run(messageId, 'agent', 'koda', 'delivered', now, 'seeded fixture')
+        }
+      }
+    }
+  },
+  {
+    id: '046_mission_control_security_command_v0',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS mission_control_security_systems (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          system_key TEXT NOT NULL,
+          label TEXT NOT NULL,
+          posture TEXT NOT NULL DEFAULT 'not_instrumented' CHECK(posture IN ('green', 'watch', 'blocked', 'not_instrumented')),
+          owner_agent_id TEXT NOT NULL,
+          last_audit_at INTEGER,
+          last_dependency_scan_at INTEGER,
+          last_secret_scan_at INTEGER,
+          last_auth_review_at INTEGER,
+          last_path_drift_check_at INTEGER,
+          evidence_path TEXT,
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, system_key)
+        );
+
+        CREATE TABLE IF NOT EXISTS mission_control_security_findings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          system_key TEXT NOT NULL,
+          title TEXT NOT NULL,
+          severity TEXT NOT NULL CHECK(severity IN ('critical', 'high', 'medium', 'low', 'info')),
+          status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new', 'triage', 'accepted_risk', 'fixing', 'needs_verification', 'resolved', 'superseded')),
+          owner_agent_id TEXT NOT NULL,
+          evidence_path TEXT,
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_mc_security_systems_workspace ON mission_control_security_systems(workspace_id, posture);
+        CREATE INDEX IF NOT EXISTS idx_mc_security_findings_workspace ON mission_control_security_findings(workspace_id, system_key, status, severity);
+      `)
+
+      const now = Math.floor(Date.now() / 1000)
+      const systems = [
+        {
+          key: 'mission-control',
+          label: 'Mission Control Runtime',
+          posture: 'watch',
+          owner: 'koda',
+          audit: now,
+          dep: null,
+          secret: null,
+          auth: now,
+          path: now,
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/Dispatch_Outbox/2026-05-02_0553_MISSION_CONTROL_SLICE_009_KODA_CLOSEOUT.md',
+          action: 'Reclaim port 3000 safely, then rerun authenticated API/UI proof from canonical repo.'
+        },
+        {
+          key: 'blackwire-ops',
+          label: 'Blackwire Ops Coordination',
+          posture: 'watch',
+          owner: 'herm',
+          audit: now,
+          dep: null,
+          secret: null,
+          auth: null,
+          path: now,
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/HANDOFF.md',
+          action: 'Keep tracker/receipts evidence-gated; no green without proof.'
+        },
+        {
+          key: 'david-runtime',
+          label: 'David Runtime',
+          posture: 'not_instrumented',
+          owner: 'herm',
+          audit: null,
+          dep: null,
+          secret: null,
+          auth: null,
+          path: null,
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVMaterialSolutionsOps/runtime/david-agent',
+          action: 'Wire David proof into Mission Control after runtime owner accepts the adapter contract.'
+        },
+        {
+          key: 'mailbox-bridge',
+          label: 'Mailbox / Agent Alerts',
+          posture: 'watch',
+          owner: 'koda',
+          audit: now,
+          dep: null,
+          secret: null,
+          auth: null,
+          path: now,
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/Dispatch_Outbox',
+          action: 'Replace receipt-only mailbox drift with Mission Control queued-alert delivery.'
+        }
+      ]
+      const insertSystem = db.prepare(`
+        INSERT OR IGNORE INTO mission_control_security_systems (
+          workspace_id, system_key, label, posture, owner_agent_id,
+          last_audit_at, last_dependency_scan_at, last_secret_scan_at,
+          last_auth_review_at, last_path_drift_check_at, evidence_path,
+          next_action, created_at, updated_at
+        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      for (const system of systems) {
+        insertSystem.run(
+          system.key,
+          system.label,
+          system.posture,
+          system.owner,
+          system.audit,
+          system.dep,
+          system.secret,
+          system.auth,
+          system.path,
+          system.evidence,
+          system.action,
+          now,
+          now
+        )
+      }
+
+      const findings = [
+        {
+          system: 'mission-control',
+          title: 'Port 3000 is owned by non-canonical runtime processes',
+          severity: 'high',
+          status: 'needs_verification',
+          owner: 'koda',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/Dispatch_Outbox/2026-05-02_0553_MISSION_CONTROL_SLICE_009_KODA_CLOSEOUT.md',
+          action: 'Approve a safe stop/restart plan before canonical port 3000 proof.'
+        },
+        {
+          system: 'mission-control',
+          title: 'Security command hooks exist as MVP surface, not full automated audit runtime',
+          severity: 'medium',
+          status: 'triage',
+          owner: 'koda',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/Dispatch_Inbox/2026-05-02_0929_MISSION_CONTROL_SLICE_015_SECURITY_AND_REMAINING_MVP.md',
+          action: 'Keep missing scans labeled Not Instrumented Yet until adapters land.'
+        },
+        {
+          system: 'david-runtime',
+          title: 'David runtime proof is not yet wired into Mission Control',
+          severity: 'medium',
+          status: 'triage',
+          owner: 'herm',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVMaterialSolutionsOps/runtime/david-agent',
+          action: 'Create a read-only David runtime adapter before claiming shared Mission Control visibility.'
+        }
+      ]
+      const insertFinding = db.prepare(`
+        INSERT INTO mission_control_security_findings (
+          workspace_id, system_key, title, severity, status, owner_agent_id,
+          evidence_path, next_action, created_at, updated_at
+        )
+        SELECT 1, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM mission_control_security_findings
+          WHERE workspace_id = 1 AND system_key = ? AND title = ?
+        )
+      `)
+      for (const finding of findings) {
+        insertFinding.run(
+          finding.system,
+          finding.title,
+          finding.severity,
+          finding.status,
+          finding.owner,
+          finding.evidence,
+          finding.action,
+          now,
+          now,
+          finding.system,
+          finding.title
+        )
+      }
+    }
+  },
+  {
+    id: '047_mission_control_asset_library_v0',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS mission_control_asset_library_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          asset_key TEXT NOT NULL,
+          title TEXT NOT NULL,
+          asset_type TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'evidence_missing' CHECK(status IN ('verified', 'evidence_missing', 'draft', 'blocked')),
+          owner_project TEXT NOT NULL,
+          evidence_path TEXT,
+          source_url TEXT,
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, asset_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mc_asset_library_workspace ON mission_control_asset_library_items(workspace_id, status, asset_type);
+      `)
+
+      const now = Math.floor(Date.now() / 1000)
+      const assets = [
+        {
+          key: 'mission-control-local-mvp-proof',
+          title: 'Mission Control local MVP proof receipt',
+          type: 'receipt',
+          status: 'verified',
+          project: 'Mission Control',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_HERM_MISSION_CONTROL_MVP_PROOF_RECEIPT_0854.md',
+          source: null,
+          action: 'Use as the local Command Truth / Blackwire / evidence-gated Done proof baseline until production deploy proof exists.'
+        },
+        {
+          key: 'marketing-command-center-proof',
+          title: 'Marketing Command Center local proof receipt',
+          type: 'receipt',
+          status: 'verified',
+          project: 'Mission Control / Marketing',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/mission_control_continuity_runs/2026-05-02_1145_mission_control_marketing_surface_index_slice.md',
+          source: null,
+          action: 'Keep external sends/posts/spend blocked; use receipt as read-only local surface proof.'
+        },
+        {
+          key: 'security-command-center-proof',
+          title: 'Security Command Center DB-backed local proof receipt',
+          type: 'receipt',
+          status: 'verified',
+          project: 'Mission Control / Security',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/mission_control_continuity_runs/2026-05-02_1047_mission_control_security_command_runtime_slice.md',
+          source: null,
+          action: 'Use as MVP security surface proof only; daily audit hooks remain Not Instrumented Yet until wired.'
+        },
+        {
+          key: 'design-visual-receipts',
+          title: 'Design Studio visual receipt shelf',
+          type: 'screenshot',
+          status: 'evidence_missing',
+          project: 'Mission Control / Design',
+          evidence: null,
+          source: null,
+          action: 'Attach browser/screenshot visual QA receipts before approving design claims.'
+        },
+        {
+          key: 'vortex-owned-assets-index',
+          title: 'Vortex-owned apps/docs/products index',
+          type: 'inventory',
+          status: 'draft',
+          project: 'Asset Library',
+          evidence: null,
+          source: null,
+          action: 'Promote only assets with canonical file/source evidence; leave unproven inventory as Evidence Missing.'
+        }
+      ]
+      const insertAsset = db.prepare(`
+        INSERT INTO mission_control_asset_library_items (
+          workspace_id, asset_key, title, asset_type, status, owner_project,
+          evidence_path, source_url, next_action, created_at, updated_at
+        )
+        SELECT 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM mission_control_asset_library_items
+          WHERE workspace_id = 1 AND asset_key = ?
+        )
+      `)
+      for (const asset of assets) {
+        insertAsset.run(
+          asset.key,
+          asset.title,
+          asset.type,
+          asset.status,
+          asset.project,
+          asset.evidence,
+          asset.source,
+          asset.action,
+          now,
+          now,
+          asset.key
+        )
+      }
+    }
+  },
+  {
+    id: '048_mission_control_brainstorm_wall_v0',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS mission_control_brainstorm_ideas (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          idea_key TEXT NOT NULL,
+          title TEXT NOT NULL,
+          lane TEXT NOT NULL DEFAULT 'future' CHECK(lane IN ('active_mvp', 'future', 'hypothesis', 'parking_lot', 'promotion_gate')),
+          status TEXT NOT NULL DEFAULT 'evidence_missing' CHECK(status IN ('researched', 'evidence_missing', 'draft', 'blocked', 'approved_for_promotion')),
+          owner_project TEXT NOT NULL,
+          evidence_path TEXT,
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, idea_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mc_brainstorm_workspace ON mission_control_brainstorm_ideas(workspace_id, status, lane);
+      `)
+
+      const now = Math.floor(Date.now() / 1000)
+      const ideas = [
+        {
+          key: 'blackwire-room-demo',
+          title: 'Blackwire room → task board → approval → receipt → evidence-gated Done demo',
+          lane: 'active_mvp',
+          status: 'researched',
+          project: 'Mission Control',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_HERM_MISSION_CONTROL_MVP_PROOF_RECEIPT_0854.md',
+          action: 'Keep as the visible MVP anchor until production deploy and canonical port ownership are proven.'
+        },
+        {
+          key: 'research-karpathia-mirofish-lab',
+          title: 'Research Command Center with Karpathia Auto-Research and MiroFish Simulation Lab',
+          lane: 'hypothesis',
+          status: 'draft',
+          project: 'Research Command Center',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_RESEARCH_KARPATHIA_MIROFISH_DESIGN_CONTRACT.md',
+          action: 'Keep paid simulations approval-gated; wire source/citation receipts before claiming live research automation.'
+        },
+        {
+          key: 'trading-operations-cockpit',
+          title: 'Trading Operations cockpit for Polymarket and approved markets',
+          lane: 'future',
+          status: 'blocked',
+          project: 'Trading Operations',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_TRADING_OPERATIONS_CONTRACT.md',
+          action: 'Keep read-only with no orders, wallet/account mutation, API-key use, fake positions, fills, or P&L.'
+        },
+        {
+          key: 'vortex-owned-asset-discovery',
+          title: 'Broad Vortex-owned app/PDF/product/website asset discovery',
+          lane: 'future',
+          status: 'evidence_missing',
+          project: 'Asset Library',
+          evidence: null,
+          action: 'Research and attach evidence before any idea becomes an Asset Library verified item.'
+        },
+        {
+          key: 'mission-control-mobile-daily-driver',
+          title: 'Mission Control mobile daily-driver polish',
+          lane: 'parking_lot',
+          status: 'evidence_missing',
+          project: 'Mission Control / Design',
+          evidence: null,
+          action: 'Collect browser/mobile screenshots and UX acceptance notes before promotion.'
+        }
+      ]
+      const insertIdea = db.prepare(`
+        INSERT INTO mission_control_brainstorm_ideas (
+          workspace_id, idea_key, title, lane, status, owner_project,
+          evidence_path, next_action, created_at, updated_at
+        )
+        SELECT 1, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM mission_control_brainstorm_ideas
+          WHERE workspace_id = 1 AND idea_key = ?
+        )
+      `)
+      for (const idea of ideas) {
+        insertIdea.run(
+          idea.key,
+          idea.title,
+          idea.lane,
+          idea.status,
+          idea.project,
+          idea.evidence,
+          idea.action,
+          now,
+          now,
+          idea.key
+        )
+      }
+    }
+  },
+  {
+    id: '049_mission_control_brain_memory_v0',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS mission_control_brain_memory_layers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          layer_key TEXT NOT NULL,
+          label TEXT NOT NULL,
+          layer_type TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'evidence_missing' CHECK(status IN ('present_only', 'refreshing', 'queried_manually', 'runtime_backed', 'operationally_adopted', 'isolated', 'evidence_missing', 'blocked')),
+          domain TEXT NOT NULL,
+          evidence_path TEXT,
+          runtime_adoption TEXT NOT NULL DEFAULT 'not_adopted',
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, layer_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mc_brain_memory_layers_workspace ON mission_control_brain_memory_layers(workspace_id, status, layer_type);
+
+        CREATE TABLE IF NOT EXISTS mission_control_brain_memory_correction_requests (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workspace_id INTEGER NOT NULL DEFAULT 1,
+          request_key TEXT NOT NULL,
+          title TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'staged' CHECK(status IN ('staged', 'approved', 'applied', 'rejected', 'blocked')),
+          domain TEXT NOT NULL,
+          evidence_path TEXT,
+          requested_change TEXT NOT NULL,
+          next_action TEXT NOT NULL,
+          created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+          UNIQUE(workspace_id, request_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mc_brain_memory_corrections_workspace ON mission_control_brain_memory_correction_requests(workspace_id, status, domain);
+      `)
+
+      const now = Math.floor(Date.now() / 1000)
+      const layers = [
+        {
+          key: 'graphify-internal',
+          label: 'Graphify internal project graph',
+          type: 'graphify',
+          status: 'queried_manually',
+          domain: 'Vortex / Blackwire',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_RESEARCH_KARPATHIA_MIROFISH_DESIGN_CONTRACT.md',
+          adoption: 'manual_query_only',
+          action: 'Keep writes blocked unless an approved ingestion/correction receipt exists.'
+        },
+        {
+          key: 'gbrain-internal',
+          label: 'gBrain internal memory layer',
+          type: 'gbrain',
+          status: 'present_only',
+          domain: 'Vortex / Blackwire',
+          evidence: null,
+          adoption: 'not_adopted_by_runtime',
+          action: 'Document storage, freshness, read path, and runtime adoption proof before claiming operational use.'
+        },
+        {
+          key: 'receipts-derived-facts',
+          label: 'Receipts-derived fact layer',
+          type: 'receipts',
+          status: 'runtime_backed',
+          domain: 'Mission Control',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_HERM_MISSION_CONTROL_MVP_PROOF_RECEIPT_0854.md',
+          adoption: 'mission_control_surfaces_read_receipts_as_evidence',
+          action: 'Continue promoting only receipt-backed facts into command surfaces.'
+        },
+        {
+          key: 'david-msnj-brain',
+          label: 'David Material Solutions-only memory boundary',
+          type: 'david_brain',
+          status: 'isolated',
+          domain: 'Material Solutions / David',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_MISSION_CONTROL_MARKETING_COMMAND_CENTER_CONTRACT.md',
+          adoption: 'isolated_boundary_visible',
+          action: 'Do not mix David/customer memory with Vortex, Blackwire, trading, or internal project memory.'
+        },
+        {
+          key: 'candidate-memory-tools',
+          label: 'Candidate memory tools / screenshots',
+          type: 'candidate_tool',
+          status: 'evidence_missing',
+          domain: 'Tooling candidates',
+          evidence: null,
+          adoption: 'not_adopted',
+          action: 'Verify repo/link/security boundaries before adding any candidate as a memory layer.'
+        }
+      ]
+      const insertLayer = db.prepare(`
+        INSERT INTO mission_control_brain_memory_layers (
+          workspace_id, layer_key, label, layer_type, status, domain,
+          evidence_path, runtime_adoption, next_action, created_at, updated_at
+        )
+        SELECT 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM mission_control_brain_memory_layers
+          WHERE workspace_id = 1 AND layer_key = ?
+        )
+      `)
+      for (const layer of layers) {
+        insertLayer.run(
+          layer.key,
+          layer.label,
+          layer.type,
+          layer.status,
+          layer.domain,
+          layer.evidence,
+          layer.adoption,
+          layer.action,
+          now,
+          now,
+          layer.key
+        )
+      }
+
+      const corrections = [
+        {
+          key: 'false-green-finish-line-standard',
+          title: 'False-green / finish-line correction queue',
+          status: 'staged',
+          domain: 'Mission Control',
+          evidence: '/Users/vortexventures/Desktop/Vortex Ventures/VVHermsOps/Dispatch_Inbox/2026-05-02_HERM_MISSION_CONTROL_MVP_PROOF_RECEIPT_0854.md',
+          change: 'Keep done status evidence-gated and label missing integrations Not Instrumented Yet / Evidence Missing.',
+          action: 'Review before any approved Graphify/gBrain correction write; do not auto-write from this surface.'
+        }
+      ]
+      const insertCorrection = db.prepare(`
+        INSERT INTO mission_control_brain_memory_correction_requests (
+          workspace_id, request_key, title, status, domain, evidence_path,
+          requested_change, next_action, created_at, updated_at
+        )
+        SELECT 1, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM mission_control_brain_memory_correction_requests
+          WHERE workspace_id = 1 AND request_key = ?
+        )
+      `)
+      for (const correction of corrections) {
+        insertCorrection.run(
+          correction.key,
+          correction.title,
+          correction.status,
+          correction.domain,
+          correction.evidence,
+          correction.change,
+          correction.action,
+          now,
+          now,
+          correction.key
+        )
+      }
     }
   }
 ]

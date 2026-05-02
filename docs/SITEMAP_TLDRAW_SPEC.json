@@ -1,0 +1,216 @@
+{
+  "_meta": {
+    "title": "Mission Control — Sitemap v0",
+    "owner": "Patch",
+    "review": "Herm",
+    "implementer": "Coda",
+    "version": "v0",
+    "timestamp": "2026-05-01T20:55:00-04:00",
+    "intended_consumer": "tldraw canvas — render each node as a labeled rectangle, draw arrows per edges[], group by container",
+    "canvas_size": { "width": 2400, "height": 1800 },
+    "color_palette": {
+      "shell": "#0b0b12",
+      "core_group": "#1a1a2e",
+      "command_truth": "#3a2a6b",
+      "comms": "#2a4a6b",
+      "agents_work": "#1f3a3a",
+      "observe_automate_admin": "#2a2a3a",
+      "hubs_reserved": "#3a2a2a",
+      "metrics_reserved": "#3a2a2a",
+      "auth": "#1a3a1a",
+      "edge": "#6f6fa1",
+      "edge_dashed_reserved": "#a1716f"
+    }
+  },
+
+  "containers": [
+    {
+      "id": "shell",
+      "label": "APP SHELL  (NavRail · HeaderBar · LiveFeed · Banners · Modals)",
+      "color": "shell",
+      "rect": { "x": 60, "y": 60, "w": 2280, "h": 120 }
+    },
+    {
+      "id": "auth",
+      "label": "AUTH / ONBOARDING (existing)",
+      "color": "auth",
+      "rect": { "x": 60, "y": 220, "w": 360, "h": 220 }
+    },
+    {
+      "id": "command_truth_group",
+      "label": "COMMAND TRUTH v0  (NEW)",
+      "color": "command_truth",
+      "rect": { "x": 460, "y": 220, "w": 760, "h": 540 }
+    },
+    {
+      "id": "comms_group",
+      "label": "COMMS — Group Chat v0  (replaces /chat)",
+      "color": "comms",
+      "rect": { "x": 1260, "y": 220, "w": 1080, "h": 540 }
+    },
+    {
+      "id": "agents_work_group",
+      "label": "AGENTS · WORK  (existing surfaces preserved)",
+      "color": "agents_work",
+      "rect": { "x": 60, "y": 800, "w": 1160, "h": 280 }
+    },
+    {
+      "id": "observe_group",
+      "label": "OBSERVE  (existing)",
+      "color": "observe_automate_admin",
+      "rect": { "x": 1260, "y": 800, "w": 1080, "h": 280 }
+    },
+    {
+      "id": "automate_group",
+      "label": "AUTOMATE  (existing)",
+      "color": "observe_automate_admin",
+      "rect": { "x": 60, "y": 1120, "w": 600, "h": 200 }
+    },
+    {
+      "id": "admin_group",
+      "label": "ADMIN  (existing)",
+      "color": "observe_automate_admin",
+      "rect": { "x": 700, "y": 1120, "w": 700, "h": 200 }
+    },
+    {
+      "id": "metrics_reserved",
+      "label": "METRICS v1  (RESERVED — NotInstrumentedYet)",
+      "color": "metrics_reserved",
+      "rect": { "x": 1440, "y": 1120, "w": 460, "h": 200 }
+    },
+    {
+      "id": "hubs_reserved",
+      "label": "HUBS  (RESERVED — Coming v1)",
+      "color": "hubs_reserved",
+      "rect": { "x": 60, "y": 1360, "w": 2280, "h": 220 }
+    }
+  ],
+
+  "nodes": [
+    { "id": "login", "container": "auth", "label": "/login", "subtitle": "operator login (existing)", "kind": "page" },
+    { "id": "setup", "container": "auth", "label": "/setup", "subtitle": "first-run wizard (existing)", "kind": "page" },
+
+    { "id": "overview", "container": "command_truth_group", "label": "/overview", "subtitle": "dashboard tiles · pinned finish lines", "kind": "page", "rect": { "x": 480, "y": 270, "w": 220, "h": 70 } },
+    { "id": "command_truth", "container": "command_truth_group", "label": "/command-truth", "subtitle": "★ NEW — 4-tab Truth surface", "kind": "page_new", "rect": { "x": 720, "y": 270, "w": 240, "h": 70 } },
+    { "id": "ct_routes", "container": "command_truth_group", "label": "?tab=routes", "subtitle": "Canonical Routes", "kind": "tab", "rect": { "x": 480, "y": 380, "w": 200, "h": 60 } },
+    { "id": "ct_agents", "container": "command_truth_group", "label": "?tab=agents", "subtitle": "Agent Registry", "kind": "tab", "rect": { "x": 700, "y": 380, "w": 200, "h": 60 } },
+    { "id": "ct_projects", "container": "command_truth_group", "label": "?tab=projects", "subtitle": "Project Status", "kind": "tab", "rect": { "x": 920, "y": 380, "w": 200, "h": 60 } },
+    { "id": "ct_memory", "container": "command_truth_group", "label": "?tab=memory", "subtitle": "Memory Systems", "kind": "tab", "rect": { "x": 480, "y": 470, "w": 200, "h": 60 } },
+    { "id": "ct_route_detail", "container": "command_truth_group", "label": "/routes/:slug", "subtitle": "side-sheet drill-down", "kind": "drill", "rect": { "x": 700, "y": 580, "w": 200, "h": 60 } },
+    { "id": "ct_agent_detail", "container": "command_truth_group", "label": "/agents/:id", "subtitle": "side-sheet drill-down", "kind": "drill", "rect": { "x": 920, "y": 580, "w": 200, "h": 60 } },
+    { "id": "ct_project_detail", "container": "command_truth_group", "label": "/projects/:id", "subtitle": "side-sheet drill-down", "kind": "drill", "rect": { "x": 480, "y": 670, "w": 220, "h": 60 } },
+    { "id": "ct_memory_detail", "container": "command_truth_group", "label": "/memory/:layer", "subtitle": "side-sheet drill-down", "kind": "drill", "rect": { "x": 720, "y": 670, "w": 220, "h": 60 } },
+
+    { "id": "rooms", "container": "comms_group", "label": "/rooms", "subtitle": "rooms index + first room", "kind": "page_new", "rect": { "x": 1280, "y": 270, "w": 200, "h": 70 } },
+    { "id": "rooms_command", "container": "comms_group", "label": "/rooms/command", "subtitle": "Command Room", "kind": "room", "rect": { "x": 1500, "y": 270, "w": 220, "h": 70 } },
+    { "id": "rooms_blackwire", "container": "comms_group", "label": "/rooms/blackwire-ops", "subtitle": "★ v0 demo room", "kind": "room", "rect": { "x": 1740, "y": 270, "w": 240, "h": 70 } },
+    { "id": "rooms_generic", "container": "comms_group", "label": "/rooms/:slug", "subtitle": "project / system rooms", "kind": "room", "rect": { "x": 2000, "y": 270, "w": 220, "h": 70 } },
+    { "id": "dms", "container": "comms_group", "label": "/dms", "subtitle": "agent profile cards grid", "kind": "page_new", "rect": { "x": 1280, "y": 380, "w": 200, "h": 70 } },
+    { "id": "dms_thread", "container": "comms_group", "label": "/dms/:agentId", "subtitle": "1:1 agent thread", "kind": "room", "rect": { "x": 1500, "y": 380, "w": 220, "h": 70 } },
+    { "id": "tracker", "container": "comms_group", "label": "/tracker", "subtitle": "Assignment Tracker Board", "kind": "page_new", "rect": { "x": 1740, "y": 380, "w": 240, "h": 70 } },
+    { "id": "receipts", "container": "comms_group", "label": "/receipts", "subtitle": "Decision Receipts log", "kind": "page_new", "rect": { "x": 2000, "y": 380, "w": 220, "h": 70 } },
+    { "id": "archive_mailman", "container": "comms_group", "label": "/archive/mailman", "subtitle": "read-only filesystem browser", "kind": "page_new_readonly", "rect": { "x": 1280, "y": 490, "w": 280, "h": 70 } },
+
+    { "id": "agents_list", "container": "agents_work_group", "label": "/agents", "subtitle": "Squad Panel (existing)", "kind": "page_existing", "rect": { "x": 80, "y": 850, "w": 200, "h": 60 } },
+    { "id": "agent_detail", "container": "agents_work_group", "label": "/agents/:id", "subtitle": "AgentDetailTabs (existing)", "kind": "drill", "rect": { "x": 300, "y": 850, "w": 220, "h": 60 } },
+    { "id": "tasks", "container": "agents_work_group", "label": "/tasks", "subtitle": "Task board", "kind": "page_existing", "rect": { "x": 540, "y": 850, "w": 160, "h": 60 } },
+    { "id": "skills", "container": "agents_work_group", "label": "/skills", "subtitle": "Skills inventory", "kind": "page_existing", "rect": { "x": 720, "y": 850, "w": 160, "h": 60 } },
+    { "id": "memory", "container": "agents_work_group", "label": "/memory", "subtitle": "Memory browser", "kind": "page_existing", "rect": { "x": 900, "y": 850, "w": 160, "h": 60 } },
+    { "id": "research", "container": "agents_work_group", "label": "/research", "subtitle": "Research intake", "kind": "page_existing", "rect": { "x": 1080, "y": 850, "w": 120, "h": 60 } },
+
+    { "id": "obs_activity", "container": "observe_group", "label": "/activity", "kind": "page_existing", "rect": { "x": 1280, "y": 840, "w": 130, "h": 50 } },
+    { "id": "obs_dispatch", "container": "observe_group", "label": "/dispatch", "kind": "page_existing", "rect": { "x": 1420, "y": 840, "w": 130, "h": 50 } },
+    { "id": "obs_history", "container": "observe_group", "label": "/history", "kind": "page_existing", "rect": { "x": 1560, "y": 840, "w": 130, "h": 50 } },
+    { "id": "obs_logs", "container": "observe_group", "label": "/logs", "kind": "page_existing", "rect": { "x": 1700, "y": 840, "w": 100, "h": 50 } },
+    { "id": "obs_cost", "container": "observe_group", "label": "/cost-tracker", "kind": "page_existing", "rect": { "x": 1810, "y": 840, "w": 160, "h": 50 } },
+    { "id": "obs_expenses", "container": "observe_group", "label": "/expenses", "kind": "page_existing", "rect": { "x": 1980, "y": 840, "w": 130, "h": 50 } },
+    { "id": "obs_nodes", "container": "observe_group", "label": "/nodes", "kind": "page_existing", "rect": { "x": 2120, "y": 840, "w": 100, "h": 50 } },
+    { "id": "obs_approvals", "container": "observe_group", "label": "/exec-approvals", "kind": "page_existing", "rect": { "x": 1280, "y": 920, "w": 180, "h": 50 } },
+    { "id": "obs_content", "container": "observe_group", "label": "/content-research", "kind": "page_existing", "rect": { "x": 1470, "y": 920, "w": 200, "h": 50 } },
+    { "id": "obs_office", "container": "observe_group", "label": "/office", "kind": "page_existing", "rect": { "x": 1680, "y": 920, "w": 100, "h": 50 } },
+    { "id": "obs_factory", "container": "observe_group", "label": "/app-factory", "kind": "page_existing", "rect": { "x": 1790, "y": 920, "w": 150, "h": 50 } },
+    { "id": "obs_monitor", "container": "observe_group", "label": "/monitor", "kind": "page_existing", "rect": { "x": 1950, "y": 920, "w": 130, "h": 50 } },
+
+    { "id": "auto_cron", "container": "automate_group", "label": "/cron", "kind": "page_existing", "rect": { "x": 80, "y": 1170, "w": 110, "h": 50 } },
+    { "id": "auto_webhooks", "container": "automate_group", "label": "/webhooks", "kind": "page_existing", "rect": { "x": 200, "y": 1170, "w": 140, "h": 50 } },
+    { "id": "auto_alerts", "container": "automate_group", "label": "/alerts", "kind": "page_existing", "rect": { "x": 350, "y": 1170, "w": 110, "h": 50 } },
+    { "id": "auto_github", "container": "automate_group", "label": "/github", "kind": "page_existing", "rect": { "x": 470, "y": 1170, "w": 130, "h": 50 } },
+
+    { "id": "adm_security", "container": "admin_group", "label": "/security", "kind": "page_existing", "rect": { "x": 720, "y": 1170, "w": 110, "h": 50 } },
+    { "id": "adm_users", "container": "admin_group", "label": "/users", "kind": "page_existing", "rect": { "x": 840, "y": 1170, "w": 90, "h": 50 } },
+    { "id": "adm_audit", "container": "admin_group", "label": "/audit", "kind": "page_existing", "rect": { "x": 940, "y": 1170, "w": 90, "h": 50 } },
+    { "id": "adm_gateways", "container": "admin_group", "label": "/gateways", "kind": "page_existing", "rect": { "x": 1040, "y": 1170, "w": 110, "h": 50 } },
+    { "id": "adm_integrations", "container": "admin_group", "label": "/integrations", "kind": "page_existing", "rect": { "x": 1160, "y": 1170, "w": 130, "h": 50 } },
+    { "id": "adm_debug", "container": "admin_group", "label": "/debug", "kind": "page_existing", "rect": { "x": 1300, "y": 1170, "w": 90, "h": 50 } },
+    { "id": "adm_settings", "container": "admin_group", "label": "/settings", "kind": "page_existing", "rect": { "x": 720, "y": 1240, "w": 110, "h": 50 } },
+
+    { "id": "metrics", "container": "metrics_reserved", "label": "/metrics", "subtitle": "Metrics v1 — NotInstrumentedYet", "kind": "page_reserved", "rect": { "x": 1460, "y": 1170, "w": 420, "h": 130 } },
+
+    { "id": "hub_msnj", "container": "hubs_reserved", "label": "/hubs/material-solutions", "subtitle": "MSNJ hub (RESERVED)", "kind": "page_reserved", "rect": { "x": 80, "y": 1410, "w": 280, "h": 140 } },
+    { "id": "hub_msnj_david", "container": "hubs_reserved", "label": "/hubs/material-solutions/david", "subtitle": "David page (RESERVED)", "kind": "page_reserved", "rect": { "x": 380, "y": 1410, "w": 320, "h": 140 } },
+    { "id": "hub_blackwire", "container": "hubs_reserved", "label": "/hubs/blackwire", "subtitle": "Blackwire HQ (RESERVED)", "kind": "page_reserved", "rect": { "x": 720, "y": 1410, "w": 240, "h": 140 } },
+    { "id": "hub_blackwire_proj", "container": "hubs_reserved", "label": "/hubs/blackwire/projects/:id", "subtitle": "per-project tab (RESERVED)", "kind": "page_reserved", "rect": { "x": 980, "y": 1410, "w": 320, "h": 140 } },
+    { "id": "hub_trading", "container": "hubs_reserved", "label": "/hubs/trading", "subtitle": "Trading Operations (RESERVED)", "kind": "page_reserved", "rect": { "x": 1320, "y": 1410, "w": 280, "h": 140 } }
+  ],
+
+  "edges": [
+    { "from": "login", "to": "overview", "label": "auth ok", "kind": "flow" },
+    { "from": "setup", "to": "overview", "label": "setup done", "kind": "flow" },
+
+    { "from": "overview", "to": "command_truth", "kind": "nav" },
+    { "from": "command_truth", "to": "ct_routes", "kind": "tab" },
+    { "from": "command_truth", "to": "ct_agents", "kind": "tab" },
+    { "from": "command_truth", "to": "ct_projects", "kind": "tab" },
+    { "from": "command_truth", "to": "ct_memory", "kind": "tab" },
+    { "from": "ct_routes", "to": "ct_route_detail", "kind": "drill" },
+    { "from": "ct_agents", "to": "ct_agent_detail", "kind": "drill" },
+    { "from": "ct_projects", "to": "ct_project_detail", "kind": "drill" },
+    { "from": "ct_memory", "to": "ct_memory_detail", "kind": "drill" },
+
+    { "from": "overview", "to": "rooms", "kind": "nav" },
+    { "from": "rooms", "to": "rooms_command", "kind": "drill" },
+    { "from": "rooms", "to": "rooms_blackwire", "kind": "drill" },
+    { "from": "rooms", "to": "rooms_generic", "kind": "drill" },
+    { "from": "rooms", "to": "dms", "kind": "sibling" },
+    { "from": "dms", "to": "dms_thread", "kind": "drill" },
+    { "from": "rooms_blackwire", "to": "tracker", "label": "@mention → task", "kind": "flow" },
+    { "from": "rooms_blackwire", "to": "receipts", "label": "important → receipt", "kind": "flow" },
+    { "from": "rooms", "to": "archive_mailman", "kind": "footer_link" },
+
+    { "from": "overview", "to": "agents_list", "kind": "nav" },
+    { "from": "agents_list", "to": "agent_detail", "kind": "drill" },
+    { "from": "ct_agent_detail", "to": "agent_detail", "label": "deep link", "kind": "flow_dashed" },
+    { "from": "ct_agent_detail", "to": "dms_thread", "label": "DM agent", "kind": "flow_dashed" },
+
+    { "from": "overview", "to": "metrics", "kind": "nav_reserved" },
+    { "from": "overview", "to": "hub_msnj", "kind": "nav_reserved" },
+    { "from": "overview", "to": "hub_blackwire", "kind": "nav_reserved" },
+    { "from": "overview", "to": "hub_trading", "kind": "nav_reserved" },
+    { "from": "hub_msnj", "to": "hub_msnj_david", "kind": "drill_reserved" },
+    { "from": "hub_blackwire", "to": "hub_blackwire_proj", "kind": "drill_reserved" }
+  ],
+
+  "node_kind_legend": {
+    "page": "existing top-level page",
+    "page_new": "NEW v0 page",
+    "page_existing": "preserved existing panel",
+    "page_new_readonly": "NEW read-only utility",
+    "page_reserved": "RESERVED v1 — renders NotInstrumentedYet",
+    "tab": "tab inside a parent page (?tab=…)",
+    "room": "Group Chat room",
+    "drill": "side-sheet drill-down (no page transition)"
+  },
+
+  "edge_kind_legend": {
+    "nav": "nav-rail navigation",
+    "nav_reserved": "nav entry exists but page is reserved (dashed)",
+    "tab": "in-page tab switch",
+    "drill": "list → detail (side-sheet)",
+    "drill_reserved": "drill in reserved hub (dashed)",
+    "flow": "user/system action triggers transition",
+    "flow_dashed": "deep-link cross-section (dashed)",
+    "sibling": "sibling navigation, both visible in same group",
+    "footer_link": "footer / utility link",
+    "tier": "approval-tier transition"
+  }
+}

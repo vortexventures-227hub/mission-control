@@ -358,7 +358,7 @@ export async function PUT(request: NextRequest) {
       const now = Math.floor(Date.now() / 1000);
       
       // Build dynamic update query
-      const fieldsToUpdate = [];
+      const fieldsToUpdate: string[] = [];
       const params: any[] = [];
       
       if (status !== undefined) {

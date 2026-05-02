@@ -75,6 +75,14 @@ interface JSONLEntry {
 }
 
 /** Parse a single JSONL file and extract session stats */
+/** Extract agent name from a session_id (first segment before ':') */
+function extractAgentName(sessionId: string): string {
+  const trimmed = sessionId.trim()
+  if (!trimmed) return 'unknown'
+  const [agent] = trimmed.split(':')
+  return agent?.trim() || 'unknown'
+}
+
 function clampTimestamp(ms: number): number {
   if (!Number.isFinite(ms) || ms <= 0) return 0
   const now = Date.now()
@@ -311,6 +319,21 @@ export async function syncClaudeSessions(force = false): Promise<{ ok: boolean; 
         updated_at = excluded.updated_at
     `)
 
+    // Prepared statement for token_usage — forward-sync so Cost Tracker stays in sync
+    // Uses UPSERT (ON CONFLICT) to update token counts on each scan rather than inserting duplicates.
+    // Falls back to INSERT for new sessions. Requires unique index on session_id (migration 025+).
+    const insertTokenUsage = db.prepare(`
+      INSERT INTO token_usage (
+        model, session_id, input_tokens, output_tokens,
+        cost_usd, agent_name, workspace_id, task_id, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(session_id) DO UPDATE SET
+        model = excluded.model,
+        input_tokens = excluded.input_tokens,
+        output_tokens = excluded.output_tokens,
+        cost_usd = excluded.cost_usd
+    `)
+
     let upserted = 0
     db.transaction(() => {
       // Mark all sessions inactive before scanning
@@ -324,6 +347,25 @@ export async function syncClaudeSessions(force = false): Promise<{ ok: boolean; 
           s.firstMessageAt, s.lastMessageAt, s.lastUserPrompt,
           s.isActive ? 1 : 0, nowSec, nowSec,
         )
+
+        // Forward-sync to token_usage so Cost Tracker reflects live session data
+        const agentName = extractAgentName(s.sessionId)
+        const createdAt = s.firstMessageAt
+          ? Math.floor(new Date(s.firstMessageAt).getTime() / 1000)
+          : nowSec
+
+        insertTokenUsage.run(
+          s.model ?? 'unknown',
+          s.sessionId,
+          s.inputTokens,
+          s.outputTokens,
+          s.estimatedCost,
+          agentName,
+          1,
+          null,
+          createdAt,
+        )
+
         upserted++
       }
     })()

@@ -18,6 +18,7 @@ import { ActivityFeedPanel } from '@/components/panels/activity-feed-panel'
 import { AgentSquadPanelPhase3 } from '@/components/panels/agent-squad-panel-phase3'
 import { AgentCommsPanel } from '@/components/panels/agent-comms-panel'
 import { StandupPanel } from '@/components/panels/standup-panel'
+import { HistoricalTimelinePanel } from '@/components/panels/historical-timeline-panel'
 import { OrchestrationBar } from '@/components/panels/orchestration-bar'
 import { NotificationsPanel } from '@/components/panels/notifications-panel'
 import { UserManagementPanel } from '@/components/panels/user-management-panel'
@@ -36,11 +37,17 @@ import { AIToolkitPanel } from '@/components/panels/ai-toolkit-panel'
 import { LocalAgentsDocPanel } from '@/components/panels/local-agents-doc-panel'
 import { ChannelsPanel } from '@/components/panels/channels-panel'
 import { DebugPanel } from '@/components/panels/debug-panel'
-import { SecurityAuditPanel } from '@/components/panels/security-audit-panel'
+import { SecurityCommandCenterPanel } from '@/components/panels/security-command-center-panel'
 import { NodesPanel } from '@/components/panels/nodes-panel'
 import { ExecApprovalPanel } from '@/components/panels/exec-approval-panel'
 import { SystemMonitorPanel } from '@/components/panels/system-monitor-panel'
 import { AppFactoryPanel } from '@/components/panels/app-factory-panel'
+import { DispatchInboxPanel } from '@/components/panels/dispatch-inbox-panel'
+import { GroupChatPanel } from '@/components/panels/group-chat-panel'
+import { CommandTruthPanel } from '@/components/panels/command-truth-panel'
+import { MarketingCommandCenterPanel } from '@/components/panels/marketing-command-center-panel'
+import { MissionControlSurfacePanel } from '@/components/panels/mission-control-surface-panel'
+import { DocumentsPanel } from '@/components/panels/documents-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
 import { getPluginPanel } from '@/lib/plugins'
@@ -456,7 +463,7 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'agents', 'tasks', 'chat', 'activity', 'logs', 'settings',
+  'overview', 'command-truth', 'agents', 'tasks', 'group-chat', 'chat', 'activity', 'logs', 'settings',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -508,8 +515,23 @@ function ContentRouter({ tab }: { tab: string }) {
           )}
         </>
       )
+    case 'command-truth':
+      return <CommandTruthPanel />
+    case 'mission-control':
+    case 'security-command':
+    case 'research-command':
+    case 'trading':
+    case 'design':
+    case 'brain-memory':
+    case 'asset-library':
+    case 'brainstorm':
+      return <MissionControlSurfacePanel surfaceId={tab} />
+    case 'marketing':
+      return <MarketingCommandCenterPanel />
     case 'tasks':
       return <TaskBoardPanel />
+    case 'group-chat':
+      return <GroupChatPanel />
     case 'agents':
       return (
         <>
@@ -534,6 +556,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <ContentResearchPanel />
     case 'research':
       return <ResearchIntakePanel />
+    case 'documents':
+      return <DocumentsPanel />
     case 'cost-tracker':
     case 'tokens':
     case 'agent-costs':
@@ -544,6 +568,7 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'users':
       return <UserManagementPanel />
     case 'history':
+      return <HistoricalTimelinePanel />
     case 'activity':
       return <ActivityFeedPanel />
     case 'audit':
@@ -570,6 +595,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <OfficePanel />
     case 'app-factory':
       return <AppFactoryPanel />
+    case 'dispatch':
+      return <DispatchInboxPanel />
     case 'monitor':
       return <SystemMonitorPanel />
     case 'skills':
@@ -583,7 +610,7 @@ function ContentRouter({ tab }: { tab: string }) {
       if (isLocal) return <LocalModeUnavailable panel={tab} />
       return <NodesPanel />
     case 'security':
-      return <SecurityAuditPanel />
+      return <SecurityCommandCenterPanel />
     case 'debug':
       return <DebugPanel />
     case 'exec-approvals':

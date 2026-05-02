@@ -243,9 +243,33 @@ export function AgentSquadPanel() {
         ) : viewMode === 'teams' ? (
           // Teams View
           <div className="space-y-6">
+            {/* Orchestrator Hero Section */}
+            {(() => {
+              const orchestrator = agents.find(a => a.name === 'main')
+              if (!orchestrator) return null
+              const profile = getAgentProfile('main')
+              return (
+                <div className="bg-gradient-to-r from-sky-900/50 to-sky-800/30 rounded-xl border-2 border-sky-500/50 p-6 mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="text-5xl">{profile.emoji}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <h2 className="text-2xl font-bold text-white">{profile.displayName}</h2>
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${orchestrator.status === 'busy' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                          {orchestrator.status === 'busy' ? '● Busy' : '○ ' + orchestrator.status}
+                        </span>
+                      </div>
+                      <p className="text-sky-300 font-medium">{profile.role}</p>
+                      <p className="text-gray-400 text-sm mt-1">{profile.description}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+            
             {teamOrder.map(teamType => {
-              const teamAgents = agentsByTeam[teamType]
-              if (!teamAgents || teamAgents.length === 0) return null
+              const teamAgents = agentsByTeam[teamType]?.filter(a => a.name !== 'main') || []
+              if (teamAgents.length === 0) return null
               const teamInfo = TEAMS[teamType]
               
               return (
