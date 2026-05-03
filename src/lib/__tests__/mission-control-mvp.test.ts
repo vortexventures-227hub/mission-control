@@ -6,6 +6,8 @@ vi.mock('../db', () => ({
       get: () => {
         if (sql.includes('projects')) return { count: 2 }
         if (sql.includes('tasks')) return { count: 8 }
+        if (sql.includes("status = 'done' AND evidence IS NOT NULL")) return { count: 1 }
+        if (sql.includes("status = 'done' AND (evidence IS NULL")) return { count: 0 }
         if (sql.includes('group_chat_assignment_tracker_items')) return { count: 1 }
         if (sql.includes('exec_approval_requests')) return { count: 0 }
         if (sql.includes('artifacts')) return { count: 0 }
@@ -83,6 +85,19 @@ describe('Mission Control MVP snapshot', () => {
     expect(byId['trading-operations'].detail).toContain('execution blocked')
     expect(byId['design-studio'].status).toBe('partial')
     expect(byId['design-studio'].detail).toContain('4 design inventory rows')
+  })
+
+  it('exposes Blackwire group-chat and evidence-gated Done gates without treating receipts as completion', () => {
+    const snapshot = getMissionControlMvpSnapshot(1)
+    const gates = Object.fromEntries(snapshot.blackwireDoneGates.map((gate) => [gate.id, gate]))
+
+    expect(snapshot.metrics.doneWithEvidence).toBe(1)
+    expect(snapshot.metrics.doneWithoutEvidence).toBe(0)
+    expect(gates['room-source-of-truth'].status).toBe('read_only')
+    expect(gates['assignment-board-evidence'].status).toBe('read_only')
+    expect(gates['assignment-board-evidence'].requiredEvidence).toContain('Done without evidence is blocked')
+    expect(gates['approval-receipt-gate'].requiredEvidence).toContain('scoped decision receipt')
+    expect(gates['recipient-delivery-proof'].detail).toContain('sent / delivered / seen')
   })
 
   it('exposes explicit no-fake-green truth gates for approval and missing integrations', () => {

@@ -34,6 +34,16 @@ interface TruthGate {
   href?: string
 }
 
+interface BlackwireDoneGate {
+  id: string
+  label: string
+  status: 'read_only' | 'approval_required' | 'evidence_missing' | 'blocked'
+  detail: string
+  requiredEvidence: string
+  source: string
+  href?: string
+}
+
 interface MvpSnapshot {
   generatedAt: number
   canonical: {
@@ -44,6 +54,7 @@ interface MvpSnapshot {
   metrics: Record<string, number>
   blackwireFlow: string[]
   surfaces: Surface[]
+  blackwireDoneGates: BlackwireDoneGate[]
   agents: Array<{ agent_id: string; display_name: string; status: string; current_assignment: string | null; last_proof: string | null }>
   assignments: Array<{ id: number; title: string; status: string; priority: string; assignee_agent_id: string | null; evidence: string | null }>
   receipts: Array<{ id: number; decision: string; approval_tier: string; approved_by: string; evidence: string | null; created_at: number }>
@@ -255,6 +266,30 @@ export function CommandTruthPanel() {
                 <li key={step} className="flex gap-2"><span className="font-black text-primary">{index + 1}.</span><span>{step}</span></li>
               ))}
             </ol>
+          </section>
+
+          <section className="rounded-2xl border border-red-500/20 bg-card p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="font-bold text-foreground">Blackwire Done gates</h2>
+                <p className="mt-1 text-xs text-muted-foreground">Group chat, board, approvals, receipts, and delivery proof must be visible before Done is treated as real.</p>
+              </div>
+              <StatusBadge status="evidence_missing" />
+            </div>
+            <div className="mt-3 space-y-2">
+              {(snapshot?.blackwireDoneGates || []).map((gate) => (
+                <article key={gate.id} className="rounded-xl border border-border bg-background p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">{gate.label}</h3>
+                    <StatusBadge status={gate.status} />
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{gate.detail}</p>
+                  <p className="mt-2 text-xs leading-5 text-orange-200">Required evidence: {gate.requiredEvidence}</p>
+                  <p className="mt-2 break-all text-[11px] text-primary">Source: {gate.source}</p>
+                  {gate.href && <Link className="mt-2 inline-block text-xs font-semibold text-primary hover:underline" href={gate.href}>Open gate →</Link>}
+                </article>
+              ))}
+            </div>
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-4">

@@ -58,8 +58,8 @@ vi.mock('../brainstorm-command', () => ({
       autoPromotionEnabled: false,
     },
     ideas: [
-      { id: 1, idea_key: 'blackwire-room-demo', title: 'Blackwire room demo', lane: 'active_mvp', status: 'researched', owner_project: 'Mission Control', evidence_path: '/receipts/blackwire.md', next_action: 'Keep as visible MVP anchor.' },
-      { id: 2, idea_key: 'unverified-marketplace-app', title: 'Marketplace app idea', lane: 'future', status: 'evidence_missing', owner_project: 'App Factory', evidence_path: null, next_action: 'Research before promotion.' },
+      { id: 1, idea_key: 'blackwire-room-demo', title: 'Blackwire room demo', lane: 'active_mvp', status: 'researched', owner_project: 'Mission Control', evidence_path: '/receipts/blackwire.md', next_action: 'Keep as visible MVP anchor.', details: [{ label: 'Research / evidence gate', value: 'Evidence attached: /receipts/blackwire.md', status: 'read_only' }, { label: 'Promotion boundary', value: 'No automatic external action; scoped approval required.', status: 'approval_required' }] },
+      { id: 2, idea_key: 'unverified-marketplace-app', title: 'Marketplace app idea', lane: 'future', status: 'evidence_missing', owner_project: 'App Factory', evidence_path: null, next_action: 'Research before promotion.', details: [{ label: 'Research / evidence gate', value: 'Evidence Missing: no research receipt attached.', status: 'evidence_missing' }, { label: 'Promotion boundary', value: 'No automatic promotion into tasks, campaigns, trades, or memory.', status: 'approval_required' }] },
     ],
   }),
 }))
@@ -119,16 +119,23 @@ vi.mock('../trading-operations-command', () => ({
     summary: {
       totalWatchItems: 4,
       evidenceMissing: 1,
+      blockedItems: 1,
+      detailGatesVisible: 12,
+      sourceReceiptsLinked: 3,
+      ledgerReceiptsLinked: 0,
+      livePositionsImported: false,
+      fillsImported: false,
+      pnlImported: false,
       executionEnabled: false,
       connectorInstrumented: false,
       walletMutationEnabled: false,
       approvalRequiredForTrades: true,
     },
     watchItems: [
-      { id: 1, item_key: 'polymarket-watchlist-shell', title: 'Polymarket watchlist shell', lane: 'watchlist', status: 'planned', owner_agent: 'Herald', market_url: null, evidence_path: '/receipts/watch.md', next_action: 'Add sourced watch items only.' },
-      { id: 2, item_key: 'execution-hard-block', title: 'Execution hard block', lane: 'execution_guard', status: 'blocked', owner_agent: 'Ledger', market_url: null, evidence_path: '/receipts/block.md', next_action: 'No trades from Mission Control.' },
-      { id: 3, item_key: 'approval-gated-risk-note', title: 'Approval-gated risk note', lane: 'risk', status: 'approval_required', owner_agent: 'Knox', market_url: null, evidence_path: '/receipts/risk.md', next_action: 'Ask Chris before account-affecting action.' },
-      { id: 4, item_key: 'uncited-market-signal', title: 'Uncited market signal', lane: 'signals', status: 'evidence_missing', owner_agent: 'Atlas', market_url: null, evidence_path: null, next_action: 'Attach citations.' },
+      { id: 1, item_key: 'polymarket-watchlist-shell', title: 'Polymarket watchlist shell', lane: 'watchlist', status: 'planned', owner_agent: 'Herald', market_url: null, evidence_path: '/receipts/watch.md', next_action: 'Add sourced watch items only.', details: [{ label: 'Market data gate', value: 'Not Instrumented Yet: no live quotes.', status: 'not_instrumented' }, { label: 'Execution boundary', value: 'No orders or API-key use.', status: 'blocked' }] },
+      { id: 2, item_key: 'execution-hard-block', title: 'Execution hard block', lane: 'execution_guard', status: 'blocked', owner_agent: 'Ledger', market_url: null, evidence_path: '/receipts/block.md', next_action: 'No trades from Mission Control.', details: [{ label: 'Execution hard block', value: 'Blocked: no order placement or account mutation route exists.', status: 'blocked' }, { label: 'Approval object requirement', value: 'Explicit Chris approval required.', status: 'approval_required' }] },
+      { id: 3, item_key: 'approval-gated-risk-note', title: 'Approval-gated risk note', lane: 'risk', status: 'approval_required', owner_agent: 'Knox', market_url: null, evidence_path: '/receipts/risk.md', next_action: 'Ask Chris before account-affecting action.', details: [{ label: 'Sizing input gate', value: 'Approval Required before account-affecting action.', status: 'approval_required' }, { label: 'Balance / position truth', value: 'Evidence Missing: no balance imported.', status: 'evidence_missing' }] },
+      { id: 4, item_key: 'uncited-market-signal', title: 'Uncited market signal', lane: 'signals', status: 'evidence_missing', owner_agent: 'Atlas', market_url: null, evidence_path: null, next_action: 'Attach citations.', details: [{ label: 'Signal evidence gate', value: 'Evidence Missing: citations absent.', status: 'evidence_missing' }, { label: 'Actionability boundary', value: 'No signal can trigger a trade.', status: 'blocked' }] },
     ],
   }),
 }))
@@ -231,6 +238,23 @@ describe('mission control surface snapshots', () => {
     expect(trading?.sections.flatMap((section) => section.cards).find((card) => card.id === 'execution-guard')?.status).toBe('blocked')
   })
 
+  it('projects Trading Operations DB rows with source, execution, ledger, and approval gates visible', () => {
+    const trading = getMissionControlSurfaceSnapshot('trading')
+    const cards = trading?.sections.flatMap((section) => section.cards) || []
+
+    expect(trading?.summary.totalWatchItems).toBe(4)
+    expect(trading?.summary.executionEnabled).toBe(false)
+    expect(trading?.summary.walletMutationEnabled).toBe(false)
+    expect(trading?.summary.livePositionsImported).toBe(false)
+    expect(trading?.summary.pnlImported).toBe(false)
+    expect(trading?.summary.detailGatesVisible).toBe(12)
+    expect(trading?.guardrails.join(' ')).toContain('No real trades')
+    expect(cards.find((card) => card.id === 'trading-polymarket-watchlist-shell')?.details?.find((detail) => detail.label === 'Market data gate')?.status).toBe('not_instrumented')
+    expect(cards.find((card) => card.id === 'trading-uncited-market-signal')?.details?.find((detail) => detail.label === 'Signal evidence gate')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'trading-approval-gated-risk-note')?.details?.find((detail) => detail.label === 'Sizing input gate')?.status).toBe('approval_required')
+    expect(cards.find((card) => card.id === 'trading-execution-hard-block')?.details?.find((detail) => detail.label === 'Execution hard block')?.value).toContain('Blocked')
+  })
+
   it('merges DB-backed Asset Library rows into the shared surface without hiding evidence gaps', () => {
     const assetLibrary = getMissionControlSurfaceSnapshot('asset-library')
     const cards = assetLibrary?.sections.flatMap((section) => section.cards) || []
@@ -257,7 +281,10 @@ describe('mission control surface snapshots', () => {
     expect(brainstorm?.summary.autoPromotionEnabled).toBe(false)
     expect(brainstorm?.guardrails.join(' ')).toContain('Mock brainstorm guardrail')
     expect(cards.find((card) => card.id === 'idea-blackwire-room-demo')?.status).toBe('read_only')
+    expect(cards.find((card) => card.id === 'idea-blackwire-room-demo')?.details?.find((detail) => detail.label === 'Promotion boundary')?.status).toBe('approval_required')
     expect(cards.find((card) => card.id === 'idea-unverified-marketplace-app')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'idea-unverified-marketplace-app')?.details?.find((detail) => detail.label === 'Research / evidence gate')?.status).toBe('evidence_missing')
+    expect(cards.find((card) => card.id === 'idea-unverified-marketplace-app')?.details?.find((detail) => detail.label === 'Promotion boundary')?.value).toContain('No automatic promotion')
   })
 
   it('merges DB-backed Brain / Memory layers into the shared surface with isolation and write gates visible', () => {

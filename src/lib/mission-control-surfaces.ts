@@ -50,6 +50,18 @@ const globalGuardrails = [
 
 const card = (input: SurfaceCard): SurfaceCard => input
 
+const tradingSurfaceDetails = (lane: string): SurfaceCard['details'] => {
+  const common = {
+    watchlist: [{ label: 'Market data gate', value: 'Not Instrumented Yet: no live market connector or quote receipt attached.', status: 'not_instrumented' as const }],
+    signals: [{ label: 'Signal evidence gate', value: 'Evidence Missing: citations and timestamps required before actionability.', status: 'evidence_missing' as const }],
+    risk: [{ label: 'Sizing input gate', value: 'Approval Required before account-affecting risk/sizing action.', status: 'approval_required' as const }],
+    spread: [{ label: 'Spread data gate', value: 'Not Instrumented Yet: no cross-market quote, fee, or fill-risk source attached.', status: 'not_instrumented' as const }],
+    ledger: [{ label: 'Ledger receipt gate', value: 'Evidence Missing: positions, fills, P&L, and hit rate require verified receipts.', status: 'evidence_missing' as const }],
+    execution_guard: [{ label: 'Execution hard block', value: 'Blocked: no order, wallet, account mutation, API-key use, or automated execution route exists.', status: 'blocked' as const }],
+  }
+  return common[lane as keyof typeof common] || [{ label: 'Trading truth gate', value: 'Evidence Missing until trading source, approval, and receipt gates are linked.', status: 'evidence_missing' }]
+}
+
 const snapshots: Record<string, Omit<MissionControlSurfaceSnapshot, 'generatedAt'>> = {
   'mission-control': {
     id: 'mission-control',
@@ -404,17 +416,18 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
       sections: [
         {
           id: 'db-backed-trading-watch-items',
-          title: 'DB-backed trading watch items / no-execution ledger',
-          status: trading.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+          title: 'DB-backed trading watchlist / signals / risk gates',
+          status: trading.summary.blockedItems > 0 ? 'blocked' : trading.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
           cards: trading.watchItems.map((item) => card({
             id: `trading-${item.item_key}`,
             title: item.title,
             status: item.status === 'watching' || item.status === 'researched' ? 'read_only' : item.status,
             owner: item.owner_agent,
-            summary: `${item.lane.replace(/_/g, ' ')} item owned by ${item.owner_agent}.`,
-            evidence: item.evidence_path || item.market_url || 'Evidence Missing: no citation, market URL, ledger, or approval receipt attached.',
+            summary: `${item.lane.replace(/_/g, ' ')} lane for ${item.owner_agent}; ${item.next_action}`,
+            evidence: item.evidence_path || item.market_url || 'Evidence Missing: no timestamped market URL, source citation, approval, or ledger receipt attached.',
             nextAction: item.next_action,
-            links: item.market_url ? [{ label: 'Market reference', href: item.market_url }] : undefined,
+            details: item.details || tradingSurfaceDetails(item.lane),
+            links: item.market_url ? [{ label: 'Market source', href: item.market_url }] : undefined,
           })),
         },
         ...snapshot.sections,
@@ -639,6 +652,7 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
             summary: `${idea.lane.replace(/_/g, ' ')} idea for ${idea.owner_project}.`,
             evidence: idea.evidence_path || 'Evidence Missing: no research receipt or source attached.',
             nextAction: idea.next_action,
+            details: idea.details,
           })),
         },
         ...snapshot.sections,

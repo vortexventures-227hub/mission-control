@@ -44,6 +44,16 @@ export interface MvpTruthGate {
   href?: string
 }
 
+export interface MvpBlackwireGate {
+  id: string
+  label: string
+  status: 'read_only' | 'approval_required' | 'evidence_missing' | 'blocked'
+  detail: string
+  requiredEvidence: string
+  source: string
+  href?: string
+}
+
 function scalarCount(sql: string, ...params: unknown[]): number {
   const db = getDatabase()
   const row = db.prepare(sql).get(...params) as { count?: number } | undefined
@@ -95,7 +105,9 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
   const projects = safeCount(`SELECT COUNT(*) as count FROM projects WHERE workspace_id = ? AND status = 'active'`, workspaceId)
   const tasks = safeCount(`SELECT COUNT(*) as count FROM tasks WHERE workspace_id = ?`, workspaceId)
   const doneWithEvidence = safeCount(`SELECT COUNT(*) as count FROM group_chat_assignment_tracker_items WHERE workspace_id = ? AND status = 'done' AND evidence IS NOT NULL AND TRIM(evidence) != ''`, workspaceId)
+  const doneWithoutEvidence = safeCount(`SELECT COUNT(*) as count FROM group_chat_assignment_tracker_items WHERE workspace_id = ? AND status = 'done' AND (evidence IS NULL OR TRIM(evidence) = '')`, workspaceId)
   const approvalsPending = safeCount(`SELECT COUNT(*) as count FROM exec_approval_requests WHERE workspace_id = ? AND status IN ('pending','requested')`, workspaceId)
+  const approvalNeededAssignments = assignments.filter((assignment) => assignment.priority === 'approval_needed' || assignment.priority === 'blocker' || assignment.status === 'blocked').length
   const messageDeliveryStates = messages.flatMap((message) => message.delivery.map((delivery) => delivery.state))
   const security = getSecurityCommandSnapshot(workspaceId)
   const assetLibrarySurface = getAssetLibrarySnapshot(workspaceId)
@@ -157,6 +169,45 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
       sourcePath: '/api/group-chat/assignments',
       lastChecked: Math.floor(Date.now() / 1000),
       evidence: 'Assignment tracker items carry owner, status, and evidence fields; Done requires evidence.',
+    },
+  ]
+
+  const blackwireDoneGates: MvpBlackwireGate[] = [
+    {
+      id: 'room-source-of-truth',
+      label: 'Blackwire group chat source-of-truth',
+      status: selectedRoom ? 'read_only' : 'evidence_missing',
+      detail: selectedRoom ? `${selectedRoom.name} is the selected Blackwire room with ${messages.length} message(s) visible to Command Truth.` : 'Evidence Missing: no Blackwire project room is available in the group-chat store.',
+      requiredEvidence: 'A project room, recent message history, and delivery states before using chat as operational truth.',
+      source: selectedRoom ? `/group-chat/${selectedRoom.slug}` : '/api/group-chat/rooms',
+      href: '/group-chat',
+    },
+    {
+      id: 'assignment-board-evidence',
+      label: 'Task board / evidence-gated Done',
+      status: doneWithoutEvidence > 0 ? 'blocked' : assignments.length ? 'read_only' : 'evidence_missing',
+      detail: `${assignments.length} Blackwire board item(s); ${doneWithEvidence} Done with evidence; ${doneWithoutEvidence} Done without evidence.`,
+      requiredEvidence: 'Every Done board item must carry a non-empty evidence path or receipt reference; Done without evidence is blocked, not green.',
+      source: 'group_chat_assignment_tracker_items',
+      href: '/group-chat',
+    },
+    {
+      id: 'approval-receipt-gate',
+      label: 'Approval / decision receipt gate',
+      status: approvalsPending > 0 || approvalNeededAssignments > 0 ? 'approval_required' : receipts.length ? 'read_only' : 'evidence_missing',
+      detail: `${receipts.length} Blackwire decision receipt(s); ${approvalsPending} pending exec approval(s); ${approvalNeededAssignments} approval/blocker board item(s).`,
+      requiredEvidence: 'Approval-required work needs a scoped decision receipt or pending approval object before external, paid, trading, memory-write, or customer-facing action.',
+      source: 'group_chat_decision_receipts + exec_approval_requests',
+      href: '/exec-approvals',
+    },
+    {
+      id: 'recipient-delivery-proof',
+      label: 'Recipient delivery / agent proof gate',
+      status: messageDeliveryStates.length ? 'read_only' : 'evidence_missing',
+      detail: messageDeliveryStates.length ? `Latest delivery states visible: ${Array.from(new Set(messageDeliveryStates)).join(' / ')}.` : 'Evidence Missing: no sent/delivered/seen delivery state is attached to the selected Blackwire messages.',
+      requiredEvidence: 'Assignments should show recipient delivery or queued-alert state plus agent card proof before assuming the assignee saw it.',
+      source: 'group_chat_message_delivery_state + group_chat_agent_profile_cards',
+      href: '/agents',
     },
   ]
 
@@ -255,6 +306,8 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
       projects,
       tasks,
       doneWithEvidence,
+      doneWithoutEvidence,
+      approvalNeededAssignments,
       securityOpenFindings: security.posture.openFindings,
       securitySystems: security.posture.systems,
       dbBackedCommandSurfaces,
@@ -278,6 +331,7 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
     queuedAlerts,
     agents,
     surfaces,
+    blackwireDoneGates,
     truthGates,
     security,
     memoryInventory,
