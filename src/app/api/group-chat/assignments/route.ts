@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { mutationLimiter } from '@/lib/rate-limit'
-import { updateGroupChatAssignmentStatus } from '@/lib/group-chat'
+import { getGroupChatRoomBySlug, listGroupChatAssignments, updateGroupChatAssignmentStatus } from '@/lib/group-chat'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
+
+export async function GET(request: NextRequest) {
+  const auth = requireRole(request, 'viewer')
+  if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status })
+
+  try {
+    const { searchParams } = new URL(request.url)
+    const roomSlug = searchParams.get('room') || 'blackwire-ops'
+    const workspaceId = auth.user.workspace_id || 1
+    const room = getGroupChatRoomBySlug(roomSlug, workspaceId)
+    const assignments = room ? listGroupChatAssignments(room.id, workspaceId) : []
+    return NextResponse.json({ assignments, selectedRoom: room, generatedAt: Date.now() })
+  } catch (error) {
+    logger.error({ err: error }, 'GET /api/group-chat/assignments error')
+    return NextResponse.json({ error: 'Failed to load group chat assignments' }, { status: 500 })
+  }
+}
 
 export async function PATCH(request: NextRequest) {
   const auth = requireRole(request, 'operator')

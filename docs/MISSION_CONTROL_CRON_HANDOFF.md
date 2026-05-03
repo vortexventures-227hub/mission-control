@@ -1,11 +1,23 @@
 # Mission Control Continuous Execution Handoff
 
-Last updated: 2026-05-02 20:54:25 EDT
+Last updated: 2026-05-02 22:18:00 EDT
 
 ## Live finish line
 User-visible Mission Control MVP surfaces, not receipts. Missing integrations must stay visibly `Not Instrumented Yet` / `Evidence Missing`; approval-gated external actions must remain blocked until Chris approves scope.
 
 ## Latest meaningful progress
+- Re-proved the local MVP group-chat auth blocker instead of leaving it blocked:
+  - Latest inbox check found newer Patch receipt packets in `VVHermsOps/Dispatch_Inbox`, but no new Koda `GROUP_CHAT_AUTH` closeout receipt in `VVKodaOps/Dispatch_Outbox`; Herm kept the active local-MVP proof lane moving directly.
+  - Re-ran focused group-chat route tests, targeted ESLint, typecheck, full build, and `git diff --check`; all passed.
+  - Re-probed local runtime on `http://127.0.0.1:3104`: unauthenticated `/api/group-chat/{rooms,messages,assignments}` returned `401`; authenticated probes using a short-lived local session returned `200` for all three read-only endpoints, then the temporary session was deleted.
+  - Updated `docs/MISSION_CONTROL_LOCAL_MVP_PROOF_PACKET_2026-05-02.md` to `LOCAL_MVP_CANDIDATE_WITH_GROUP_CHAT_AUTH_RUNTIME_PROOF` with the remaining caveat that API-key/password-login proof is still unavailable until local credentials are aligned.
+- Ingested the 21:11 Herm Mission Control ops-failure corrective from `VVHermsOps/Dispatch_Inbox`; Koda still had no `GROUP_CHAT_AUTH` closeout receipt in `VVKodaOps/Dispatch_Outbox` during the 21:23 run, so Herm advanced the blocker directly instead of waiting.
+- Repaired the group-chat auth proof gap for read-only local MVP endpoints:
+  - Added authenticated viewer-safe `GET /api/group-chat/messages` and `GET /api/group-chat/assignments` routes so the source paths surfaced by Command Truth can be probed without creating messages or mutating assignment state.
+  - Preserved `POST /api/group-chat/messages` and `PATCH /api/group-chat/assignments` as operator-only mutation paths; no broad auth rewrite and no production/env/deploy/secret mutation.
+  - Added `src/lib/__tests__/group-chat-auth-routes.test.ts` proving unauthenticated `GET` requests to rooms/messages/assignments return `401`, authenticated viewer `GET` requests return `200`, and the read-only proof does not call message-create or assignment-update mutators.
+  - Filed local MVP candidate proof packet at `docs/MISSION_CONTROL_LOCAL_MVP_PROOF_PACKET_2026-05-02.md` with the exact auth-runtime blocker called out instead of greenwashed.
+- Runtime auth truth: unauthenticated local runtime probes on `http://127.0.0.1:3104/api/group-chat/{rooms,messages,assignments}` all returned `401`; authenticated valid-session cookie probes returned `200` with non-empty JSON for all three read-only endpoints using a short-lived local session that was deleted after the probe. API-key proof and password-login proof remain unavailable until local credentials are aligned.
 - Advanced the Trading Operations Cockpit detail-gate slice as a user-visible MVP surface:
   - Enriched `src/lib/trading-operations-command.ts` watch items with visible lane-level gates for Market data, Signal evidence, Risk/sizing, Spread data, Ledger receipts, and Execution hard block, without adding any connector, order path, API-key use, wallet/account mutation, fake positions, fake fills, or fake P&L.
   - Added summary counters for visible detail gates, source/ledger receipt attachment, and explicit disabled live positions/fills/P&L/import/execution flags.
@@ -41,6 +53,14 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Prior progress still present in the current worktree: n8n MCP / Automation Command Center; Design Studio + Asset Library visual receipt/detail gates; Research Command citation/readiness/promotion detail; Marketing Command Center per-project tab depth; Command Truth `No-fake-green truth gates`; `/mission-control` MVP Home; shared Mission Control surface snapshots; DB-backed Research/Trading/Design/Marketing/Brain/Asset/Brainstorm surfaces; route/nav wiring.
 
 ## Verification performed
+- GREEN: `pnpm vitest run src/lib/__tests__/group-chat-auth-routes.test.ts` passed: 4 tests / 4 passed.
+- GREEN: `pnpm exec eslint src/app/api/group-chat/messages/route.ts src/app/api/group-chat/assignments/route.ts src/lib/__tests__/group-chat-auth-routes.test.ts` passed.
+- GREEN: `pnpm typecheck` passed.
+- GREEN: `pnpm build` passed; route list includes `/api/group-chat/rooms`, `/api/group-chat/messages`, and `/api/group-chat/assignments`.
+- GREEN: `git diff --check` passed.
+- PARTIAL LIVE PROOF: unauthenticated curl probes to `/api/group-chat/rooms`, `/api/group-chat/messages`, and `/api/group-chat/assignments` on local runtime `3104` returned `401`.
+- GREEN: local authenticated cookie runtime probes on `http://127.0.0.1:3104/api/group-chat/{rooms,messages,assignments}` returned `200` with non-empty JSON bodies using a short-lived local session, and that temporary session was deleted after the probe.
+- CAVEAT: this is valid-session cookie runtime proof, not API-key or password-login proof; no local API key is configured and the env login credential path still needs DB credential alignment.
 - GREEN: `pnpm vitest run src/lib/__tests__/mission-control-surfaces.test.ts` passed: 12 tests / 12 passed.
 - GREEN: `pnpm exec eslint src/lib/trading-operations-command.ts src/lib/mission-control-surfaces.ts src/lib/__tests__/mission-control-surfaces.test.ts` passed.
 - GREEN: `pnpm build` passed; route list includes `/api/trading-operations`, `/api/mission-control-surfaces/[surface]`, and dynamic `/[[...panel]]` for `/trading`.
@@ -69,12 +89,14 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Design Studio and Asset Library remain read-only planning/receipt surfaces; no external publish/deploy/customer-facing mutation authority was added.
 
 ## Current blockers / missing instrumentation
+- Group-chat read-only auth repair is code/test/build green; unauthenticated local runtime probes correctly return `401`; authenticated valid-session cookie runtime probes now return `200` for `/api/group-chat/rooms`, `/api/group-chat/messages`, and `/api/group-chat/assignments`. Remaining caveat: no API key is configured and password-login proof still needs local DB credential alignment before that path can be called green.
 - `/mission-control`, `/command-truth`, `/marketing`, `/research-command`, `/asset-library`, `/design`, `/brain-memory`, `/brainstorm`, and `/security-command` are read-only/user-visible command surfaces; they are not live integration engines.
 - Blackwire Done gates are now visible in Command Truth, but they prove UI/API gating only; they do not prove live public Blackwire launch, external sends, customer-facing execution, or new screenshot/public proof bundle attachment.
 - Security audit-hook inventory is visible, but secret scan, dependency vulnerability scan, auth/approval bypass, public endpoint smoke, and false-green status hooks remain `Not Instrumented Yet` / `Evidence Missing` until redacted scan/probe receipts are attached; no secrets were read or printed.
 - `/automation-command` is a read-only planning/approval surface only: n8n host, MCP execution, credentials, trigger state, failed execution queue, and receipt ingestion are `Not Instrumented Yet` until reviewed and proven.
 - Brain/Memory correction requests are visible and gate-backed, but no approved ingestion/correction write path is instrumented in this MVP slice.
 - Brainstorm Wall ideas now show evidence/promotion/lane gates, but no idea auto-promotes into project tasks, marketing, design, trading, asset inventory, Graphify/gBrain, or David memory without evidence plus scoped approval.
+- Trading Operations now shows watchlist/signal/risk/spread/ledger/execution detail gates, but this is still a read-only cockpit surface: no Polymarket/market connector, live quote feed, order path, wallet/account mutation, API-key use, positions, fills, P&L, paid data, or real execution is instrumented.
 - Blackwire public proof bundle remains `Evidence Missing` until linked live screenshots/route receipts are attached.
 - Marketing analytics remain `Not Instrumented Yet` for Blackwire and Material Solutions; Mission Control analytics are still manual.
 - Customer/dealer outreach, marketplace posts, public launch copy, paid campaign spend, and campaign setting mutations remain approval-required.
@@ -84,4 +106,4 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Actual new Design Studio visual screenshots are still `Evidence Missing` until browser screenshots are captured and linked; prior run made the visual QA gate visible and test-backed, not a screenshot capture.
 
 ## Next safe slice
-Deepen Trading Operations with the same explicit no-fake-green detail gates, or replace Security static hook inventory with redacted read-only scan/probe receipt ingestion after auth/scope review. Automation follow-up is to replace static workflow registry with a read-only, auth-scoped n8n registry only after host/credential/approval review; do not enable execution.
+Next safe slice: attach a browser/screenshot proof bundle for the MVP surfaces if authorized/available, or continue deepening the highest-value read-only user-visible surface without external sends, trades, paid simulations, credential/API-key use, or memory writes. If credentials remain unavailable, keep API-key/password-login auth proof labeled as a caveat, not a blocker to the valid-session group-chat read proof now established. Keep checking Koda outbox every 20 minutes and feed the next bounded packet immediately if Koda closes a Mission Control assignment.
