@@ -93,20 +93,26 @@ function statusClass(status: string) {
   return 'border-sky-400/30 bg-sky-500/10 text-sky-100'
 }
 
+function gateClass(status: 'available' | 'approval_required' | 'blocked') {
+  if (status === 'available') return 'border-emerald-400/25 bg-emerald-500/10 text-emerald-200'
+  if (status === 'blocked') return 'border-red-400/25 bg-red-500/10 text-red-100'
+  return 'border-amber-400/25 bg-amber-500/10 text-amber-100'
+}
+
 function formatTime(timestamp: number) {
   return new Date(timestamp).toLocaleString()
 }
 
 function SectionList({ title, items }: { title: string; items: string[] }) {
   return (
-    <section className="rounded-lg border border-border bg-card/60 p-4">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+    <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+      <h3 className="text-sm font-black tracking-[-0.01em] text-slate-100">{title}</h3>
       {items.length > 0 ? (
-        <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-          {items.map((item, index) => <li key={`${title}-${index}`} className="leading-relaxed">- {item}</li>)}
+        <ul className="mt-3 space-y-2 text-sm text-slate-400">
+          {items.map((item, index) => <li key={`${title}-${index}`} className="leading-relaxed"><span className="mr-2 text-cyan-300">•</span>{item}</li>)}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-muted-foreground">Nothing extracted yet.</p>
+        <p className="mt-3 text-sm text-slate-500">Nothing extracted yet.</p>
       )}
     </section>
   )
@@ -174,167 +180,203 @@ export function KnowledgeIntakePanel() {
 
   const extraction = snapshot?.extraction
   const recent = snapshot?.recent_sources || []
+  const gateCounts = snapshot?.gates.reduce((acc, gate) => {
+    acc[gate.status] += 1
+    return acc
+  }, { available: 0, approval_required: 0, blocked: 0 } as Record<'available' | 'approval_required' | 'blocked', number>) || { available: 0, approval_required: 0, blocked: 0 }
 
   return (
-    <div className="min-h-full bg-background text-foreground">
-      <div className="border-b border-border bg-card/40 px-4 py-5">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Mission Control</p>
-            <h1 className="mt-1 text-2xl font-semibold">Knowledge Intake</h1>
-            <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              Capture URLs, pasted notes, and source material into a review queue before anything becomes durable memory.
-            </p>
-          </div>
-          <div className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-            Durable writes are approval-gated.
-          </div>
-        </div>
-      </div>
+    <div className="relative min-h-full overflow-hidden bg-[#07080a] text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_4%,rgba(34,211,238,0.20),transparent_28%),radial-gradient(circle_at_82%_14%,rgba(94,106,210,0.18),transparent_32%),linear-gradient(180deg,rgba(7,8,10,0),rgba(7,8,10,0.94))]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] [background-size:52px_52px] [mask-image:radial-gradient(circle_at_50%_18%,black,transparent_74%)]" />
 
-      <div className="mx-auto grid max-w-6xl gap-4 p-4 xl:grid-cols-[minmax(0,1.1fr)_380px]">
-        <div className="space-y-4">
-          <form onSubmit={submitSource} className="rounded-lg border border-border bg-card p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Capture Source</h2>
-                <p className="text-sm text-muted-foreground">Paste text for full MVP extraction. URLs are captured honestly when adapters need credentials.</p>
+      <div className="relative z-10 mx-auto max-w-7xl space-y-5 p-4 md:p-6">
+        <section className="rounded-[30px] border border-white/10 bg-[#0f1011]/80 p-5 shadow-[0_28px_120px_rgba(0,0,0,0.44),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl md:p-7">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-4xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/15 bg-cyan-300/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-cyan-200/90">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+                Mission Control · Source-to-Wiki MVP
               </div>
-              <span className={`rounded-md border px-3 py-1 text-xs font-medium ${statusClass('captured')}`}>
-                Detected: {sourceBadge(detected)}
-              </span>
+              <h1 className="mt-4 text-3xl font-black tracking-[-0.045em] text-[#f7f8f8] md:text-5xl">Knowledge Intake Command Deck</h1>
+              <p className="mt-4 max-w-4xl text-sm leading-6 text-slate-400 md:text-base md:leading-7">
+                Capture links, transcripts, notes, and research into a review queue with citations, approval gates, and visible proof before anything touches durable memory.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Local MVP demo</span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Human review required</span>
+                <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-amber-200">No live Graphify/gBrain writes</span>
+              </div>
             </div>
+            <div className="grid min-w-[260px] grid-cols-3 gap-2">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center">
+                <div className="text-2xl font-black text-slate-100">{recent.length}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Sources</div>
+              </div>
+              <div className="rounded-2xl border border-amber-300/20 bg-amber-400/[0.08] p-3 text-center">
+                <div className="text-2xl font-black text-amber-100">{gateCounts.approval_required}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber-200/70">Approvals</div>
+              </div>
+              <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.08] p-3 text-center">
+                <div className="text-2xl font-black text-emerald-100">{gateCounts.available}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200/70">Available</div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-            <textarea
-              value={content}
-              onChange={event => setContent(event.target.value)}
-              rows={9}
-              className="mt-4 w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:border-primary"
-              placeholder="Paste a YouTube/X/article URL, source notes, transcript text, or implementation idea..."
-            />
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_400px]">
+          <div className="space-y-5">
+            <form onSubmit={submitSource} className="rounded-[26px] border border-white/10 bg-[#0f1011]/78 p-5 shadow-[0_18px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200/80">Capture Source</p>
+                  <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-slate-100">Drop raw material into review</h2>
+                  <p className="mt-1 text-sm text-slate-400">Pasted text produces full MVP extraction. URLs are captured honestly when adapters need credentials.</p>
+                </div>
+                <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${statusClass('captured')}`}>
+                  Detected: {sourceBadge(detected)}
+                </span>
+              </div>
 
-            <div className="mt-3 grid gap-3 md:grid-cols-[1fr_220px]">
-              <input
-                value={contextNote}
-                onChange={event => setContextNote(event.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                placeholder="Context note: why this matters, who asked, where it belongs"
+              <textarea
+                value={content}
+                onChange={event => setContent(event.target.value)}
+                rows={9}
+                className="mt-4 w-full rounded-2xl border border-white/10 bg-black/24 p-4 text-sm leading-6 text-slate-100 outline-none shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] placeholder:text-slate-600 focus:border-cyan-300/45 focus:ring-2 focus:ring-cyan-300/10"
+                placeholder="Paste a YouTube/X/article URL, source notes, transcript text, or implementation idea..."
               />
-              <select
-                value={projectScope}
-                onChange={event => setProjectScope(event.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-              >
-                <option>Mission Control</option>
-                <option>Blackwire Ops</option>
-                <option>Material Solutions / David</option>
-                <option>Marketing</option>
-                <option>Research Command</option>
-              </select>
-            </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button type="submit" disabled={submitting || !content.trim()}>
-                {submitting ? 'Capturing...' : 'Capture and Review'}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setContent(sampleText)}>
-                Use Sample Paste
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setContent('https://www.youtube.com/watch?v=dQw4w9WgXcQ')}>
-                Try URL Scaffold
-              </Button>
-            </div>
-            {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
-          </form>
-
-          {snapshot?.source && extraction ? (
-            <div className="space-y-4">
-              <section className="rounded-lg border border-border bg-card p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Review Card</p>
-                    <h2 className="mt-1 text-xl font-semibold">{snapshot.source.title}</h2>
-                  </div>
-                  <span className={`rounded-md border px-3 py-1 text-xs font-medium ${statusClass(snapshot.source.status)}`}>
-                    {snapshot.detection?.label} · {snapshot.source.status.replaceAll('_', ' ')}
-                  </span>
-                </div>
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{extraction.summary}</p>
-                <div className="mt-4 rounded-lg border border-border bg-background/60 p-3 text-xs text-muted-foreground">
-                  <p><span className="text-foreground">Raw path:</span> {snapshot.source.raw_path}</p>
-                  {snapshot.source.extracted_text_path && <p className="mt-1"><span className="text-foreground">Extracted path:</span> {snapshot.source.extracted_text_path}</p>}
-                  {snapshot.source.error && <p className="mt-2 text-amber-200">{snapshot.source.error}</p>}
-                </div>
-              </section>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <SectionList title="Key Ideas" items={extraction.key_ideas} />
-                <SectionList title="Tools / Tech Mentioned" items={extraction.tools_mentioned} />
-                <SectionList title="Implementation Steps" items={extraction.implementation_steps} />
-                <SectionList title="Claims To Verify" items={extraction.claims_to_verify} />
+              <div className="mt-3 grid gap-3 md:grid-cols-[1fr_220px]">
+                <input
+                  value={contextNote}
+                  onChange={event => setContextNote(event.target.value)}
+                  className="rounded-2xl border border-white/10 bg-black/24 px-4 py-2.5 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-300/45 focus:ring-2 focus:ring-cyan-300/10"
+                  placeholder="Context note: why this matters, who asked, where it belongs"
+                />
+                <select
+                  value={projectScope}
+                  onChange={event => setProjectScope(event.target.value)}
+                  className="rounded-2xl border border-white/10 bg-black/24 px-4 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-300/45 focus:ring-2 focus:ring-cyan-300/10"
+                >
+                  <option>Mission Control</option>
+                  <option>Blackwire Ops</option>
+                  <option>Material Solutions / David</option>
+                  <option>Marketing</option>
+                  <option>Research Command</option>
+                </select>
               </div>
 
-              <section className="rounded-lg border border-border bg-card p-4">
-                <h3 className="text-sm font-semibold">Recommended Destinations</h3>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {extraction.recommended_destinations.map(destination => (
-                    <Button key={destination} type="button" variant="outline" size="sm" onClick={() => requestAction(destination)}>
-                      Request approval: {destination}
-                    </Button>
-                  ))}
-                </div>
-                {actionMessage && <p className="mt-3 text-sm text-amber-100">{actionMessage}</p>}
-              </section>
-            </div>
-          ) : (
-            <section className="rounded-lg border border-dashed border-border bg-card/50 p-8 text-center">
-              <h2 className="text-lg font-semibold">No source selected yet</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Capture pasted source text for full review-card output, or capture a URL as an honest scaffold.</p>
-            </section>
-          )}
-        </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button type="submit" disabled={submitting || !content.trim()} className="rounded-full bg-cyan-300 px-5 font-bold text-slate-950 hover:bg-cyan-200">
+                  {submitting ? 'Capturing...' : 'Capture and Review'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setContent(sampleText)} className="rounded-full border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]">
+                  Use Sample Paste
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setContent('https://www.youtube.com/watch?v=dQw4w9WgXcQ')} className="rounded-full text-slate-400 hover:bg-white/[0.06] hover:text-slate-100">
+                  Try URL Scaffold
+                </Button>
+              </div>
+              {error && <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
+            </form>
 
-        <aside className="space-y-4">
-          <section className="rounded-lg border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">Guardrails</h2>
-            <ul className="mt-3 space-y-2 text-xs leading-relaxed text-muted-foreground">
-              {(snapshot?.guardrails || []).map(item => <li key={item}>- {item}</li>)}
-            </ul>
-          </section>
-
-          <section className="rounded-lg border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">Action Gates</h2>
-            <div className="mt-3 space-y-2">
-              {(snapshot?.gates || []).map(gate => (
-                <div key={gate.action} className="rounded-lg border border-border bg-background/50 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm font-medium">{gate.action}</p>
-                    <span className={`rounded px-2 py-0.5 text-[10px] uppercase ${gate.status === 'available' ? 'bg-emerald-500/15 text-emerald-200' : gate.status === 'approval_required' ? 'bg-amber-500/15 text-amber-100' : 'bg-red-500/15 text-red-100'}`}>
-                      {gate.status.replaceAll('_', ' ')}
+            {snapshot?.source && extraction ? (
+              <div className="space-y-5">
+                <section className="rounded-[26px] border border-white/10 bg-[#0f1011]/78 p-5 shadow-[0_18px_70px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.20em] text-cyan-200/75">Review Card</p>
+                      <h2 className="mt-1 text-2xl font-black tracking-[-0.03em] text-slate-100">{snapshot.source.title}</h2>
+                    </div>
+                    <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClass(snapshot.source.status)}`}>
+                      {snapshot.detection?.label} · {snapshot.source.status.replaceAll('_', ' ')}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{gate.detail}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-lg border border-border bg-card p-4">
-            <h2 className="text-sm font-semibold">Recent Sources</h2>
-            <div className="mt-3 space-y-3">
-              {recent.length > 0 ? recent.map(source => (
-                <div key={source.id} className="rounded-lg border border-border bg-background/50 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="min-w-0 truncate text-sm font-medium">{source.title}</p>
-                    <span className={`shrink-0 rounded border px-2 py-0.5 text-[10px] ${statusClass(source.status)}`}>{sourceBadge(source.source_type)}</span>
+                  <p className="mt-4 text-sm leading-7 text-slate-400">{extraction.summary}</p>
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/24 p-3 text-xs leading-5 text-slate-400">
+                    <p><span className="font-semibold text-slate-200">Raw path:</span> {snapshot.source.raw_path}</p>
+                    {snapshot.source.extracted_text_path && <p className="mt-1"><span className="font-semibold text-slate-200">Extracted path:</span> {snapshot.source.extracted_text_path}</p>}
+                    {snapshot.source.error && <p className="mt-2 text-amber-200">{snapshot.source.error}</p>}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{formatTime(source.captured_at)}</p>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">{source.raw_path}</p>
+                </section>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <SectionList title="Key Ideas" items={extraction.key_ideas} />
+                  <SectionList title="Tools / Tech Mentioned" items={extraction.tools_mentioned} />
+                  <SectionList title="Implementation Steps" items={extraction.implementation_steps} />
+                  <SectionList title="Claims To Verify" items={extraction.claims_to_verify} />
                 </div>
-              )) : <p className="text-sm text-muted-foreground">No captured sources yet.</p>}
-            </div>
-          </section>
-        </aside>
+
+                <section className="rounded-[26px] border border-white/10 bg-white/[0.035] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+                  <h3 className="text-sm font-black tracking-[-0.01em] text-slate-100">Recommended Destinations</h3>
+                  <p className="mt-1 text-xs text-slate-500">Buttons stage approval requests only; they do not perform durable writes.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {extraction.recommended_destinations.map(destination => (
+                      <Button key={destination} type="button" variant="outline" size="sm" onClick={() => requestAction(destination)} className="rounded-full border-amber-300/20 bg-amber-400/10 text-amber-100 hover:bg-amber-400/15">
+                        Request approval: {destination}
+                      </Button>
+                    ))}
+                  </div>
+                  {actionMessage && <p className="mt-3 rounded-xl border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">{actionMessage}</p>}
+                </section>
+              </div>
+            ) : (
+              <section className="rounded-[26px] border border-dashed border-white/15 bg-white/[0.035] p-10 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">KI</div>
+                <h2 className="mt-4 text-xl font-black tracking-[-0.02em] text-slate-100">No source selected yet</h2>
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">Capture pasted source text for full review-card output, or capture a URL as an honest scaffold when external extraction credentials are not available.</p>
+              </section>
+            )}
+          </div>
+
+          <aside className="space-y-5">
+            <section className="rounded-[24px] border border-amber-300/20 bg-amber-400/[0.07] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-bold text-amber-100">Truth Guardrails</h2>
+                <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-100">Commercial-safe</span>
+              </div>
+              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-amber-100/85">
+                {(snapshot?.guardrails || []).map(item => <li key={item}>• {item}</li>)}
+                {!snapshot && <li>• Local MVP demo: approval-gated, no production or live Graphify/gBrain claim.</li>}
+              </ul>
+            </section>
+
+            <section className="rounded-[24px] border border-white/10 bg-[#0f1011]/76 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+              <h2 className="text-sm font-black text-slate-100">Action Gates</h2>
+              <div className="mt-3 space-y-2">
+                {(snapshot?.gates || []).map(gate => (
+                  <div key={gate.action} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-slate-100">{gate.action}</p>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${gateClass(gate.status)}`}>
+                        {gate.status.replaceAll('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">{gate.detail}</p>
+                  </div>
+                ))}
+                {!snapshot?.gates.length && <p className="text-sm text-slate-500">Gate state loads from the local API.</p>}
+              </div>
+            </section>
+
+            <section className="rounded-[24px] border border-white/10 bg-[#0f1011]/76 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+              <h2 className="text-sm font-black text-slate-100">Recent Sources</h2>
+              <div className="mt-3 space-y-3">
+                {recent.length > 0 ? recent.map(source => (
+                  <div key={source.id} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="min-w-0 truncate text-sm font-semibold text-slate-100">{source.title}</p>
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusClass(source.status)}`}>{sourceBadge(source.source_type)}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{formatTime(source.captured_at)}</p>
+                    <p className="mt-1 truncate text-xs text-slate-500">{source.raw_path}</p>
+                  </div>
+                )) : <p className="text-sm text-slate-500">No captured sources yet.</p>}
+              </div>
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   )
