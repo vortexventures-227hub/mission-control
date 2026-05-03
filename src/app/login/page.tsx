@@ -192,27 +192,39 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="absolute top-4 right-4">
-        <LanguageSwitcherSelect />
-      </div>
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-lg overflow-hidden bg-background border border-border/50 flex items-center justify-center mb-3">
-            <Image
-              src="/brand/mc-logo-128.png"
-              alt="Mission Control logo"
-              width={48}
-              height={48}
-              className="h-full w-full object-cover"
-              priority
-            />
-          </div>
-          <h1 className="text-xl font-semibold text-foreground">{t('missionControl')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('signInToContinue')}</p>
+    <div className="relative min-h-screen overflow-hidden bg-[#07080a] px-4 py-6 text-foreground">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(34,211,238,0.22),transparent_32%),radial-gradient(circle_at_78%_68%,rgba(94,106,210,0.18),transparent_30%),linear-gradient(180deg,rgba(8,9,10,0.0),rgba(8,9,10,0.92))]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:48px_48px] [mask-image:radial-gradient(circle_at_center,black,transparent_72%)]" />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/10 shadow-[0_0_140px_rgba(34,211,238,0.12)]" />
+
+      <div className="relative z-10 flex min-h-[calc(100vh-3rem)] items-center justify-center">
+        <div className="absolute right-0 top-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl">
+          <LanguageSwitcherSelect />
         </div>
 
-        {pendingApproval && (
+        <div className="w-full max-w-[440px] rounded-[28px] border border-white/10 bg-[#0f1011]/80 p-8 shadow-[0_24px_100px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-2xl sm:p-10">
+          <div className="mb-8 flex flex-col items-center text-center">
+            <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 shadow-[0_0_48px_rgba(34,211,238,0.22),inset_0_1px_0_rgba(255,255,255,0.16)]">
+              <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-background">
+                <Image
+                  src="/brand/mc-logo-128.png"
+                  alt="Mission Control logo"
+                  width={48}
+                  height={48}
+                  className="h-full w-full object-cover"
+                  priority
+                />
+              </div>
+            </div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-cyan-200/80">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+              Command cockpit online
+            </div>
+            <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[#f7f8f8] sm:text-4xl">{t('missionControl')}</h1>
+            <p className="mt-3 max-w-xs text-sm leading-6 text-slate-400">Human-supervised AI operations, approvals, receipts, and source-to-wiki command truth.</p>
+          </div>
+
+          {pendingApproval && (
           <div className="mb-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
             <div className="flex justify-center mb-2">
               <svg className="w-8 h-8 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -298,15 +310,15 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className={`space-y-4 ${pendingApproval ? 'opacity-50 pointer-events-none' : ''}`}>
+        <form onSubmit={handleSubmit} className={`space-y-5 ${pendingApproval ? 'opacity-50 pointer-events-none' : ''}`}>
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1.5">{t('username')}</label>
+            <label htmlFor="username" className="mb-2 block text-sm font-medium text-slate-200">{t('username')}</label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full h-10 px-3 rounded-lg bg-secondary border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-smooth"
+              className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.045] px-4 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] placeholder:text-slate-500 transition-all duration-200 focus:border-cyan-300/70 focus:outline-none focus:ring-4 focus:ring-cyan-300/10"
               placeholder={t('enterUsername')}
               autoComplete="username"
               autoFocus
@@ -316,13 +328,13 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">{t('password')}</label>
+            <label htmlFor="password" className="mb-2 block text-sm font-medium text-slate-200">{t('password')}</label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-10 px-3 rounded-lg bg-secondary border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-smooth"
+              className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.045] px-4 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] placeholder:text-slate-500 transition-all duration-200 focus:border-cyan-300/70 focus:outline-none focus:ring-4 focus:ring-cyan-300/10"
               placeholder={t('enterPassword')}
               autoComplete="current-password"
               required
@@ -334,7 +346,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             size="lg"
-            className="w-full rounded-lg"
+            className="h-12 w-full rounded-xl bg-cyan-300 text-slate-950 shadow-[0_16px_48px_rgba(34,211,238,0.22),inset_0_1px_0_rgba(255,255,255,0.45)] transition-all hover:bg-cyan-200 hover:shadow-[0_18px_60px_rgba(34,211,238,0.3)]"
           >
             {loading ? (
               <>
@@ -347,7 +359,13 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">{t('orchestrationTagline')}</p>
+          <div className="mt-7 grid grid-cols-3 gap-2 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2">Agents</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2">Receipts</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.03] px-2 py-2">Approvals</div>
+          </div>
+          <p className="mt-5 text-center text-xs text-slate-500">{t('orchestrationTagline')}</p>
+        </div>
       </div>
     </div>
   )
