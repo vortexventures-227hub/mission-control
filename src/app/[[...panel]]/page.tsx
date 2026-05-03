@@ -1,7 +1,7 @@
 'use client'
 
 import { createElement, useEffect, useMemo, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { NavRail } from '@/components/layout/nav-rail'
 import { HeaderBar } from '@/components/layout/header-bar'
 import { LiveFeed } from '@/components/layout/live-feed'
@@ -105,12 +105,20 @@ export default function Home() {
 
   // Sync URL → Zustand activeTab
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [commercialCapture, setCommercialCapture] = useState(false)
   const panelFromUrl = pathname === '/' ? 'overview' : pathname.slice(1)
   const normalizedPanel = panelFromUrl === 'sessions' ? 'chat' : panelFromUrl
 
   useEffect(() => {
     completeNavigationTiming(pathname)
   }, [pathname])
+
+  useEffect(() => {
+    const commercialParam = searchParams.get('commercial')
+    const sessionCommercial = typeof window !== 'undefined' && window.sessionStorage.getItem('mc-commercial-capture') === '1'
+    setCommercialCapture(commercialParam === '1' || sessionCommercial)
+  }, [searchParams])
 
   useEffect(() => {
     completeNavigationTiming(panelHref(activeTab))
@@ -399,10 +407,14 @@ export default function Home() {
         {!showOnboarding && (
           <>
             <HeaderBar />
-            <LocalModeBanner />
-            <UpdateBanner />
-            <OpenClawUpdateBanner />
-            <OpenClawDoctorBanner />
+            {!commercialCapture && (
+              <>
+                <LocalModeBanner />
+                <UpdateBanner />
+                <OpenClawUpdateBanner />
+                <OpenClawDoctorBanner />
+              </>
+            )}
           </>
         )}
         <main

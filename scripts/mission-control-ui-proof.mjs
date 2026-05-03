@@ -16,6 +16,7 @@ const routes = [
   '/mission-control',
   '/command-truth',
   '/group-chat',
+  '/knowledge-intake',
   '/brain-memory',
   '/security-command',
   '/security',
@@ -56,6 +57,7 @@ try {
   await context.addCookies([{ name: 'mc-session', value: token, domain: '127.0.0.1', path: '/', httpOnly: true, sameSite: 'Lax', expires: now + 1800 }])
   await context.addInitScript(() => {
     window.sessionStorage.setItem('mc-onboarding-dismissed', '1')
+    window.sessionStorage.setItem('mc-commercial-capture', '1')
     window.sessionStorage.removeItem('mc-onboarding-replay')
   })
   const page = await context.newPage()
