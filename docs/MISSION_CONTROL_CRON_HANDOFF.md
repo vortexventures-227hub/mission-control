@@ -1,11 +1,16 @@
 # Mission Control Continuous Execution Handoff
 
-Last updated: 2026-05-02 22:18:00 EDT
+Last updated: 2026-05-02 22:47:00 EDT
 
 ## Live finish line
 User-visible Mission Control MVP surfaces, not receipts. Missing integrations must stay visibly `Not Instrumented Yet` / `Evidence Missing`; approval-gated external actions must remain blocked until Chris approves scope.
 
 ## Latest meaningful progress
+- Captured the final local authenticated UI proof bundle directly because Koda still had no closeout receipt for the 22:24 final UI proof packet:
+  - Added/reran `scripts/mission-control-ui-proof.mjs` against local runtime `http://127.0.0.1:3104` using a short-lived local `mc-session` for approved user `Chris`, then deleted the temporary session.
+  - Captured full-page screenshots plus route summaries under `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/` for `/login`, `/mission-control`, `/command-truth`, `/group-chat`, `/brain-memory`, `/security-command`, `/security`, `/marketing`, `/research-command`, `/asset-library`, `/design`, and `/trading`.
+  - Filed `docs/MISSION_CONTROL_UI_PROOF_PACKET_2026-05-02.md` with exact truth: all checked routes returned HTTP 200 and rendered non-blank MVP content; temp session cleanup count was `0`; console caveats remain visible for CSP inline-script nonce violations, React hydration attribute mismatch warnings, and local SSE reconnect warnings.
+  - Preserved no-fake-green boundaries: this is local authenticated UI/screenshot proof only, not production deploy proof, API-key/password-login proof, live integration proof, external marketing/trading/paysim/memory-write authority, or a claim that `Not Instrumented Yet` systems are complete.
 - Re-proved the local MVP group-chat auth blocker instead of leaving it blocked:
   - Latest inbox check found newer Patch receipt packets in `VVHermsOps/Dispatch_Inbox`, but no new Koda `GROUP_CHAT_AUTH` closeout receipt in `VVKodaOps/Dispatch_Outbox`; Herm kept the active local-MVP proof lane moving directly.
   - Re-ran focused group-chat route tests, targeted ESLint, typecheck, full build, and `git diff --check`; all passed.
@@ -53,6 +58,9 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Prior progress still present in the current worktree: n8n MCP / Automation Command Center; Design Studio + Asset Library visual receipt/detail gates; Research Command citation/readiness/promotion detail; Marketing Command Center per-project tab depth; Command Truth `No-fake-green truth gates`; `/mission-control` MVP Home; shared Mission Control surface snapshots; DB-backed Research/Trading/Design/Marketing/Brain/Asset/Brainstorm surfaces; route/nav wiring.
 
 ## Verification performed
+- GREEN: `node scripts/mission-control-ui-proof.mjs` passed against `http://127.0.0.1:3104`; full-page screenshots captured for `/login`, `/mission-control`, `/command-truth`, `/group-chat`, `/brain-memory`, `/security-command`, `/security`, `/marketing`, `/research-command`, `/asset-library`, `/design`, and `/trading` under `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/`.
+- GREEN: UI proof temporary session cleanup verified with `sessionCleanupCount: 0`.
+- CAVEAT: UI proof browser console captured CSP inline-script violations, React hydration attribute mismatch warnings, and SSE reconnect warnings in the local dev runtime; pages still returned 200 and rendered non-blank MVP content.
 - GREEN: `pnpm vitest run src/lib/__tests__/group-chat-auth-routes.test.ts` passed: 4 tests / 4 passed.
 - GREEN: `pnpm exec eslint src/app/api/group-chat/messages/route.ts src/app/api/group-chat/assignments/route.ts src/lib/__tests__/group-chat-auth-routes.test.ts` passed.
 - GREEN: `pnpm typecheck` passed.
@@ -89,7 +97,8 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Design Studio and Asset Library remain read-only planning/receipt surfaces; no external publish/deploy/customer-facing mutation authority was added.
 
 ## Current blockers / missing instrumentation
-- Group-chat read-only auth repair is code/test/build green; unauthenticated local runtime probes correctly return `401`; authenticated valid-session cookie runtime probes now return `200` for `/api/group-chat/rooms`, `/api/group-chat/messages`, and `/api/group-chat/assignments`. Remaining caveat: no API key is configured and password-login proof still needs local DB credential alignment before that path can be called green.
+- Final local UI proof is captured for `/login`, `/mission-control`, `/command-truth`, `/group-chat`, `/brain-memory`, `/security-command`, `/security`, `/marketing`, `/research-command`, `/asset-library`, `/design`, and `/trading`; caveat: local dev browser console still shows CSP inline-script nonce violations, React hydration attribute mismatch warnings, and SSE reconnect warnings that should be hardened before calling the UI runtime fully clean.
+- Group-chat read-only auth repair is code/test/build green; unauthenticated local runtime probes correctly return `401`; authenticated valid-session cookie probes now return `200` for `/api/group-chat/rooms`, `/api/group-chat/messages`, and `/api/group-chat/assignments`. Remaining caveat: no API key is configured and password-login proof still needs local DB credential alignment before that path can be called green.
 - `/mission-control`, `/command-truth`, `/marketing`, `/research-command`, `/asset-library`, `/design`, `/brain-memory`, `/brainstorm`, and `/security-command` are read-only/user-visible command surfaces; they are not live integration engines.
 - Blackwire Done gates are now visible in Command Truth, but they prove UI/API gating only; they do not prove live public Blackwire launch, external sends, customer-facing execution, or new screenshot/public proof bundle attachment.
 - Security audit-hook inventory is visible, but secret scan, dependency vulnerability scan, auth/approval bypass, public endpoint smoke, and false-green status hooks remain `Not Instrumented Yet` / `Evidence Missing` until redacted scan/probe receipts are attached; no secrets were read or printed.
@@ -103,7 +112,7 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Karpathia Auto-Research connector remains `Not Instrumented Yet`; the Research slice added visible gates and citation plans, not a live connector.
 - MiroFish paid simulations remain approval-required.
 - Trading connector, order execution, positions/fills/P&L, wallet/account mutation, and market API-key use remain blocked / not instrumented.
-- Actual new Design Studio visual screenshots are still `Evidence Missing` until browser screenshots are captured and linked; prior run made the visual QA gate visible and test-backed, not a screenshot capture.
+- Design Studio visual screenshots are now captured in the local UI proof bundle for the current `/design` surface; this is screenshot evidence of the local page rendering, not proof of external publish/deploy/customer-facing mutation authority.
 
 ## Next safe slice
-Next safe slice: attach a browser/screenshot proof bundle for the MVP surfaces if authorized/available, or continue deepening the highest-value read-only user-visible surface without external sends, trades, paid simulations, credential/API-key use, or memory writes. If credentials remain unavailable, keep API-key/password-login auth proof labeled as a caveat, not a blocker to the valid-session group-chat read proof now established. Keep checking Koda outbox every 20 minutes and feed the next bounded packet immediately if Koda closes a Mission Control assignment.
+Next safe slice: harden or ticket the local dev UI console caveats from the browser proof pass (CSP nonce / hydration mismatch / SSE reconnect warnings) without weakening CSP or auth, then re-run the UI proof bundle. If Koda returns a closeout receipt, verify it against `docs/MISSION_CONTROL_UI_PROOF_PACKET_2026-05-02.md`; otherwise keep the proof truth canonical here. API-key/password-login auth proof remains a caveat until local credentials are aligned; do not let that caveat erase the valid-session group-chat read proof now established.

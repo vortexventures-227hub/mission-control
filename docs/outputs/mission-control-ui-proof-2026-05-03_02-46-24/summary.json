@@ -1,0 +1,255 @@
+{
+  "baseUrl": "http://127.0.0.1:3104",
+  "dbPath": ".data/mission-control.db",
+  "outDir": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "sessionCleanupCount": 0,
+  "routes": [
+    {
+      "route": "/login",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/login.png",
+      "title": "Mission Control",
+      "textLength": 163,
+      "headings": [
+        "Mission Control"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "English 中文 日本語 한국어 Español Français Deutsch Português Русский العربية Mission Control Sign in to continue Username Password Sign in OpenClaw Agent Orchestration"
+    },
+    {
+      "route": "/mission-control",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/mission-control.png",
+      "title": "Mission Control",
+      "textLength": 5778,
+      "headings": [
+        "Mission Control MVP Home",
+        "Safety / truth boundaries",
+        "Live ops / evidence-gated Done",
+        "Knowledge, memory, assets, and ideation",
+        "Growth, research, design, and markets",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content FINISH-LINE SURFACES / TRUTHFUL INSTRUMENTATION Mission Control MVP Home One user-visible home for the Mission Control MVP surface map: Command Truth, Blackwire ops, Brain/Memory, Asset Library, Brai"
+    },
+    {
+      "route": "/command-truth",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/command-truth.png",
+      "title": "Mission Control",
+      "textLength": 12816,
+      "headings": [
+        "Mission Control MVP cockpit",
+        "MVP surface readiness",
+        "No-fake-green truth gates",
+        "Blackwire integrated proof",
+        "Blackwire Done gates",
+        "Canonical roots",
+        "New project creation",
+        "Asset library"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content COMMAND TRUTH Mission Control MVP cockpit User-visible proof surface for Blackwire flow, canonical roots, queues, approvals, metrics, assets, brainstorms, memory isolation, and new project creation. "
+    },
+    {
+      "route": "/group-chat",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/group-chat.png",
+      "title": "Mission Control",
+      "textLength": 5789,
+      "headings": [
+        "Mission Control Group Chat",
+        "Blackwire Ops",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content Mission Control Group Chat Blackwire room, DMs, delivery proof, assignment tracker, and decision receipts. Refresh ROOMS HQ Command 0 messages · command OPS Blackwire Ops 11 messages · project DM DM:"
+    },
+    {
+      "route": "/brain-memory",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/brain-memory.png",
+      "title": "Mission Control",
+      "textLength": 8213,
+      "headings": [
+        "Brain / Memory Command",
+        "Safety / truth boundaries",
+        "DB-backed memory layers",
+        "Correction requests / write gate",
+        "Memory operating lanes",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content MEMORY HARMONY / READ-ONLY Brain / Memory Command Usable honest Brain/Memory surface for browsing domains, isolation boundaries, correction requests, and ingestion gates. READ ONLY READ ONLY Refresh "
+    },
+    {
+      "route": "/security-command",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/security-command.png",
+      "title": "Mission Control",
+      "textLength": 11383,
+      "headings": [
+        "Security Command Center",
+        "Safety / truth boundaries",
+        "DB-backed security systems",
+        "Daily / periodic audit hook inventory",
+        "Open findings / hooks",
+        "Security posture lanes",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content SECURITY POSTURE / AUDIT RECEIPTS Security Command Center Security command surface for posture, audit receipts, secrets hygiene, approval-sensitive actions, and evidence gaps. It links to existing Se"
+    },
+    {
+      "route": "/security",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/security.png",
+      "title": "Mission Control",
+      "textLength": 9049,
+      "headings": [
+        "Posture, findings, proof gates",
+        "System posture",
+        "Evidence guardrails",
+        "Status gates",
+        "Daily / periodic audit hooks",
+        "Findings board",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content SECURITY COMMAND CENTER Posture, findings, proof gates Mission Control security visibility for project posture, open findings, missing hooks, accountable owners, evidence paths, and next actions. WAT"
+    },
+    {
+      "route": "/marketing",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/marketing.png",
+      "title": "Mission Control",
+      "textLength": 8627,
+      "headings": [
+        "Vortex marketing operating system",
+        "External action guardrails",
+        "Security Command Center launch gate",
+        "Psychology & persuasion library",
+        "Funnel & channel playbooks",
+        "Tools / skills / plugins inventory",
+        "Templates / swipe library",
+        "Campaign / experiment board"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content MARKETING COMMAND CENTER Vortex marketing operating system Global psychology, persuasion, funnel, channel, tool, template, campaign, and per-project marketing surface. External sends/posts/spend rema"
+    },
+    {
+      "route": "/research-command",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/research-command.png",
+      "title": "Mission Control",
+      "textLength": 8035,
+      "headings": [
+        "Research Command Center",
+        "Safety / truth boundaries",
+        "DB-backed research briefs",
+        "Research queue",
+        "Karpathia + MiroFish labs",
+        "Research-to-action pipeline",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content RESEARCH OS Research Command Center Queue, source vault, findings board, Karpathia Auto-Research, MiroFish Simulation Lab, memory harmony, and research-to-action pipeline. The surface organizes work "
+    },
+    {
+      "route": "/asset-library",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/asset-library.png",
+      "title": "Mission Control",
+      "textLength": 8031,
+      "headings": [
+        "Asset Library",
+        "Safety / truth boundaries",
+        "DB-backed asset inventory",
+        "Asset lanes",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content RECEIPTS + REUSABLE ASSETS Asset Library Usable asset index for screenshots, visual receipts, copy blocks, documents, prompts, and proof files. This surface links to existing Office/Documents without"
+    },
+    {
+      "route": "/design",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/design.png",
+      "title": "Mission Control",
+      "textLength": 7160,
+      "headings": [
+        "Design Studio",
+        "Safety / truth boundaries",
+        "DB-backed design inventory / visual receipt gates",
+        "Brand systems + psychology",
+        "UI QA + visual receipts",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content PRODUCT + BRAND SYSTEM Design Studio Brand systems, UI QA, component status, screenshots/visual receipts, color/language psychology, and design decisions. No claim of completed QA without screenshots"
+    },
+    {
+      "route": "/trading",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/trading.png",
+      "title": "Mission Control",
+      "textLength": 8443,
+      "headings": [
+        "Trading Operations Cockpit",
+        "Safety / truth boundaries",
+        "DB-backed trading watchlist / signals / risk gates",
+        "Watchlist + signals",
+        "Risk, sizing, execution guardrails",
+        "Agent mapping",
+        "Secure Your Station"
+      ],
+      "hasApplicationError": false,
+      "hasLoginForm": true,
+      "firstText": "Skip to main content MARKETS WATCH / NO EXECUTION Trading Operations Cockpit Polymarket and approved-market watchlist, signal board, risk/sizing shell, execution guardrails, spread monitor, ledger/performance placeholder"
+    }
+  ],
+  "consoleFindings": [
+    {
+      "message": "CSP inline-script violation",
+      "count": 12
+    },
+    {
+      "message": "React hydration attribute mismatch warning",
+      "count": 12
+    },
+    {
+      "message": "SSE reconnect warning",
+      "count": 10
+    }
+  ],
+  "passed": true
+}
