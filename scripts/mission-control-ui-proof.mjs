@@ -54,6 +54,10 @@ try {
   browser = await chromium.launch({ headless: true, executablePath: fs.existsSync(chromePath) ? chromePath : undefined })
   const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } })
   await context.addCookies([{ name: 'mc-session', value: token, domain: '127.0.0.1', path: '/', httpOnly: true, sameSite: 'Lax', expires: now + 1800 }])
+  await context.addInitScript(() => {
+    window.sessionStorage.setItem('mc-onboarding-dismissed', '1')
+    window.sessionStorage.removeItem('mc-onboarding-replay')
+  })
   const page = await context.newPage()
   page.on('console', msg => {
     if (['error', 'warning'].includes(msg.type())) consoleMessages.push(`${msg.type()}: ${msg.text()}`)
