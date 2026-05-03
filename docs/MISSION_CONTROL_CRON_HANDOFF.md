@@ -1,11 +1,21 @@
 # Mission Control Continuous Execution Handoff
 
-Last updated: 2026-05-02 22:47:00 EDT
+Last updated: 2026-05-03 18:44:00 EDT
 
 ## Live finish line
 User-visible Mission Control MVP surfaces, not receipts. Missing integrations must stay visibly `Not Instrumented Yet` / `Evidence Missing`; approval-gated external actions must remain blocked until Chris approves scope.
 
 ## Latest meaningful progress
+- Polished the `/group-chat` local MVP surface for commercial/readability proof:
+  - Upgraded `src/components/panels/group-chat-panel.tsx` into a premium dark command-deck layout aligned with the polished login/surface shell: atmospheric background, stronger hero copy, room metrics, readable message cards, and denser right-rail task cards.
+  - Kept truth boundaries visible in-product: `Local MVP demo`, `Evidence before Done`, `No external sends`, and a `Local proof boundary` card stating delivery states are local dataset rows and @mentions do not contact external agents/customers.
+  - Made assignment evidence state visible on each task card so missing evidence remains `Evidence Missing — cannot be treated Done/green` instead of disappearing behind a status pill.
+  - Re-ran local UI proof; `/group-chat` returned HTTP 200, rendered non-blank content, and screenshot proof landed under `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/group-chat.png` with temp session cleanup count `0`.
+- Hardened the local UI proof console caveats instead of leaving them as generic warnings:
+  - Patched `src/app/layout.tsx` so the per-request CSP nonce is passed into `next-themes`' `ThemeProvider`, clearing the previously blocked inline theme bootstrap without adding `unsafe-inline` or weakening CSP.
+  - Added `suppressHydrationWarning` to the nonce-bearing static theme bootstrap script, clearing the React nonce hydration mismatch warning in the local proof run.
+  - Re-ran `scripts/mission-control-ui-proof.mjs` against `http://127.0.0.1:3104`; all checked user-visible MVP routes returned HTTP 200, rendered non-blank content, captured screenshots under `docs/outputs/mission-control-ui-proof-2026-05-03_03-20-44/`, and verified temp session cleanup count `0`.
+  - Updated `docs/MISSION_CONTROL_UI_PROOF_PACKET_2026-05-02.md` with the new proof folder and exact remaining caveats: local/dev SSE reconnect warning still present; API-key/password-login auth proof still unavailable; production deploy and live integrations remain unverified.
 - Captured the final local authenticated UI proof bundle directly because Koda still had no closeout receipt for the 22:24 final UI proof packet:
   - Added/reran `scripts/mission-control-ui-proof.mjs` against local runtime `http://127.0.0.1:3104` using a short-lived local `mc-session` for approved user `Chris`, then deleted the temporary session.
   - Captured full-page screenshots plus route summaries under `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/` for `/login`, `/mission-control`, `/command-truth`, `/group-chat`, `/brain-memory`, `/security-command`, `/security`, `/marketing`, `/research-command`, `/asset-library`, `/design`, and `/trading`.
@@ -58,9 +68,22 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Prior progress still present in the current worktree: n8n MCP / Automation Command Center; Design Studio + Asset Library visual receipt/detail gates; Research Command citation/readiness/promotion detail; Marketing Command Center per-project tab depth; Command Truth `No-fake-green truth gates`; `/mission-control` MVP Home; shared Mission Control surface snapshots; DB-backed Research/Trading/Design/Marketing/Brain/Asset/Brainstorm surfaces; route/nav wiring.
 
 ## Verification performed
+- GREEN: `pnpm exec eslint src/components/panels/group-chat-panel.tsx` passed after the Group Chat UI polish.
+- GREEN: `pnpm run typecheck` passed after the Group Chat UI polish.
+- GREEN: `pnpm vitest run src/lib/__tests__/group-chat-auth-routes.test.ts` passed: 4 tests / 4 passed.
+- GREEN: `pnpm build` passed after the Group Chat UI polish; route list still includes `/api/group-chat/{rooms,messages,assignments,receipts,delivery}` and dynamic `/[[...panel]]` for `/group-chat`.
+- GREEN: `git diff --check` passed after the Group Chat UI polish.
+- GREEN: `node scripts/mission-control-ui-proof.mjs` passed against `http://127.0.0.1:3104`; 13/13 checked local routes returned HTTP 200 and rendered non-blank content under `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/`, including `/group-chat`; temporary session cleanup count `0`.
+- VISUAL REVIEW: `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/group-chat.png` is commercial-presentable as a local MVP proof dashboard; visible boundaries include `Local MVP demo`, `Evidence before Done`, `No external sends`, and the local proof boundary card.
+- GREEN: `pnpm exec eslint src/app/layout.tsx` passed after the nonce hardening patch.
+- GREEN: `pnpm build` passed after the nonce hardening patch; route list still includes the Mission Control dynamic surfaces and group-chat read APIs.
+- GREEN: `node scripts/mission-control-ui-proof.mjs` passed against `http://127.0.0.1:3104` after the patch; full-page screenshots captured for `/login`, `/mission-control`, `/command-truth`, `/group-chat`, `/brain-memory`, `/security-command`, `/security`, `/marketing`, `/research-command`, `/asset-library`, `/design`, and `/trading` under `docs/outputs/mission-control-ui-proof-2026-05-03_03-20-44/`.
+- GREEN: latest UI proof temporary session cleanup verified with `sessionCleanupCount: 0`.
+- GREEN: prior `CSP inline-script violation` and React nonce hydration mismatch warnings are absent from the latest proof summary.
+- CAVEAT: latest UI proof browser console still captured local/dev `SSE reconnect warning` on 10 navigations; pages still returned 200 and rendered non-blank MVP content.
 - GREEN: `node scripts/mission-control-ui-proof.mjs` passed against `http://127.0.0.1:3104`; full-page screenshots captured for `/login`, `/mission-control`, `/command-truth`, `/group-chat`, `/brain-memory`, `/security-command`, `/security`, `/marketing`, `/research-command`, `/asset-library`, `/design`, and `/trading` under `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/`.
 - GREEN: UI proof temporary session cleanup verified with `sessionCleanupCount: 0`.
-- CAVEAT: UI proof browser console captured CSP inline-script violations, React hydration attribute mismatch warnings, and SSE reconnect warnings in the local dev runtime; pages still returned 200 and rendered non-blank MVP content.
+- Historical 22:47 proof caveat: UI proof browser console captured CSP inline-script violations, React hydration attribute mismatch warnings, and SSE reconnect warnings in the local dev runtime; pages still returned 200 and rendered non-blank MVP content. The 23:20 patch/proof rerun cleared the CSP and hydration warnings; SSE reconnect remains.
 - GREEN: `pnpm vitest run src/lib/__tests__/group-chat-auth-routes.test.ts` passed: 4 tests / 4 passed.
 - GREEN: `pnpm exec eslint src/app/api/group-chat/messages/route.ts src/app/api/group-chat/assignments/route.ts src/lib/__tests__/group-chat-auth-routes.test.ts` passed.
 - GREEN: `pnpm typecheck` passed.
@@ -97,7 +120,7 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Design Studio and Asset Library remain read-only planning/receipt surfaces; no external publish/deploy/customer-facing mutation authority was added.
 
 ## Current blockers / missing instrumentation
-- Final local UI proof is captured for `/login`, `/mission-control`, `/command-truth`, `/group-chat`, `/brain-memory`, `/security-command`, `/security`, `/marketing`, `/research-command`, `/asset-library`, `/design`, and `/trading`; caveat: local dev browser console still shows CSP inline-script nonce violations, React hydration attribute mismatch warnings, and SSE reconnect warnings that should be hardened before calling the UI runtime fully clean.
+- Final local UI proof is captured for `/login`, `/mission-control`, `/command-truth`, `/group-chat`, `/brain-memory`, `/security-command`, `/security`, `/marketing`, `/research-command`, `/asset-library`, `/design`, and `/trading`; the previous CSP inline-script and React nonce hydration warnings are hardened and cleared in the latest local proof run. Remaining caveat: local dev browser console still shows SSE reconnect warnings that should be hardened or classified before calling the UI runtime fully clean.
 - Group-chat read-only auth repair is code/test/build green; unauthenticated local runtime probes correctly return `401`; authenticated valid-session cookie probes now return `200` for `/api/group-chat/rooms`, `/api/group-chat/messages`, and `/api/group-chat/assignments`. Remaining caveat: no API key is configured and password-login proof still needs local DB credential alignment before that path can be called green.
 - `/mission-control`, `/command-truth`, `/marketing`, `/research-command`, `/asset-library`, `/design`, `/brain-memory`, `/brainstorm`, and `/security-command` are read-only/user-visible command surfaces; they are not live integration engines.
 - Blackwire Done gates are now visible in Command Truth, but they prove UI/API gating only; they do not prove live public Blackwire launch, external sends, customer-facing execution, or new screenshot/public proof bundle attachment.
@@ -115,4 +138,4 @@ User-visible Mission Control MVP surfaces, not receipts. Missing integrations mu
 - Design Studio visual screenshots are now captured in the local UI proof bundle for the current `/design` surface; this is screenshot evidence of the local page rendering, not proof of external publish/deploy/customer-facing mutation authority.
 
 ## Next safe slice
-Next safe slice: harden or ticket the local dev UI console caveats from the browser proof pass (CSP nonce / hydration mismatch / SSE reconnect warnings) without weakening CSP or auth, then re-run the UI proof bundle. If Koda returns a closeout receipt, verify it against `docs/MISSION_CONTROL_UI_PROOF_PACKET_2026-05-02.md`; otherwise keep the proof truth canonical here. API-key/password-login auth proof remains a caveat until local credentials are aligned; do not let that caveat erase the valid-session group-chat read proof now established.
+Next safe slice: if Chris wants another commercial-polish pass, refine Group Chat evidence density (expand/copy proof affordances and clearer mixed delivery-state legend) or Command Truth readability. Separately harden/classify the remaining local/dev SSE reconnect warning without weakening auth or hiding failures. API-key/password-login auth proof remains a caveat until local credentials are aligned; do not let that caveat erase the valid-session group-chat read proof now established.

@@ -194,6 +194,24 @@ export function GroupChatPanel() {
     )
   }, [data?.assignments, search])
 
+  const roomMetrics = useMemo(() => {
+    const messages = data?.messages || []
+    const assignments = data?.assignments || []
+    const receipts = data?.receipts || []
+    const unreadDeliveries = messages.flatMap((message) => message.delivery).filter((delivery) => delivery.state !== 'seen').length
+    const approvalNeeded = assignments.filter((item) => item.priority === 'approval_needed' || item.status === 'blocked').length
+    const doneWithoutEvidence = assignments.filter((item) => item.status === 'done' && !item.evidence).length
+
+    return {
+      messages: messages.length,
+      assignments: assignments.length,
+      receipts: receipts.length,
+      unreadDeliveries,
+      approvalNeeded,
+      doneWithoutEvidence,
+    }
+  }, [data?.assignments, data?.messages, data?.receipts])
+
   async function sendMessage(bodyOverride?: string) {
     const body = (bodyOverride || messageBody).trim()
     if (!body) return
@@ -272,34 +290,58 @@ export function GroupChatPanel() {
   }
 
   return (
-    <div className="flex h-full min-h-[calc(100vh-8rem)] flex-col">
-      <div className="border-b border-border bg-card/40 px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-bold text-foreground">Mission Control Group Chat</h1>
-            <p className="text-xs text-muted-foreground">
-              Blackwire room, DMs, delivery proof, assignment tracker, and decision receipts.
+    <div className="relative flex h-full min-h-[calc(100vh-8rem)] flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(129,140,248,0.14),transparent_32%),linear-gradient(rgba(148,163,184,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.045)_1px,transparent_1px)] bg-[length:auto,auto,36px_36px,36px_36px]" />
+      <div className="relative border-b border-cyan-400/15 bg-slate-950/85 px-4 py-4 shadow-2xl shadow-cyan-950/20 backdrop-blur">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <div className="mb-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">
+              <span className="rounded-full border border-cyan-400/25 bg-cyan-400/10 px-2.5 py-1">Local MVP demo</span>
+              <span className="rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-1 text-amber-200">Evidence before Done</span>
+              <span className="rounded-full border border-slate-500/40 bg-slate-900/80 px-2.5 py-1 text-slate-300">No external sends</span>
+            </div>
+            <h1 className="text-2xl font-black tracking-tight text-white">Mission Control Group Chat</h1>
+            <p className="mt-1 text-sm text-slate-300">
+              Blackwire room, DMs, delivery proof, assignment tracker, and decision receipts — readable as a command deck without claiming production messaging or agent autonomy.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search messages, tasks, receipts..."
-              className="h-9 w-72 max-w-[45vw] rounded-lg border border-border bg-background px-3 text-xs outline-none focus:border-primary"
-            />
-            <Button variant="outline" size="sm" onClick={fetchData}>Refresh</Button>
+          <div className="flex flex-col gap-2 sm:min-w-80">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <div className="text-lg font-black text-white">{roomMetrics.messages}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">Messages</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <div className="text-lg font-black text-white">{roomMetrics.assignments}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">Tasks</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <div className="text-lg font-black text-white">{roomMetrics.receipts}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">Receipts</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search messages, tasks, receipts..."
+                className="h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-900/90 px-3 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-cyan-300"
+              />
+              <Button variant="outline" size="sm" onClick={fetchData}>Refresh</Button>
+            </div>
           </div>
         </div>
-        {error && (
-          <div className="mt-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-            {error}
+        {(error || roomMetrics.doneWithoutEvidence > 0 || roomMetrics.approvalNeeded > 0) && (
+          <div className="mt-3 grid gap-2 text-xs md:grid-cols-3">
+            {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">{error}</div>}
+            {roomMetrics.approvalNeeded > 0 && <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-amber-100">{roomMetrics.approvalNeeded} assignment gate(s) need approval or blocker resolution.</div>}
+            {roomMetrics.doneWithoutEvidence > 0 && <div className="rounded-lg border border-red-400/25 bg-red-400/10 px-3 py-2 text-red-100">{roomMetrics.doneWithoutEvidence} Done item(s) have missing evidence and must not be treated green.</div>}
           </div>
         )}
       </div>
 
-      <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[260px_minmax(0,1fr)_360px]">
-        <aside className="border-b border-border bg-background/60 p-3 lg:border-b-0 lg:border-r">
+      <div className="relative grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)_380px]">
+        <aside className="border-b border-cyan-400/10 bg-slate-950/70 p-3 backdrop-blur lg:border-b-0 lg:border-r lg:border-cyan-400/10">
           <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Rooms</div>
           <div className="space-y-1">
             {(data?.rooms || []).map((room) => (
@@ -322,9 +364,12 @@ export function GroupChatPanel() {
               </button>
             ))}
           </div>
-          <div className="mt-4 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground">
-            <div className="font-semibold text-foreground">v0 proof</div>
-            <p className="mt-1">Messages prove sent/delivered/seen locally. @mentions with action words create board items.</p>
+          <div className="mt-4 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.06] p-3 text-xs text-slate-300 shadow-lg shadow-cyan-950/20">
+            <div className="font-semibold text-white">Local proof boundary</div>
+            <p className="mt-1">Messages prove sent/delivered/seen in the local MVP dataset only. @mentions create local board items; no external agent/customer channel is contacted.</p>
+            <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2">
+              <span className="font-semibold text-cyan-200">Delivery follow-up:</span> {roomMetrics.unreadDeliveries} local delivery row(s) are not yet seen.
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -332,13 +377,13 @@ export function GroupChatPanel() {
               onClick={() => sendMessage('@koda verify the Blackwire room demo and mark the group chat proof path working.')}
               disabled={submitting}
             >
-              Send @mention demo
+              Send local @mention demo
             </Button>
           </div>
         </aside>
 
-        <section className="flex min-h-[520px] flex-col overflow-hidden">
-          <div className="border-b border-border px-4 py-3">
+        <section className="flex min-h-[520px] flex-col overflow-hidden border-x border-cyan-400/10 bg-slate-950/45">
+          <div className="border-b border-cyan-400/10 bg-slate-950/55 px-4 py-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-semibold text-foreground">{data?.selectedRoom?.name || 'Room'}</h2>
@@ -350,26 +395,26 @@ export function GroupChatPanel() {
 
           <div className="flex-1 space-y-3 overflow-auto p-4">
             {filteredMessages.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-lg border border-dashed border-cyan-400/20 bg-slate-950/50 p-8 text-center text-sm text-slate-400">
                 No messages found.
               </div>
             ) : filteredMessages.map((message) => {
               const state = deliverySummary(message)
               const isSystem = message.sender_type === 'system'
               return (
-                <article key={message.id} className={`rounded-xl border p-3 ${isSystem ? 'border-amber-500/20 bg-amber-500/5' : 'border-border bg-card'}`}>
+                <article key={message.id} className={`rounded-2xl border p-3 shadow-lg ${isSystem ? 'border-amber-500/25 bg-amber-500/10 shadow-amber-950/10' : 'border-white/10 bg-white/[0.045] shadow-slate-950/20'}`}>
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-foreground">{message.sender_display_name || message.sender_id}</span>
-                      <span className="text-[11px] text-muted-foreground">{formatTime(message.created_at)}</span>
+                      <span className="text-sm font-semibold text-white">{message.sender_display_name || message.sender_id}</span>
+                      <span className="text-[11px] text-slate-400">{formatTime(message.created_at)}</span>
                       {message.message_type !== 'normal' && <StatusBadge value={message.message_type} />}
                     </div>
                     <StatusBadge value={state} />
                   </div>
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/90">{message.body}</p>
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-slate-100/90">{message.body}</p>
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {message.delivery.map((delivery) => (
-                      <span key={delivery.id} className="rounded-md bg-background px-2 py-1 text-[10px] text-muted-foreground">
+                      <span key={delivery.id} className="rounded-md border border-white/10 bg-slate-950/60 px-2 py-1 text-[10px] text-slate-300">
                         {delivery.recipient_id}: {delivery.state}
                       </span>
                     ))}
@@ -379,13 +424,13 @@ export function GroupChatPanel() {
             })}
           </div>
 
-          <div className="border-t border-border bg-card/40 p-3">
+          <div className="border-t border-cyan-400/10 bg-slate-950/80 p-3">
             <div className="flex gap-2">
               <textarea
                 value={messageBody}
                 onChange={(event) => setMessageBody(event.target.value)}
                 placeholder="Type in plain English. Example: @koda build the Command Truth fixture route."
-                className="min-h-16 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                className="min-h-16 flex-1 resize-none rounded-xl border border-white/10 bg-slate-900/90 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-cyan-300"
               />
               <Button onClick={() => sendMessage()} disabled={submitting || !messageBody.trim()} className="self-end">
                 Send
@@ -394,7 +439,7 @@ export function GroupChatPanel() {
           </div>
         </section>
 
-        <aside className="overflow-auto border-t border-border bg-background/60 p-3 lg:border-l lg:border-t-0">
+        <aside className="overflow-auto border-t border-cyan-400/10 bg-slate-950/70 p-3 backdrop-blur lg:border-l lg:border-t-0">
           <div className="space-y-3">
             <section className="rounded-xl border border-border bg-card p-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pinned Context</div>
@@ -413,20 +458,23 @@ export function GroupChatPanel() {
                 {filteredAssignments.length === 0 ? (
                   <p className="text-xs text-muted-foreground">No assignment items yet.</p>
                 ) : filteredAssignments.map((item) => (
-                  <div key={item.id} className="rounded-lg border border-border bg-background p-2">
+                  <div key={item.id} className="rounded-xl border border-white/10 bg-slate-950/55 p-2.5 shadow-lg shadow-slate-950/20">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="line-clamp-2 text-xs font-semibold text-foreground">{item.title}</div>
-                        <div className="mt-1 text-[11px] text-muted-foreground">@{item.assignee_agent_id || 'unassigned'} · {item.priority}</div>
+                        <div className="line-clamp-2 text-xs font-semibold text-white">{item.title}</div>
+                        <div className="mt-1 text-[11px] text-slate-400">@{item.assignee_agent_id || 'unassigned'} · {item.priority}</div>
                       </div>
                       <StatusBadge value={item.status} />
+                    </div>
+                    <div className={`mt-2 rounded-lg border px-2 py-1.5 text-[11px] ${item.evidence ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100' : 'border-amber-400/20 bg-amber-400/10 text-amber-100'}`}>
+                      {item.evidence ? `Evidence: ${item.evidence}` : 'Evidence Missing — cannot be treated Done/green.'}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {(['accepted', 'working', 'blocked', 'done'] as TaskStatus[]).map((status) => (
                         <button
                           key={status}
                           onClick={() => updateAssignment(item.id, status)}
-                          className="rounded border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          className="rounded border border-white/10 px-2 py-1 text-[10px] text-slate-300 hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-white"
                         >
                           {status}
                         </button>

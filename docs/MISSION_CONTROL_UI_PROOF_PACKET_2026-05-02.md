@@ -1,7 +1,7 @@
 # Mission Control UI proof packet — 2026-05-02
 
-Status: LOCAL MVP UI PROOF CAPTURED WITH CAVEATS
-Timestamp: 2026-05-02 22:47 EDT
+Status: LOCAL MVP UI PROOF CAPTURED; GROUP CHAT UI POLISHED
+Timestamp: 2026-05-03 18:44 EDT
 Repo: `/Users/vortexventures/Desktop/Vortex Ventures/VVMissionControlOps/mission-control`
 Branch: `herm/mission-control-mvp-stabilize-20260502-1338`
 Runtime: `http://127.0.0.1:3104`
@@ -20,11 +20,11 @@ User-visible Mission Control MVP surfaces, not receipts. This packet proves loca
 
 Proof output folder:
 
-`docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/`
+`docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/`
 
 Machine-readable summary:
 
-`docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/summary.json`
+`docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/summary.json`
 
 ## Route results
 
@@ -32,28 +32,35 @@ All listed routes returned HTTP 200, rendered non-blank content, and captured sc
 
 | Route | Status | Primary visible heading | Screenshot |
 | --- | ---: | --- | --- |
-| `/login` | 200 | Mission Control | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/login.png` |
-| `/mission-control` | 200 | Mission Control MVP Home | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/mission-control.png` |
-| `/command-truth` | 200 | Mission Control MVP cockpit | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/command-truth.png` |
-| `/group-chat` | 200 | Mission Control Group Chat | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/group-chat.png` |
-| `/brain-memory` | 200 | Brain / Memory Command | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/brain-memory.png` |
-| `/security-command` | 200 | Security Command Center | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/security-command.png` |
-| `/security` | 200 | Posture, findings, proof gates | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/security.png` |
-| `/marketing` | 200 | Vortex marketing operating system | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/marketing.png` |
-| `/research-command` | 200 | Research Command Center | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/research-command.png` |
-| `/asset-library` | 200 | Asset Library | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/asset-library.png` |
-| `/design` | 200 | Design Studio | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/design.png` |
-| `/trading` | 200 | Trading Operations Cockpit | `docs/outputs/mission-control-ui-proof-2026-05-03_02-46-24/trading.png` |
+| `/login` | 200 | Mission Control | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/login.png` |
+| `/mission-control` | 200 | Mission Control MVP Home | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/mission-control.png` |
+| `/command-truth` | 200 | Mission Control MVP cockpit | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/command-truth.png` |
+| `/group-chat` | 200 | Mission Control Group Chat | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/group-chat.png` |
+| `/brain-memory` | 200 | Brain / Memory Command | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/brain-memory.png` |
+| `/security-command` | 200 | Security Command Center | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/security-command.png` |
+| `/security` | 200 | Posture, findings, proof gates | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/security.png` |
+| `/marketing` | 200 | Vortex marketing operating system | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/marketing.png` |
+| `/research-command` | 200 | Research Command Center | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/research-command.png` |
+| `/asset-library` | 200 | Asset Library | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/asset-library.png` |
+| `/design` | 200 | Design Studio | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/design.png` |
+| `/trading` | 200 | Trading Operations Cockpit | `docs/outputs/mission-control-ui-proof-2026-05-03_22-40-14/trading.png` |
 
 ## Console findings / caveats
 
-The route proof passed, but the browser run surfaced dev-runtime console findings that should remain visible rather than greenwashed:
+The rerun route proof passed after hardening the local dev CSP/hydration warnings:
 
-- `CSP inline-script violation`: observed on 12 navigations. The inline script was blocked by the current CSP nonce handling in the local dev runtime.
-- `React hydration attribute mismatch warning`: observed on 12 navigations, tied to nonce attributes changing between server render and client hydration.
-- `SSE reconnect warning`: observed on 10 navigations. This appears related to local/dev event-stream reconnect behavior, not a blank-page blocker.
+- Fixed the blocked inline theme bootstrap by passing the per-request nonce through `next-themes`' `ThemeProvider` and marking the nonce-bearing static bootstrap script with `suppressHydrationWarning`.
+- `CSP inline-script violation`: cleared in the 23:20 EDT proof rerun.
+- `React hydration attribute mismatch warning`: cleared in the 23:20 EDT proof rerun.
+- `SSE reconnect warning`: still observed on 10 navigations. This appears related to local/dev event-stream reconnect behavior, not a blank-page blocker.
 
-These are UI/runtime hardening items. They did not prevent the local pages from returning 200, rendering non-blank MVP content, or producing screenshots.
+These are not external integration proofs. The latest UI proof still only proves local authenticated pages returned 200, rendered non-blank MVP content, and produced screenshots.
+
+## Group Chat commercial polish addendum — 2026-05-03 18:44 EDT
+
+`/group-chat` now uses the same dark command-deck visual language as the polished login/surface shell. The proof screenshot shows the local MVP/truth boundaries directly in the UI: `Local MVP demo`, `Evidence before Done`, `No external sends`, and a local proof boundary that states delivery states are local dataset rows only. Assignment cards now show evidence text or `Evidence Missing — cannot be treated Done/green`.
+
+Visual review verdict: commercial-presentable for a local MVP proof dashboard, with honest caveats that mixed delivery states and dense evidence text should be explained or refined before any buyer-facing cut that implies production messaging.
 
 ## No-fake-green boundaries preserved
 
@@ -65,4 +72,4 @@ These are UI/runtime hardening items. They did not prevent the local pages from 
 
 ## Result
 
-Local MVP user-visible surface proof is captured for the main Mission Control routes. Remaining exact caveats are CSP/hydration/SSE local dev console findings, API-key/password-login auth proof still unavailable, and all integrations that the UI labels as `Not Instrumented Yet` / `Evidence Missing` remain uninstrumented until separately proven.
+Local MVP user-visible surface proof is captured for the main Mission Control routes. The CSP inline-script violation and nonce hydration mismatch caveats are now hardened and cleared in the latest local proof run. Remaining exact caveats are the local/dev SSE reconnect warning, API-key/password-login auth proof still unavailable, production deploy proof still unverified, and all integrations that the UI labels as `Not Instrumented Yet` / `Evidence Missing` remain uninstrumented until separately proven.
