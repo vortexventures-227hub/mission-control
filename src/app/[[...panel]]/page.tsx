@@ -11,6 +11,7 @@ import { CronManagementPanel } from '@/components/panels/cron-management-panel'
 import { MemoryBrowserPanel } from '@/components/panels/memory-browser-panel'
 import { ResearchIntakePanel } from '@/components/panels/research-intake-panel'
 import { ContentResearchPanel } from '@/components/panels/content-research-panel'
+import { KnowledgeIntakePanel } from '@/components/panels/knowledge-intake-panel'
 import { CostTrackerPanel } from '@/components/panels/cost-tracker-panel'
 import { ExpensesPanel } from '@/components/panels/expenses-panel'
 import { TaskBoardPanel } from '@/components/panels/task-board-panel'
@@ -557,6 +558,8 @@ function ContentRouter({ tab }: { tab: string }) {
       return <ContentResearchPanel />
     case 'research':
       return <ResearchIntakePanel />
+    case 'knowledge-intake':
+      return <KnowledgeIntakePanel />
     case 'documents':
       return <DocumentsPanel />
     case 'cost-tracker':

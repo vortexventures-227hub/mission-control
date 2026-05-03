@@ -109,6 +109,7 @@
     "debug": "Debug",
     "settings": "Settings",
     "group": {
+      "knowledge": "KNOWLEDGE",
       "observe": "OBSERVE",
       "automate": "AUTOMATE",
       "admin": "ADMIN"
@@ -123,6 +124,7 @@
     "dispatch": "Dispatch",
     "notifications": "Notifications",
     "documents": "Documents",
+    "knowledgeIntake": "Knowledge Intake",
     "monitor": "Monitor",
     "expenses": "Expenses"
   },
