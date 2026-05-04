@@ -6,6 +6,7 @@ import { config, ensureDirExists } from './config'
 export type KnowledgeSourceType = 'youtube' | 'x' | 'article' | 'pdf' | 'paste' | 'file' | 'folder'
 export type KnowledgeSourceStatus =
   | 'captured'
+  | 'extracted'
   | 'extracting'
   | 'summarized'
   | 'ready_for_review'
@@ -100,6 +101,28 @@ const STOPWORDS = new Set([
   'these', 'thing', 'this', 'through', 'with', 'would', 'your',
 ])
 
+const FETCH_TIMEOUT_MS = 10_000
+const MAX_EXTRACTED_CHARS = 40_000
+
+interface SummarizeResult {
+  status: KnowledgeSourceStatus
+  text: string
+  extractedText: string
+  extraction: Omit<KnowledgeExtraction, 'source_id' | 'citations'>
+  error: string | null
+  title?: string
+  author?: string | null
+}
+
+interface ExternalExtractionResult {
+  status: KnowledgeSourceStatus
+  extractedText: string
+  note: string
+  error: string | null
+  title?: string
+  author?: string | null
+}
+
 function dataRoot() {
   return path.join(config.dataDir, 'knowledge-intake')
 }
@@ -185,6 +208,270 @@ function titleFromInput(input: string, type: KnowledgeSourceType) {
   }
 }
 
+function decodeHtml(value: string) {
+  return value
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([a-f0-9]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
+}
+
+function stripTags(value: string) {
+  return decodeHtml(value.replace(/<[^>]+>/g, ' '))
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+async function fetchText(url: string, init?: RequestInit) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5',
+        'user-agent': 'MissionControlKnowledgeIntake/0.2 (+local operator-reviewed extraction)',
+        ...(init?.headers || {}),
+      },
+    })
+    const text = await response.text()
+    return {
+      ok: response.ok,
+      status: response.status,
+      contentType: response.headers.get('content-type') || '',
+      text,
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+function extractJsonObjectAfter(html: string, marker: string) {
+  const markerIndex = html.indexOf(marker)
+  if (markerIndex < 0) return null
+  const start = html.indexOf('{', markerIndex)
+  if (start < 0) return null
+
+  let depth = 0
+  let inString = false
+  let escaped = false
+
+  for (let index = start; index < html.length; index += 1) {
+    const char = html[index]
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      continue
+    }
+    if (char === '{') depth += 1
+    if (char === '}') {
+      depth -= 1
+      if (depth === 0) return html.slice(start, index + 1)
+    }
+  }
+  return null
+}
+
+function extractYouTubeVideoId(input: string) {
+  const url = new URL(input)
+  if (url.hostname.includes('youtu.be')) return url.pathname.split('/').filter(Boolean)[0] || null
+  if (url.searchParams.get('v')) return url.searchParams.get('v')
+  const parts = url.pathname.split('/').filter(Boolean)
+  const embedIndex = parts.findIndex(part => part === 'embed' || part === 'shorts')
+  return embedIndex >= 0 ? parts[embedIndex + 1] || null : null
+}
+
+function parseYouTubeCaptionTrackUrl(html: string) {
+  const playerJson = extractJsonObjectAfter(html, 'ytInitialPlayerResponse')
+  if (!playerJson) return null
+  try {
+    const player = JSON.parse(playerJson)
+    const tracks = player?.captions?.playerCaptionsTracklistRenderer?.captionTracks
+    if (!Array.isArray(tracks) || tracks.length === 0) return null
+    const english = tracks.find((track: any) => String(track?.languageCode || '').toLowerCase().startsWith('en'))
+    const selected = english || tracks[0]
+    return typeof selected?.baseUrl === 'string' ? selected.baseUrl : null
+  } catch {
+    return null
+  }
+}
+
+function parseTranscriptXml(xml: string) {
+  const lines = [...xml.matchAll(/<text\b[^>]*>([\s\S]*?)<\/text>/gi)]
+    .map(match => stripTags(match[1]))
+    .filter(Boolean)
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+async function extractYouTubeTranscript(url: string): Promise<ExternalExtractionResult> {
+  const videoId = extractYouTubeVideoId(url)
+  if (!videoId) {
+    return {
+      status: 'manual_paste_needed',
+      extractedText: 'transcript_unavailable: Could not detect a YouTube video id. Paste the transcript manually.',
+      note: 'YouTube URL captured, but no video id could be detected.',
+      error: 'transcript_unavailable: video id not detected',
+    }
+  }
+
+  try {
+    const watch = await fetchText(`https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&hl=en`)
+    if (!watch.ok) {
+      return {
+        status: 'manual_paste_needed',
+        extractedText: `transcript_unavailable: YouTube page returned HTTP ${watch.status}. Paste the transcript manually.`,
+        note: 'YouTube URL captured, but the watch page was not reachable.',
+        error: `transcript_unavailable: watch page HTTP ${watch.status}`,
+      }
+    }
+
+    const trackUrl = parseYouTubeCaptionTrackUrl(watch.text)
+    if (!trackUrl) {
+      return {
+        status: 'manual_paste_needed',
+        extractedText: 'transcript_unavailable: No caption track was found in the YouTube page. Paste the transcript manually.',
+        note: 'YouTube URL captured, but captions/transcript were unavailable.',
+        error: 'transcript_unavailable: captions not found',
+      }
+    }
+
+    const transcriptResponse = await fetchText(trackUrl, { headers: { accept: 'text/xml,text/plain,*/*' } })
+    if (!transcriptResponse.ok) {
+      return {
+        status: 'manual_paste_needed',
+        extractedText: `transcript_unavailable: Caption track returned HTTP ${transcriptResponse.status}. Paste the transcript manually.`,
+        note: 'YouTube URL captured, but the caption track was not reachable.',
+        error: `transcript_unavailable: caption HTTP ${transcriptResponse.status}`,
+      }
+    }
+
+    const transcript = parseTranscriptXml(transcriptResponse.text).slice(0, MAX_EXTRACTED_CHARS)
+    if (transcript.length < 80) {
+      return {
+        status: 'manual_paste_needed',
+        extractedText: 'transcript_unavailable: Caption track was empty or too short to summarize. Paste the transcript manually.',
+        note: 'YouTube URL captured, but the transcript text was empty.',
+        error: 'transcript_unavailable: empty caption track',
+      }
+    }
+
+    return {
+      status: 'ready_for_review',
+      extractedText: transcript,
+      note: 'YouTube transcript extracted locally and is ready for review.',
+      error: null,
+      title: `YouTube Transcript: ${videoId}`,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown fetch error'
+    return {
+      status: 'manual_paste_needed',
+      extractedText: `transcript_unavailable: ${message}. Paste the transcript manually.`,
+      note: 'YouTube URL captured, but transcript extraction failed.',
+      error: `transcript_unavailable: ${message}`,
+    }
+  }
+}
+
+function extractMeta(html: string, name: string) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const propertyPattern = new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["'][^>]*>`, 'i')
+  const contentFirstPattern = new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escaped}["'][^>]*>`, 'i')
+  return decodeHtml(propertyPattern.exec(html)?.[1] || contentFirstPattern.exec(html)?.[1] || '').trim()
+}
+
+function extractArticleTitle(html: string, fallbackUrl: string) {
+  const title = extractMeta(html, 'og:title') || /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1]
+  if (title) return stripTags(title).slice(0, 120)
+  return titleFromInput(fallbackUrl, 'article')
+}
+
+function extractArticleAuthor(html: string) {
+  return extractMeta(html, 'author') || extractMeta(html, 'article:author') || null
+}
+
+function extractArticleText(html: string) {
+  const withoutNoise = html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ')
+    .replace(/<svg[\s\S]*?<\/svg>/gi, ' ')
+    .replace(/<(nav|header|footer|aside)\b[\s\S]*?<\/\1>/gi, ' ')
+  const body = /<body[^>]*>([\s\S]*?)<\/body>/i.exec(withoutNoise)?.[1] || withoutNoise
+  const chunks = [...body.matchAll(/<(h[1-3]|p|li|blockquote)[^>]*>([\s\S]*?)<\/\1>/gi)]
+    .map(match => stripTags(match[2]))
+    .filter(text => text.length > 24)
+
+  const text = (chunks.length ? chunks.join('\n\n') : stripTags(body))
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  return text.slice(0, MAX_EXTRACTED_CHARS)
+}
+
+async function extractArticle(url: string): Promise<ExternalExtractionResult> {
+  try {
+    const response = await fetchText(url)
+    if (!response.ok) {
+      return {
+        status: 'error',
+        extractedText: `extraction_failed: Article URL returned HTTP ${response.status}.`,
+        note: 'Article URL captured, but the page was not reachable.',
+        error: `extraction_failed: HTTP ${response.status}`,
+      }
+    }
+    if (response.contentType && !/(html|xml|text\/plain)/i.test(response.contentType)) {
+      return {
+        status: 'error',
+        extractedText: `extraction_failed: Unsupported content type ${response.contentType}.`,
+        note: 'Article URL captured, but the response was not a readable article page.',
+        error: `extraction_failed: unsupported content type ${response.contentType}`,
+      }
+    }
+
+    const text = extractArticleText(response.text)
+    if (text.length < 120) {
+      return {
+        status: 'error',
+        extractedText: 'extraction_failed: Page did not contain enough readable public text.',
+        note: 'Article URL captured, but readable text extraction failed.',
+        error: 'extraction_failed: insufficient readable text',
+      }
+    }
+
+    return {
+      status: 'ready_for_review',
+      extractedText: text,
+      note: 'Public article text extracted locally and is ready for review.',
+      error: null,
+      title: extractArticleTitle(response.text, url),
+      author: extractArticleAuthor(response.text),
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown fetch error'
+    return {
+      status: 'error',
+      extractedText: `extraction_failed: ${message}.`,
+      note: 'Article URL captured, but extraction failed.',
+      error: `extraction_failed: ${message}`,
+    }
+  }
+}
+
 function sentences(text: string) {
   return text
     .replace(/\s+/g, ' ')
@@ -248,28 +535,58 @@ function recommendedDestinations(input: CreateKnowledgeSourceInput, type: Knowle
   return [...destinations].slice(0, 6)
 }
 
-function summarize(input: CreateKnowledgeSourceInput, type: KnowledgeSourceType): { status: KnowledgeSourceStatus; text: string; extractedText: string; extraction: Omit<KnowledgeExtraction, 'source_id' | 'citations'>; error: string | null } {
+async function summarize(input: CreateKnowledgeSourceInput, type: KnowledgeSourceType): Promise<SummarizeResult> {
   const content = input.content.trim()
   const sourceUrl = isUrl(content) ? content : null
 
   if (type !== 'paste') {
-    const note = type === 'x'
+    const external = type === 'youtube'
+      ? await extractYouTubeTranscript(content)
+      : type === 'article'
+        ? await extractArticle(content)
+        : null
+
+    if (external && external.status === 'ready_for_review') {
+      const extracted = external.extractedText
+      const sentenceList = sentences(extracted)
+      const topKeywords = keywords(extracted)
+      return {
+        status: external.status,
+        text: external.note,
+        extractedText: extracted,
+        error: null,
+        title: external.title,
+        author: external.author,
+        extraction: {
+          summary: sentenceList.slice(0, 2).join(' ') || extracted.slice(0, 260),
+          key_ideas: sentenceList.slice(0, 5).length ? sentenceList.slice(0, 5) : topKeywords.map(word => `Important theme: ${word}`),
+          tools_mentioned: extractTools(extracted),
+          implementation_steps: extractSteps(extracted, type),
+          claims_to_verify: extractClaims(extracted, type),
+          recommended_destinations: recommendedDestinations(input, type, extracted),
+        },
+      }
+    }
+
+    const note = external?.note || (type === 'x'
       ? 'X/Twitter URL captured. Full extraction needs official X credentials or pasted thread text.'
-      : type === 'youtube'
-        ? 'YouTube URL captured. Transcript extraction is scaffolded; paste transcript text for the fully summarized MVP path.'
-        : type === 'pdf'
-          ? 'PDF/file URL captured. File OCR/MarkItDown extraction is scaffolded for the next slice.'
-          : 'Article URL captured. Safe article extraction is scaffolded; paste article text if immediate summarization is needed.'
+      : type === 'pdf'
+        ? 'PDF/file URL captured. File OCR/MarkItDown extraction is scaffolded for the next slice.'
+        : 'URL captured. Extraction is unavailable; paste source text if immediate summarization is needed.')
+    const status: KnowledgeSourceStatus = external?.status || (type === 'x' ? 'credentials_needed' : 'captured')
+    const error = external?.error || (type === 'x' ? 'Credentials Needed: official X API credentials are not configured; paste text manually for extraction.' : null)
     return {
-      status: type === 'x' ? 'credentials_needed' : 'captured',
+      status,
       text: note,
-      extractedText: note,
-      error: type === 'x' ? 'Credentials Needed: official X API credentials are not configured; paste text manually for extraction.' : null,
+      extractedText: external?.extractedText || note,
+      error,
+      title: external?.title,
+      author: external?.author,
       extraction: {
         summary: note,
         key_ideas: [
           `${SOURCE_TYPE_LABELS[type]} source captured with citation preserved.`,
-          'Full extraction is intentionally not faked in this first slice.',
+          error ? 'Full extraction did not complete; no summary was invented.' : 'Full extraction is intentionally not faked when adapters cannot read the source.',
           'Manual paste path can produce review-ready summaries immediately.',
         ],
         tools_mentioned: extractTools(content),
@@ -299,7 +616,7 @@ function summarize(input: CreateKnowledgeSourceInput, type: KnowledgeSourceType)
   }
 }
 
-export function createKnowledgeSource(input: CreateKnowledgeSourceInput): KnowledgeIntakeSnapshot {
+export async function createKnowledgeSource(input: CreateKnowledgeSourceInput): Promise<KnowledgeIntakeSnapshot> {
   const content = input.content.trim()
   if (!content) throw new Error('Knowledge intake content is required')
 
@@ -309,11 +626,12 @@ export function createKnowledgeSource(input: CreateKnowledgeSourceInput): Knowle
   const sourceType = detectKnowledgeSourceType(content)
   const id = crypto.randomUUID()
   const now = Date.now()
-  const title = titleFromInput(content, sourceType)
+  const initialTitle = titleFromInput(content, sourceType)
+  const extractionResult = await summarize(input, sourceType)
+  const title = extractionResult.title || initialTitle
   const baseName = `${now}-${safeSlug(title)}`
   const rawPath = path.join(rawDir(), `${baseName}.txt`)
   const extractedPath = path.join(extractedDir(), `${baseName}.md`)
-  const extractionResult = summarize(input, sourceType)
 
   fs.writeFileSync(rawPath, content)
   fs.writeFileSync(extractedPath, extractionResult.extractedText)
@@ -324,7 +642,7 @@ export function createKnowledgeSource(input: CreateKnowledgeSourceInput): Knowle
     source_type: sourceType,
     source_url: isUrl(content) ? content : null,
     title,
-    author: null,
+    author: extractionResult.author || null,
     captured_at: now,
     raw_path: rawPath,
     extracted_text_path: extractedPath,
@@ -363,9 +681,13 @@ function buildSnapshot(source: KnowledgeSource, extraction: KnowledgeExtraction,
       extraction_status: source.status,
       extraction_note: source.status === 'ready_for_review'
         ? 'Review-ready extraction produced locally.'
+        : source.status === 'manual_paste_needed'
+          ? 'Source captured, but full extraction needs a pasted transcript or source text.'
+          : source.status === 'error'
+            ? 'Extraction failed; source and error receipt were preserved without invented content.'
         : source.status === 'credentials_needed'
           ? 'Credentials needed before full extraction; manual paste remains available.'
-          : 'Raw source captured; full adapter extraction remains scaffolded.',
+          : 'Raw source captured; adapter extraction remains honest.',
     },
     source,
     extraction,
@@ -417,6 +739,7 @@ export function knowledgeIntakeGuardrails() {
     'Capture Raw can run locally; external posts/sends/social mutations are blocked.',
     'Write to Wiki, Brain, Memory, Graphify, gBrain, Obsidian, or Task Board requires explicit approval and a receipt.',
     'X/Twitter URL extraction stays Credentials Needed unless official read credentials exist or Chris pastes the text.',
+    'YouTube transcripts and article pages extract only when public readable text is available; unavailable sources must say transcript_unavailable or extraction_failed.',
     'David / Material Solutions memory must stay isolated from Vortex-general and Blackwire project memory.',
     'If extraction is pending, preserve the source URL and raw path instead of inventing a summary.',
   ]
@@ -425,7 +748,7 @@ export function knowledgeIntakeGuardrails() {
 export function knowledgeIntakeGates() {
   return [
     { action: 'Capture Raw', status: 'available' as const, detail: 'Stores the source text or URL locally with a raw evidence path.' },
-    { action: 'Extract / Summarize', status: 'available' as const, detail: 'Pasted text extracts locally; URL adapters stay honest if credentials or transcript paths are missing.' },
+    { action: 'Extract / Summarize', status: 'available' as const, detail: 'Pasted text extracts locally; public article pages and available YouTube transcripts extract into review cards; blocked sources stay honest.' },
     { action: 'Write to Wiki / Brain / Memory', status: 'approval_required' as const, detail: 'Requires approval before durable memory writes or Graphify/gBrain/Obsidian ingestion.' },
     { action: 'Create Task', status: 'approval_required' as const, detail: 'Requires approval before adding work to tracker boards.' },
     { action: 'Post / Send / Act externally', status: 'blocked' as const, detail: 'No social post, customer send, trade, spend, or account mutation from this surface.' },

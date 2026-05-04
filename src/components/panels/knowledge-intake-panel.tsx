@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 type SourceType = 'youtube' | 'x' | 'article' | 'pdf' | 'paste' | 'file' | 'folder'
 type SourceStatus =
   | 'captured'
+  | 'extracted'
   | 'extracting'
   | 'summarized'
   | 'ready_for_review'
@@ -87,8 +88,8 @@ function sourceBadge(type: SourceType) {
 }
 
 function statusClass(status: string) {
-  if (status === 'ready_for_review' || status === 'summarized') return 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
-  if (status === 'credentials_needed' || status === 'blocked') return 'border-amber-400/30 bg-amber-500/10 text-amber-100'
+  if (status === 'ready_for_review' || status === 'summarized' || status === 'extracted') return 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+  if (status === 'credentials_needed' || status === 'blocked' || status === 'manual_paste_needed') return 'border-amber-400/30 bg-amber-500/10 text-amber-100'
   if (status === 'error') return 'border-red-400/30 bg-red-500/10 text-red-100'
   return 'border-sky-400/30 bg-sky-500/10 text-sky-100'
 }
@@ -232,7 +233,7 @@ export function KnowledgeIntakePanel() {
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-200/80">Capture Source</p>
                   <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-slate-100">Drop raw material into review</h2>
-                  <p className="mt-1 text-sm text-slate-400">Pasted text produces full MVP extraction. URLs are captured honestly when adapters need credentials.</p>
+                  <p className="mt-1 text-sm text-slate-400">Pasted text, public articles, and available YouTube transcripts produce review cards. X and blocked sources stay honest.</p>
                 </div>
                 <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${statusClass('captured')}`}>
                   Detected: {sourceBadge(detected)}
@@ -325,7 +326,7 @@ export function KnowledgeIntakePanel() {
               <section className="rounded-[26px] border border-dashed border-white/15 bg-white/[0.035] p-10 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">KI</div>
                 <h2 className="mt-4 text-xl font-black tracking-[-0.02em] text-slate-100">No source selected yet</h2>
-                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">Capture pasted source text for full review-card output, or capture a URL as an honest scaffold when external extraction credentials are not available.</p>
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">Capture pasted source text, public articles, or available YouTube transcripts for review-card output. Blocked URLs preserve the source and explain what is missing.</p>
               </section>
             )}
           </div>

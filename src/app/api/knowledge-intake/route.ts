@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json().catch(() => ({}))
-    const snapshot = createKnowledgeSource({
+    const snapshot = await createKnowledgeSource({
       content: String(body.content || ''),
       context_note: typeof body.context_note === 'string' ? body.context_note : undefined,
       project_scope: typeof body.project_scope === 'string' ? body.project_scope : undefined,
