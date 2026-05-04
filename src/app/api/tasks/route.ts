@@ -58,6 +58,31 @@ function hasAegisApproval(db: ReturnType<typeof getDatabase>, taskId: number, wo
   return review?.status === 'approved'
 }
 
+function parseTaskMetadata(raw: unknown): Record<string, unknown> {
+  if (!raw) return {}
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, unknown>
+  if (typeof raw !== 'string') return {}
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {}
+  } catch {
+    return {}
+  }
+}
+
+function hasTaskCompletionEvidence(task: Partial<Task>, proposedMetadata?: unknown): boolean {
+  const existingMetadata = parseTaskMetadata((task as any).metadata)
+  const nextMetadata = parseTaskMetadata(proposedMetadata)
+  const merged = { ...existingMetadata, ...nextMetadata }
+  const evidenceKeys = ['evidence', 'receipt', 'receipt_path', 'proof', 'proof_path', 'review_receipt', 'completion_receipt']
+  const metadataEvidence = evidenceKeys.some((key) => {
+    const value = merged[key]
+    return typeof value === 'string' ? value.trim().length > 0 : Boolean(value)
+  })
+  const resolutionEvidence = typeof task.resolution === 'string' && task.resolution.trim().length > 0
+  return metadataEvidence || resolutionEvidence
+}
+
 /**
  * GET /api/tasks - List all tasks with optional filtering
  * Query params: status, assigned_to, priority, project_id, limit, offset
@@ -373,6 +398,10 @@ export async function PUT(request: NextRequest) {
           throw new Error(`Aegis approval required for task ${task.id}`)
         }
 
+        if (task.status === 'done' && !hasTaskCompletionEvidence(oldTask, task.metadata)) {
+          throw new Error(`Completion evidence required for task ${task.id}`)
+        }
+
         if (task.status === 'done') {
           updateDoneStmt.run(task.status, now, now, task.id, workspaceId);
         } else {
@@ -409,7 +438,7 @@ export async function PUT(request: NextRequest) {
   } catch (error) {
     logger.error({ err: error }, 'PUT /api/tasks error');
     const message = error instanceof Error ? error.message : 'Failed to update tasks'
-    if (message.includes('Aegis approval required')) {
+    if (message.includes('Aegis approval required') || message.includes('Completion evidence required')) {
       return NextResponse.json({ error: message }, { status: 403 });
     }
     return NextResponse.json({ error: 'Failed to update tasks' }, { status: 500 });

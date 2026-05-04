@@ -2,8 +2,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createHash } from 'node:crypto'
 import { requireRole } from '@/lib/auth'
 import { config } from '@/lib/config'
+import { getDatabase } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import path from 'node:path'
+
+interface ExecApprovalRow {
+  id: string | number
+  session_id?: string | null
+  agent_name?: string | null
+  tool_name?: string | null
+  tool_args?: string | null
+  command?: string | null
+  cwd?: string | null
+  host?: string | null
+  resolved_path?: string | null
+  risk?: string | null
+  created_at?: number | null
+  expires_at?: number | null
+  status?: string | null
+}
 
 function gatewayUrl(p: string): string {
   return `http://${config.gatewayHost}:${config.gatewayPort}${p}`
@@ -15,6 +32,60 @@ function execApprovalsPath(): string {
 
 function computeHash(raw: string): string {
   return createHash('sha256').update(raw, 'utf8').digest('hex')
+}
+
+function tableExists(tableName: string): boolean {
+  try {
+    const db = getDatabase()
+    const row = db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`).get(tableName) as { name?: string } | undefined
+    return Boolean(row?.name)
+  } catch {
+    return false
+  }
+}
+
+function parseJsonObject(raw?: string | null): Record<string, unknown> {
+  if (!raw) return {}
+  try {
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {}
+  } catch {
+    return { raw }
+  }
+}
+
+function normalizeRisk(risk?: string | null): 'low' | 'medium' | 'high' | 'critical' {
+  return risk === 'low' || risk === 'medium' || risk === 'high' || risk === 'critical' ? risk : 'medium'
+}
+
+function normalizeStatus(status?: string | null): 'pending' | 'approved' | 'denied' | 'expired' {
+  if (status === 'approved' || status === 'denied' || status === 'expired') return status
+  return 'pending'
+}
+
+function getLocalApprovalReceipts(): any[] {
+  if (!tableExists('exec_approval_requests')) return []
+  const db = getDatabase()
+  const rows = db.prepare(`
+    SELECT * FROM exec_approval_requests
+    ORDER BY created_at DESC
+    LIMIT 200
+  `).all() as ExecApprovalRow[]
+  return rows.map((row) => ({
+    id: String(row.id),
+    sessionId: row.session_id || 'local-db',
+    agentName: row.agent_name || 'local receipt',
+    toolName: row.tool_name || 'approval_required_action',
+    toolArgs: parseJsonObject(row.tool_args),
+    command: row.command || undefined,
+    cwd: row.cwd || undefined,
+    host: row.host || undefined,
+    resolvedPath: row.resolved_path || undefined,
+    risk: normalizeRisk(row.risk),
+    createdAt: row.created_at ? Number(row.created_at) * 1000 : Date.now(),
+    expiresAt: row.expires_at ? Number(row.expires_at) * 1000 : undefined,
+    status: normalizeStatus(row.status),
+  }))
 }
 
 /**
@@ -43,11 +114,11 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       logger.warn({ status: res.status }, 'Gateway exec-approvals endpoint returned error')
-      return NextResponse.json({ approvals: [] })
+      return NextResponse.json({ approvals: getLocalApprovalReceipts(), source: 'local-read-only' })
     }
 
     const data = await res.json()
-    return NextResponse.json(data)
+    return NextResponse.json({ ...data, source: 'gateway' })
   } catch (err: any) {
     clearTimeout(timeout)
     if (err.name === 'AbortError') {
@@ -55,7 +126,7 @@ export async function GET(request: NextRequest) {
     } else {
       logger.warn({ err }, 'Gateway exec-approvals unreachable')
     }
-    return NextResponse.json({ approvals: [] })
+    return NextResponse.json({ approvals: getLocalApprovalReceipts(), source: 'local-read-only' })
   }
 }
 

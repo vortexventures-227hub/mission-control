@@ -38,10 +38,12 @@ function timeAgo(timestamp: number): string {
 
 export function ExecApprovalPanel() {
   const t = useTranslations('execApproval')
-  const { execApprovals, updateExecApproval } = useMissionControl()
+  const { execApprovals, setExecApprovals, updateExecApproval } = useMissionControl()
   const { sendMessage } = useWebSocket()
   const [filter, setFilter] = useState<FilterTab>('pending')
   const [view, setView] = useState<PanelView>('approvals')
+  const [approvalSource, setApprovalSource] = useState<'gateway' | 'local-read-only' | 'empty'>('empty')
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const pendingCount = execApprovals.filter(a => a.status === 'pending').length
 
@@ -61,6 +63,24 @@ export function ExecApprovalPanel() {
       return true
     })
   }, [execApprovals, filter, now])
+
+  const loadApprovals = useCallback(async () => {
+    try {
+      setLoadError(null)
+      const res = await fetch('/api/exec-approvals')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+      if (Array.isArray(data.approvals)) {
+        setExecApprovals(data.approvals)
+        setApprovalSource(data.source === 'local-read-only' ? 'local-read-only' : data.approvals.length ? 'gateway' : 'empty')
+      }
+    } catch (err: any) {
+      setLoadError(err?.message || 'Failed to load approvals')
+      setApprovalSource('empty')
+    }
+  }, [setExecApprovals])
+
+  useEffect(() => { loadApprovals() }, [loadApprovals])
 
   const handleAction = (id: string, decision: 'allow-once' | 'allow-always' | 'deny') => {
     const sent = sendMessage({
@@ -96,8 +116,13 @@ export function ExecApprovalPanel() {
           )}
         </div>
         <span className="text-xs text-muted-foreground">
-          {t('realtimeLabel')}
+          {approvalSource === 'local-read-only' ? 'Local read-only receipts' : t('realtimeLabel')}
         </span>
+      </div>
+
+      <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">
+        <strong>Local MVP boundary:</strong> this panel is visible in local mode for approval/receipt truth. Gateway approvals can be resolved only when the execution gateway is reachable; local rows are proof/read-only and do not trigger external execution.
+        {loadError ? <span className="ml-2 text-red-200">Load warning: {loadError}</span> : null}
       </div>
 
       {/* View toggle */}

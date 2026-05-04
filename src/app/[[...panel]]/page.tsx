@@ -476,7 +476,7 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'command-truth', 'agents', 'tasks', 'group-chat', 'chat', 'activity', 'logs', 'settings',
+  'overview', 'command-truth', 'agents', 'tasks', 'group-chat', 'knowledge-intake', 'exec-approvals', 'brain-memory', 'research-command', 'asset-library', 'chat', 'activity', 'logs', 'settings',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {
@@ -630,7 +630,6 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'debug':
       return <DebugPanel />
     case 'exec-approvals':
-      if (isLocal) return <LocalModeUnavailable panel={tab} />
       return <ExecApprovalPanel />
     case 'chat':
       return <ChatPagePanel />
