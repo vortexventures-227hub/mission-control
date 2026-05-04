@@ -736,11 +736,11 @@ export function requestKnowledgeLearningAction(sourceId: string, destination: st
 
 export function knowledgeIntakeGuardrails() {
   return [
-    'Capture Raw can run locally; external posts/sends/social mutations are blocked.',
-    'Write to Wiki, Brain, Memory, Graphify, gBrain, Obsidian, or Task Board requires explicit approval and a receipt.',
-    'X/Twitter URL extraction stays Credentials Needed unless official read credentials exist or Chris pastes the text.',
+    'Capture Raw can run locally; external posts, sends, account mutations, spend, and customer-facing actions are blocked.',
+    'Write to Wiki, Brain, Memory, knowledge graph, workspace memory, or Task Board requires explicit approval and a receipt.',
+    'Social URL extraction stays Credentials Needed unless official read credentials exist or the operator pastes source text.',
     'YouTube transcripts and article pages extract only when public readable text is available; unavailable sources must say transcript_unavailable or extraction_failed.',
-    'David / Material Solutions memory must stay isolated from Vortex-general and Blackwire project memory.',
+    'Customer-specific memory must stay isolated from general workspace and unrelated project memory.',
     'If extraction is pending, preserve the source URL and raw path instead of inventing a summary.',
   ]
 }

@@ -261,8 +261,8 @@ export function KnowledgeIntakePanel() {
                   className="rounded-2xl border border-white/10 bg-black/24 px-4 py-2.5 text-sm text-slate-100 outline-none focus:border-cyan-300/45 focus:ring-2 focus:ring-cyan-300/10"
                 >
                   <option>Mission Control</option>
-                  <option>Blackwire Ops</option>
-                  <option>Material Solutions / David</option>
+                  <option>Client workspace</option>
+                  <option>Revenue operations</option>
                   <option>Marketing</option>
                   <option>Research Command</option>
                 </select>
