@@ -44,6 +44,24 @@ interface BlackwireDoneGate {
   href?: string
 }
 
+interface CommandTruthRouteEntry {
+  id: string
+  path: string
+  surface: string
+  status: 'live' | 'read_only' | 'alias' | 'evidence_missing'
+  requirement: string
+  evidence: string
+  noFakeGreenBoundary: string
+}
+
+interface CommandTruthRouteContract {
+  generatedAt: number
+  canonicalPath: string
+  runbook: string
+  localMvpBoundary: string
+  routes: CommandTruthRouteEntry[]
+}
+
 interface MvpSnapshot {
   generatedAt: number
   canonical: {
@@ -109,6 +127,7 @@ function EvidenceRows({ title, rows }: { title: string; rows: EvidenceRow[] }) {
 
 export function CommandTruthPanel() {
   const [snapshot, setSnapshot] = useState<MvpSnapshot | null>(null)
+  const [routeContract, setRouteContract] = useState<CommandTruthRouteContract | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [projectName, setProjectName] = useState('')
@@ -119,10 +138,16 @@ export function CommandTruthPanel() {
   const load = useCallback(async () => {
     try {
       setError(null)
-      const res = await fetch('/api/mission-control-mvp')
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed to load Command Truth')
+      const [snapshotRes, routeRes] = await Promise.all([
+        fetch('/api/mission-control-mvp'),
+        fetch('/api/command-truth/routes'),
+      ])
+      const json = await snapshotRes.json()
+      const routeJson = await routeRes.json()
+      if (!snapshotRes.ok) throw new Error(json.error || 'Failed to load Command Truth')
+      if (!routeRes.ok) throw new Error(routeJson.error || 'Failed to load Command Truth route contract')
       setSnapshot(json)
+      setRouteContract(routeJson)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -211,6 +236,31 @@ export function CommandTruthPanel() {
           </div>
         ))}
       </div>
+
+      <section className="rounded-2xl border border-cyan-500/20 bg-card p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-foreground">Blackwire runbook route contract</h2>
+            <p className="mt-1 text-xs text-muted-foreground">{routeContract?.localMvpBoundary || 'Commercial-demo candidate only; route contract loading.'}</p>
+          </div>
+          <StatusBadge status="read_only" />
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {(routeContract?.routes || []).map((route) => (
+            <article key={route.id} className="rounded-xl border border-border bg-background p-3">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="text-sm font-semibold text-foreground">{route.surface}</h3>
+                <StatusBadge status={route.status} />
+              </div>
+              <Link className="mt-2 block break-all text-xs font-semibold text-primary hover:underline" href={route.path.startsWith('/api/') ? '/command-truth?tab=routes' : route.path}>{route.path}</Link>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{route.requirement}</p>
+              <p className="mt-2 text-xs leading-5 text-orange-200">Evidence: {route.evidence}</p>
+              <p className="mt-2 text-xs leading-5 text-red-200">Boundary: {route.noFakeGreenBoundary}</p>
+            </article>
+          ))}
+        </div>
+        <p className="mt-3 break-all text-[11px] text-muted-foreground">Runbook: {routeContract?.runbook || 'docs/PATCH_S4_BLACKWIRE_DEMO_RUNBOOK_2026-05-02.md'} · API: /api/command-truth/routes</p>
+      </section>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
         <section className="rounded-2xl border border-border bg-card p-4">

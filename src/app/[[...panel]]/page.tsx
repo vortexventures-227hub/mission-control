@@ -481,6 +481,7 @@ const ESSENTIAL_PANELS = new Set([
 
 function ContentRouter({ tab }: { tab: string }) {
   const tp = useTranslations('page')
+  const routeSearchParams = useSearchParams()
   const { dashboardMode, interfaceMode, setInterfaceMode } = useMissionControl()
   const navigateToPanel = useNavigateToPanel()
   const isLocal = dashboardMode === 'local'
@@ -546,6 +547,10 @@ function ContentRouter({ tab }: { tab: string }) {
       return <TaskBoardPanel />
     case 'group-chat':
       return <GroupChatPanel />
+    case 'rooms/blackwire-ops':
+      return <GroupChatPanel initialRoomSlug="blackwire-ops" />
+    case 'tracker':
+      return <GroupChatPanel initialRoomSlug="blackwire-ops" initialSearch={routeSearchParams.get('agent') || ''} />
     case 'agents':
       return (
         <>

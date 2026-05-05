@@ -11,6 +11,7 @@ const listGroupChatQueuedAlerts = vi.fn()
 const listGroupChatRooms = vi.fn()
 const createGroupChatMessage = vi.fn()
 const updateGroupChatAssignmentStatus = vi.fn()
+const getCommandTruthRouteContract = vi.fn()
 
 vi.mock('@/lib/auth', () => ({
   requireRole,
@@ -26,6 +27,10 @@ vi.mock('@/lib/group-chat', () => ({
   listGroupChatRooms,
   createGroupChatMessage,
   updateGroupChatAssignmentStatus,
+}))
+
+vi.mock('@/lib/command-truth-route-contract', () => ({
+  getCommandTruthRouteContract,
 }))
 
 vi.mock('@/lib/rate-limit', () => ({
@@ -68,6 +73,7 @@ describe('group chat API auth proof routes', () => {
     listGroupChatRooms.mockReset()
     createGroupChatMessage.mockReset()
     updateGroupChatAssignmentStatus.mockReset()
+    getCommandTruthRouteContract.mockReset()
 
     getGroupChatRoomBySlug.mockReturnValue(room)
     listGroupChatRooms.mockReturnValue([room])
@@ -76,6 +82,15 @@ describe('group chat API auth proof routes', () => {
     listGroupChatDecisionReceipts.mockReturnValue([])
     listGroupChatQueuedAlerts.mockReturnValue([])
     listGroupChatAgentProfiles.mockReturnValue([])
+    getCommandTruthRouteContract.mockReturnValue({
+      localMvpBoundary: 'Commercial-demo candidate only; production actions remain approval/instrumentation-gated.',
+      routes: [
+        { path: '/command-truth?tab=routes', status: 'live' },
+        { path: '/rooms/blackwire-ops', status: 'alias' },
+        { path: '/tracker?agent=neon-forge', status: 'alias' },
+        { path: '/api/command-truth/routes', status: 'live' },
+      ],
+    })
   })
 
   it.each([
@@ -120,4 +135,39 @@ describe('group chat API auth proof routes', () => {
     expect(createGroupChatMessage).not.toHaveBeenCalled()
     expect(updateGroupChatAssignmentStatus).not.toHaveBeenCalled()
   })
+
+
+  it('blocks unauthenticated GET /api/command-truth/routes with 401', async () => {
+    requireRole.mockReturnValue({ error: 'Authentication required', status: 401 })
+    const { GET } = await import('@/app/api/command-truth/routes/route')
+
+    const response = await GET(makeRequest('/api/command-truth/routes'))
+    const body = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(body.error).toBe('Authentication required')
+    expect(getCommandTruthRouteContract).not.toHaveBeenCalled()
+  })
+
+  it('returns the read-only Blackwire runbook route contract for an authenticated viewer without mutating group chat', async () => {
+    requireRole.mockReturnValue({ user: { id: 1, username: 'viewer', role: 'viewer', workspace_id: 1 } })
+    const { GET } = await import('@/app/api/command-truth/routes/route')
+
+    const response = await GET(makeRequest('/api/command-truth/routes'))
+    const body = await response.json()
+    const paths = body.routes.map((route: { path: string }) => route.path)
+
+    expect(response.status).toBe(200)
+    expect(paths).toEqual(expect.arrayContaining([
+      '/command-truth?tab=routes',
+      '/rooms/blackwire-ops',
+      '/tracker?agent=neon-forge',
+      '/api/command-truth/routes',
+    ]))
+    expect(body.localMvpBoundary).toContain('Commercial-demo candidate only')
+    expect(getCommandTruthRouteContract).toHaveBeenCalledWith(1)
+    expect(createGroupChatMessage).not.toHaveBeenCalled()
+    expect(updateGroupChatAssignmentStatus).not.toHaveBeenCalled()
+  })
+
 })

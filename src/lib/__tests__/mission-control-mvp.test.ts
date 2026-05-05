@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../db', () => ({
@@ -65,6 +67,7 @@ vi.mock('../design-studio-command', () => ({
   getDesignStudioSnapshot: () => ({ summary: { totalDesignItems: 4, evidenceMissing: 1, visualReceiptsLinked: 1, externalPublishEnabled: false, patchRuntimeAuthority: false } }),
 }))
 
+import { getCommandTruthRouteContract } from '../command-truth-route-contract'
 import { getMissionControlMvpSnapshot } from '../mission-control-mvp'
 
 describe('Mission Control MVP snapshot', () => {
@@ -98,6 +101,37 @@ describe('Mission Control MVP snapshot', () => {
     expect(gates['assignment-board-evidence'].requiredEvidence).toContain('Done without evidence is blocked')
     expect(gates['approval-receipt-gate'].requiredEvidence).toContain('scoped decision receipt')
     expect(gates['recipient-delivery-proof'].detail).toContain('sent / delivered / seen')
+  })
+
+
+
+  it('locks the Blackwire runbook route contract without fake-green completion claims', () => {
+    const contract = getCommandTruthRouteContract(1)
+    const byPath = Object.fromEntries(contract.routes.map((route) => [route.path, route]))
+
+    expect(Object.keys(byPath)).toEqual(expect.arrayContaining([
+      '/command-truth?tab=routes',
+      '/rooms/blackwire-ops',
+      '/tracker?agent=neon-forge',
+      '/api/command-truth/routes',
+    ]))
+    expect(contract.localMvpBoundary).toContain('Commercial-demo candidate only')
+    expect(contract.localMvpBoundary).toContain('approval/instrumentation-gated')
+    expect(['alias', 'evidence_missing']).toContain(byPath['/rooms/blackwire-ops'].status)
+    expect(['alias', 'evidence_missing']).toContain(byPath['/tracker?agent=neon-forge'].status)
+    expect(byPath['/command-truth?tab=routes'].noFakeGreenBoundary).toContain('Evidence Missing')
+    expect(byPath['/command-truth?tab=routes'].noFakeGreenBoundary).toContain('Not Instrumented Yet')
+    expect(byPath['/command-truth?tab=routes'].noFakeGreenBoundary).toContain('Approval Required')
+    expect(byPath['/tracker?agent=neon-forge'].noFakeGreenBoundary).toContain('Done remains blocked')
+  })
+
+  it('keeps the Blackwire receipt composer Chris-explicit and linked to route evidence', () => {
+    const source = readFileSync(join(process.cwd(), 'src/components/panels/group-chat-panel.tsx'), 'utf8')
+
+    expect(source).toContain("approvalTier: 'chris_explicit'")
+    expect(source).toContain('Chris-explicit linked receipt')
+    expect(source).toContain('/command-truth?tab=routes')
+    expect(source).toContain('/api/command-truth/routes')
   })
 
   it('exposes explicit no-fake-green truth gates for approval and missing integrations', () => {

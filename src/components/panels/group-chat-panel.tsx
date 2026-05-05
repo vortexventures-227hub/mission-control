@@ -143,12 +143,17 @@ function deliverySummary(message: Message): DeliveryState {
   return 'sent'
 }
 
-export function GroupChatPanel() {
+interface GroupChatPanelProps {
+  initialRoomSlug?: string
+  initialSearch?: string
+}
+
+export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearch = '' }: GroupChatPanelProps = {}) {
   const [data, setData] = useState<GroupChatResponse | null>(null)
-  const [roomSlug, setRoomSlug] = useState('blackwire-ops')
+  const [roomSlug, setRoomSlug] = useState(initialRoomSlug)
   const [messageBody, setMessageBody] = useState('')
   const [decision, setDecision] = useState('')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialSearch)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -266,8 +271,8 @@ export function GroupChatPanel() {
           roomSlug,
           decision: trimmed,
           approvedBy: 'Chris',
-          approvalTier: 'mission_control',
-          evidence: 'Created from Mission Control group chat v0 UI.',
+          approvalTier: 'chris_explicit',
+          evidence: `Chris-explicit linked receipt from Mission Control Blackwire room ${roomSlug}: /rooms/${roomSlug} -> /command-truth?tab=routes -> /api/command-truth/routes`,
         }),
       })
       const json = await res.json()

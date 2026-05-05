@@ -6,6 +6,24 @@ Last updated: 2026-05-03 18:44:00 EDT
 User-visible Mission Control MVP surfaces, not receipts. Missing integrations must stay visibly `Not Instrumented Yet` / `Evidence Missing`; approval-gated external actions must remain blocked until Chris approves scope.
 
 ## Latest meaningful progress
+## 2026-05-05 Blackwire route-contract closeout
+- Chris corrected the lane: Mission Control must be done today; receipts/heartbeat loops are not the finish line. Current live finish line is a committed local MVP / commercial-demo candidate, not full production.
+- Implemented the Blackwire integrated demo route/API/UI contract as product surface, not just documentation:
+  - Added `src/lib/command-truth-route-contract.ts` sourced from `getMissionControlMvpSnapshot()` so route proof inherits live local MVP data and keeps `Evidence Missing` / `Not Instrumented Yet` / `Approval Required` boundaries visible.
+  - Added read-only auth-gated `GET /api/command-truth/routes` with viewer+ access and unauthenticated `401`; no group-chat, task, receipt, external-send, memory, deploy, trade, or wallet mutation path was added.
+  - Wired `/rooms/blackwire-ops` to the actual Blackwire group-chat context and `/tracker?agent=neon-forge` to the group-chat/tracker context with the Neon Forge search seed.
+  - Added a Command Truth UI section titled `Blackwire runbook route contract` showing `/command-truth?tab=routes`, `/rooms/blackwire-ops`, `/tracker?agent=neon-forge`, and `/api/command-truth/routes` with status, requirement, evidence, and no-fake-green boundary text.
+  - Updated the Group Chat decision receipt composer to use `approvalTier: chris_explicit` and evidence linking `/rooms/<room>`, `/command-truth?tab=routes`, and `/api/command-truth/routes`.
+- Verification already passed for the code slice before this handoff update:
+  - `git diff --check` passed.
+  - `pnpm vitest run src/lib/__tests__/mission-control-mvp.test.ts src/lib/__tests__/group-chat-auth-routes.test.ts` passed.
+  - `pnpm typecheck` passed.
+  - `pnpm build` passed and listed `/api/command-truth/routes`.
+  - Live route probes: `/login`, `/command-truth?tab=routes`, `/rooms/blackwire-ops`, and `/tracker?agent=neon-forge` returned `200`; unauthenticated `/api/command-truth/routes` returned `401`; valid local session cookie returned `200` JSON.
+  - Browser proof after login showed `Blackwire runbook route contract` rendered in Command Truth with all four required rows and boundaries.
+  - Formal UI proof passed: `MISSION_CONTROL_PROOF_BASE_URL=http://127.0.0.1:3104 MISSION_CONTROL_DB_PATH=.data/mission-control.db node scripts/mission-control-ui-proof.mjs`; output folder `docs/outputs/mission-control-ui-proof-2026-05-05_10-41-25/`; `passed: true`; `sessionCleanupCount: 0`; only console caveat was local/dev `SSE reconnect warning` count 15.
+- Truth boundary: this closes the Blackwire local route/API/UI/receipt contract for a local MVP/commercial-demo candidate. It is not production deploy proof, external-agent delivery proof, public launch proof, live Graphify/gBrain write proof, trading proof, or full-platform completion.
+
 - Polished the `/group-chat` local MVP surface for commercial/readability proof:
   - Upgraded `src/components/panels/group-chat-panel.tsx` into a premium dark command-deck layout aligned with the polished login/surface shell: atmospheric background, stronger hero copy, room metrics, readable message cards, and denser right-rail task cards.
   - Kept truth boundaries visible in-product: `Local MVP demo`, `Evidence before Done`, `No external sends`, and a `Local proof boundary` card stating delivery states are local dataset rows and @mentions do not contact external agents/customers.
