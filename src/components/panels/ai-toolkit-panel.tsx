@@ -111,7 +111,7 @@ interface ToolsDatabase {
   stack_templates?: StackTemplate[]
 }
 
-type TabId = 'dashboard' | 'tools' | 'templates' | 'stack-builder' | 'compare'
+type TabId = 'dashboard' | 'ops-matrix' | 'tools' | 'templates' | 'stack-builder' | 'compare'
 
 // =============================================================================
 // Free Tier Alternatives Mapping
@@ -479,6 +479,7 @@ export function AIToolkitPanel() {
 
   const tabs: { id: TabId; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Overview', icon: '📊' },
+    { id: 'ops-matrix', label: 'Ops Matrix', icon: '🧩' },
     { id: 'tools', label: 'Browse Tools', icon: '🔧' },
     { id: 'templates', label: 'Templates', icon: '📋' },
     { id: 'stack-builder', label: 'Stack Builder', icon: '🏗️' },
@@ -528,6 +529,7 @@ export function AIToolkitPanel() {
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'dashboard' && <DashboardView database={database} onNavigate={setActiveTab} />}
+        {activeTab === 'ops-matrix' && <OpsMatrixView />}
         {activeTab === 'tools' && <ToolsBrowserView database={database} />}
         {activeTab === 'templates' && (
           <TemplatesView 
@@ -540,6 +542,182 @@ export function AIToolkitPanel() {
         )}
         {activeTab === 'stack-builder' && <StackBuilderView database={database} initialTools={stackBuilderTools} />}
         {activeTab === 'compare' && <CompareView database={database} />}
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// Ops Matrix View
+// =============================================================================
+
+type OpsCapabilityStatus = 'ready' | 'configured' | 'approval_required' | 'not_instrumented'
+
+interface OpsCapability {
+  title: string
+  category: 'Skills' | 'MCP Servers' | 'Tools' | 'Webhooks' | 'Agent Hooks'
+  status: OpsCapabilityStatus
+  owner: string
+  useCase: string
+  boundary: string
+  nextAction: string
+}
+
+const OPS_CAPABILITIES: OpsCapability[] = [
+  {
+    title: 'Hermes Skills Library',
+    category: 'Skills',
+    status: 'ready',
+    owner: 'Herm / Dispatch',
+    useCase: 'Reusable operating procedures for Mission Control builds, audits, Apple automation, GitHub, research, media, and agent orchestration.',
+    boundary: 'Skills guide operator behavior; they do not execute external sends, spend, deploys, memory writes, or trades by themselves.',
+    nextAction: 'Promote the highest-value Mission Control procedures into curated stack templates.',
+  },
+  {
+    title: 'Native MCP Client',
+    category: 'MCP Servers',
+    status: 'configured',
+    owner: 'Herm / Axis by workspace',
+    useCase: 'Scoped tool access for filesystem, GitHub, docs, browser, and app-specific capabilities when an agent profile allows it.',
+    boundary: 'MCP servers require scoped allowlists. No broad filesystem, credential, or cross-project access.',
+    nextAction: 'Add per-agent MCP allowlist cards before Mac Studio migration.',
+  },
+  {
+    title: 'mcporter MCP Bridge',
+    category: 'MCP Servers',
+    status: 'configured',
+    owner: 'Herm',
+    useCase: 'Ad-hoc MCP discovery, auth checks, and tool calls from terminal workflows when native client wiring needs inspection.',
+    boundary: 'Operator/admin diagnostic path only; not a silent production automation path.',
+    nextAction: 'Surface discovered servers and auth state from a read-only snapshot API.',
+  },
+  {
+    title: 'Promptfoo Evaluation Gate',
+    category: 'Tools',
+    status: 'ready',
+    owner: 'Verifier lane',
+    useCase: 'Anti-fake-green evals, prompt regressions, and CI-style quality gates before an agent claim is accepted.',
+    boundary: 'Receipts support the product; passing evals are not completion unless the live finish line is proven.',
+    nextAction: 'Attach focused eval packs to agent chat, approvals, and memory-write claims.',
+  },
+  {
+    title: 'Langfuse Tracing SDK',
+    category: 'Tools',
+    status: 'not_instrumented',
+    owner: 'Observability lane',
+    useCase: 'Trace agent/tool runs, approvals, and source-to-answer chains after host and credentials are configured.',
+    boundary: 'SDK presence is not active observability. No secrets in traces.',
+    nextAction: 'Configure host/keys and add redaction before enabling live traces.',
+  },
+  {
+    title: 'Operator Approval Webhooks',
+    category: 'Webhooks',
+    status: 'approval_required',
+    owner: 'Knox / Ledger',
+    useCase: 'External systems can request approval for deploys, sends, purchases, memory writes, or trade-adjacent actions.',
+    boundary: 'Approval-gated external action: no side effects without explicit Chris approval object and receipt linkage.',
+    nextAction: 'Finish signed inbound webhook route and visible approval queue handoff.',
+  },
+  {
+    title: 'Agent Pickup Hooks',
+    category: 'Agent Hooks',
+    status: 'configured',
+    owner: 'Herm / Koda / Neon Forge',
+    useCase: 'Mission Control assignment packets land in agent inboxes with owner, lane, deadline, acceptance criteria, and receipt path.',
+    boundary: 'Whole-slice ownership only. No idle active agents, no five-line drip-feed packets unless surgical hotfix.',
+    nextAction: 'Wire local pickup/postback into Group Chat delivery truth instead of file-only receipts.',
+  },
+  {
+    title: 'Agent Receipt Hooks',
+    category: 'Agent Hooks',
+    status: 'not_instrumented',
+    owner: 'Ledger',
+    useCase: 'Agents post closeout receipts back to rooms, assignments, approvals, and command truth surfaces.',
+    boundary: 'Not Instrumented Yet for full live agent postback; current file receipts must stay labeled as fallback evidence.',
+    nextAction: 'Add authenticated receipt ingest API and room timeline rendering.',
+  },
+]
+
+function statusBadgeClass(status: OpsCapabilityStatus) {
+  switch (status) {
+    case 'ready':
+      return 'border-green-500/30 bg-green-500/10 text-green-300'
+    case 'configured':
+      return 'border-blue-500/30 bg-blue-500/10 text-blue-300'
+    case 'approval_required':
+      return 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300'
+    case 'not_instrumented':
+      return 'border-red-500/30 bg-red-500/10 text-red-300'
+  }
+}
+
+function OpsMatrixView() {
+  const categories: OpsCapability['category'][] = ['Skills', 'MCP Servers', 'Tools', 'Webhooks', 'Agent Hooks']
+  const counts = categories.map((category) => ({
+    category,
+    count: OPS_CAPABILITIES.filter((capability) => capability.category === category).length,
+  }))
+
+  return (
+    <div className="p-4 space-y-5">
+      <div className="rounded-xl border border-violet-500/20 bg-gradient-to-br from-violet-500/10 to-cyan-500/5 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">Mission Control capability directory</p>
+            <h3 className="mt-2 text-2xl font-semibold text-foreground">Skills, MCPs, tools, webhooks, and agent hooks</h3>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+              Operator-facing map of what agents can use, what is wired, what needs approval, and what is still Not Instrumented Yet. This is a capability breakdown, not a claim that every connector is live.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border bg-background/60 px-4 py-3 text-right">
+            <div className="text-2xl font-bold text-foreground">{OPS_CAPABILITIES.length}</div>
+            <div className="text-xs text-muted-foreground">capabilities tracked</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        {counts.map((item) => (
+          <div key={item.category} className="rounded-lg border border-border bg-surface-1 p-3">
+            <div className="text-xl font-semibold text-foreground">{item.count}</div>
+            <div className="text-xs text-muted-foreground">{item.category}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {OPS_CAPABILITIES.map((capability) => (
+          <div key={capability.title} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{capability.category}</div>
+                <h4 className="mt-1 text-base font-semibold text-foreground">{capability.title}</h4>
+              </div>
+              <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${statusBadgeClass(capability.status)}`}>
+                {capability.status.replaceAll('_', ' ')}
+              </span>
+            </div>
+
+            <div className="mt-4 space-y-3 text-sm">
+              <div>
+                <div className="text-xs font-semibold uppercase text-muted-foreground">Owner</div>
+                <div className="text-foreground">{capability.owner}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase text-muted-foreground">Use case</div>
+                <div className="text-foreground">{capability.useCase}</div>
+              </div>
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-3">
+                <div className="text-xs font-semibold uppercase text-yellow-300">Security / approval boundary</div>
+                <div className="mt-1 text-sm text-foreground">{capability.boundary}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase text-muted-foreground">Next action</div>
+                <div className="text-foreground">{capability.nextAction}</div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

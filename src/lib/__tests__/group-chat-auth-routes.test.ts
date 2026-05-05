@@ -10,6 +10,7 @@ const listGroupChatMessages = vi.fn()
 const listGroupChatQueuedAlerts = vi.fn()
 const listGroupChatRooms = vi.fn()
 const createGroupChatMessage = vi.fn()
+const updateGroupChatDeliveryState = vi.fn()
 const updateGroupChatAssignmentStatus = vi.fn()
 const getCommandTruthRouteContract = vi.fn()
 
@@ -18,6 +19,14 @@ vi.mock('@/lib/auth', () => ({
 }))
 
 vi.mock('@/lib/group-chat', () => ({
+  GROUP_CHAT_LOCAL_DELIVERY_BOUNDARY: 'Mission Control local DB only; no Telegram, customer, email, or external agent transport was contacted.',
+  normalizeGroupChatAgentId: (value: string) => value.trim().toLowerCase().replace(/^agent:/, ''),
+  canWriteAsGroupChatAgent: (input: { senderId: string; authAgentName?: string | null; authUsername?: string | null }) => {
+    const senderId = input.senderId.trim().toLowerCase().replace(/^agent:/, '')
+    const agentName = (input.authAgentName || '').trim().toLowerCase().replace(/^agent:/, '')
+    const username = (input.authUsername || '').trim().toLowerCase().replace(/^agent:/, '')
+    return senderId.length > 0 && (senderId === agentName || senderId === username)
+  },
   getGroupChatRoomBySlug,
   listGroupChatAgentProfiles,
   listGroupChatAssignments,
@@ -26,6 +35,7 @@ vi.mock('@/lib/group-chat', () => ({
   listGroupChatQueuedAlerts,
   listGroupChatRooms,
   createGroupChatMessage,
+  updateGroupChatDeliveryState,
   updateGroupChatAssignmentStatus,
 }))
 
@@ -72,6 +82,7 @@ describe('group chat API auth proof routes', () => {
     listGroupChatQueuedAlerts.mockReset()
     listGroupChatRooms.mockReset()
     createGroupChatMessage.mockReset()
+    updateGroupChatDeliveryState.mockReset()
     updateGroupChatAssignmentStatus.mockReset()
     getCommandTruthRouteContract.mockReset()
 
@@ -134,6 +145,140 @@ describe('group chat API auth proof routes', () => {
 
     expect(createGroupChatMessage).not.toHaveBeenCalled()
     expect(updateGroupChatAssignmentStatus).not.toHaveBeenCalled()
+  })
+
+  it('allows an agent-scoped identity to create its own local room message without external delivery', async () => {
+    requireRole.mockReturnValue({
+      user: {
+        id: -1,
+        username: 'agent:koda',
+        display_name: 'Koda',
+        role: 'operator',
+        workspace_id: 1,
+        agent_name: 'koda',
+      },
+    })
+    createGroupChatMessage.mockReturnValue({
+      message: { id: 91, sender_type: 'agent', sender_id: 'koda', body: 'local proof', delivery: [] },
+      assignments: [],
+    })
+    const { POST } = await import('@/app/api/group-chat/messages/route')
+
+    const request = new NextRequest('http://localhost/api/group-chat/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-name': 'koda' },
+      body: JSON.stringify({
+        roomSlug: 'blackwire-ops',
+        senderType: 'agent',
+        senderId: 'koda',
+        body: 'local proof',
+      }),
+    })
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(201)
+    expect(body.externalDelivery).toBe(false)
+    expect(body.deliveryBoundary).toContain('local DB only')
+    expect(createGroupChatMessage).toHaveBeenCalledWith(expect.objectContaining({
+      senderType: 'agent',
+      senderId: 'koda',
+      body: 'local proof',
+      workspaceId: 1,
+    }))
+  })
+
+  it('rejects agent message spoofing before writing local chat state', async () => {
+    requireRole.mockReturnValue({
+      user: {
+        id: -1,
+        username: 'agent:koda',
+        display_name: 'Koda',
+        role: 'operator',
+        workspace_id: 1,
+        agent_name: 'koda',
+      },
+    })
+    const { POST } = await import('@/app/api/group-chat/messages/route')
+
+    const request = new NextRequest('http://localhost/api/group-chat/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-name': 'koda' },
+      body: JSON.stringify({
+        roomSlug: 'blackwire-ops',
+        senderType: 'agent',
+        senderId: 'herm',
+        body: 'spoofed local proof',
+      }),
+    })
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(body.error).toContain('agent-scoped identity')
+    expect(createGroupChatMessage).not.toHaveBeenCalled()
+  })
+
+  it('rejects non-admin attempts to spoof system messages before writing local chat state', async () => {
+    requireRole.mockReturnValue({
+      user: {
+        id: -1,
+        username: 'agent:koda',
+        display_name: 'Koda',
+        role: 'operator',
+        workspace_id: 1,
+        agent_name: 'koda',
+      },
+    })
+    const { POST } = await import('@/app/api/group-chat/messages/route')
+
+    const request = new NextRequest('http://localhost/api/group-chat/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-agent-name': 'koda' },
+      body: JSON.stringify({
+        roomSlug: 'blackwire-ops',
+        senderType: 'system',
+        senderId: 'mission-control',
+        body: 'fake system postback',
+      }),
+    })
+    const response = await POST(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(body.error).toContain('System messages require admin')
+    expect(createGroupChatMessage).not.toHaveBeenCalled()
+  })
+
+  it('blocks non-admin agents from marking another agent seen', async () => {
+    requireRole.mockReturnValue({
+      user: {
+        id: -1,
+        username: 'agent:koda',
+        display_name: 'Koda',
+        role: 'operator',
+        workspace_id: 1,
+        agent_name: 'koda',
+      },
+    })
+    const { PATCH } = await import('@/app/api/group-chat/delivery/route')
+
+    const request = new NextRequest('http://localhost/api/group-chat/delivery', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'x-agent-name': 'koda' },
+      body: JSON.stringify({
+        messageId: 91,
+        recipientType: 'agent',
+        recipientId: 'herm',
+        state: 'seen',
+      }),
+    })
+    const response = await PATCH(request)
+    const body = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(body.error).toContain('same agent identity')
+    expect(updateGroupChatDeliveryState).not.toHaveBeenCalled()
   })
 
 

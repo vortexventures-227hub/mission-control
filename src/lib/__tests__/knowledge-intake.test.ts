@@ -24,6 +24,8 @@ describe('knowledge intake', () => {
     expect(mod.detectKnowledgeSourceType('https://www.youtube.com/watch?v=abc')).toBe('youtube')
     expect(mod.detectKnowledgeSourceType('https://youtu.be/abc')).toBe('youtube')
     expect(mod.detectKnowledgeSourceType('https://x.com/example/status/1')).toBe('x')
+    expect(mod.detectKnowledgeSourceType('https://www.reddit.com/r/LocalLLaMA/comments/abc/example')).toBe('reddit')
+    expect(mod.detectKnowledgeSourceType('https://redd.it/abc123')).toBe('reddit')
     expect(mod.detectKnowledgeSourceType('https://example.com/research.pdf')).toBe('pdf')
     expect(mod.detectKnowledgeSourceType('https://example.com/article')).toBe('article')
     expect(mod.detectKnowledgeSourceType('Graphify should stage memory writes for approval.')).toBe('paste')
@@ -49,6 +51,36 @@ describe('knowledge intake', () => {
     expect(snapshot.extraction.tools_mentioned).toContain('Graphify')
     expect(snapshot.extraction.implementation_steps.length).toBeGreaterThan(0)
     expect(snapshot.extraction.claims_to_verify.length).toBeGreaterThan(0)
+  })
+
+  it('extracts MCP and plugin labels for review cards', async () => {
+    const snapshot = await mod.createKnowledgeSource({
+      content: [
+        'Use the GitHub MCP server to read repository issues before implementing the change.',
+        'Connect the Linear plugin after approval so task context remains visible.',
+        'Never write Wiki or Brain memory silently.',
+      ].join('\n'),
+      project_scope: 'Mission Control',
+    })
+
+    expect(snapshot.source.status).toBe('ready_for_review')
+    expect(snapshot.extraction.mcp_servers).toContain('GitHub MCP server')
+    expect(snapshot.extraction.plugins_mentioned).toContain('Linear plugin')
+    expect(snapshot.extraction.claims_to_verify.join(' ')).toContain('Never write')
+  })
+
+  it('captures Reddit URL scaffolds without pretending extraction succeeded', async () => {
+    const snapshot = await mod.createKnowledgeSource({
+      content: 'https://www.reddit.com/r/LocalLLaMA/comments/abc/example',
+      project_scope: 'Research Command',
+    })
+
+    expect(snapshot.source.source_type).toBe('reddit')
+    expect(snapshot.source.status).toBe('captured')
+    expect(snapshot.extraction.summary).toContain('Reddit URL captured')
+    expect(snapshot.extraction.key_ideas).toContain('Reddit source captured with citation preserved.')
+    expect(snapshot.extraction.recommended_destinations).toContain('General Vortex Wiki')
+    expect(fs.readFileSync(snapshot.source.raw_path, 'utf8')).toContain('reddit.com')
   })
 
   it('captures URL scaffolds honestly when full extraction is not available', async () => {

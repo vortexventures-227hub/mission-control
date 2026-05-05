@@ -56,6 +56,7 @@ const navGroups: NavGroup[] = [
       { id: 'marketing', label: 'Marketing', icon: <ContentIcon />, priority: false },
       { id: 'app-factory', label: 'App Factory', icon: <AppFactoryIcon />, priority: false },
       { id: 'skills', label: 'Skills', icon: <SkillsIcon />, priority: false },
+      { id: 'ai-toolkit', label: 'AI Toolkit', icon: <IntegrationsIcon />, priority: false },
     ],
   },
   {

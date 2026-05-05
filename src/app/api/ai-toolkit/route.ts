@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
 import { requireRole } from '@/lib/auth'
 
-// Paths to the AI Toolkit database files
-const TOOLKIT_DB_PATH = join(
-  homedir(),
-  'Desktop/VVAxeOps/AxeVault/40_KNOWLEDGE/AIToolkit/database/tools.json'
-)
+function resolveToolkitPath(filename: string): string {
+  const candidates = [
+    join('/Users/vortexventures/Desktop/Vortex Ventures/VVAxeOps/AxeVault/40_KNOWLEDGE/AIToolkit/database', filename),
+    join(homedir(), 'Desktop/Vortex Ventures/VVAxeOps/AxeVault/40_KNOWLEDGE/AIToolkit/database', filename),
+    join(homedir(), 'Desktop/VVAxeOps/AxeVault/40_KNOWLEDGE/AIToolkit/database', filename),
+  ]
 
-const TEMPLATES_DB_PATH = join(
-  homedir(),
-  'Desktop/VVAxeOps/AxeVault/40_KNOWLEDGE/AIToolkit/database/stack-templates.json'
-)
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0]
+}
+
+// Paths to the AI Toolkit database files. Prefer the canonical Vortex Ventures root;
+// keep the legacy Desktop sibling as a fallback for older workspaces.
+const TOOLKIT_DB_PATH = resolveToolkitPath('tools.json')
+const TEMPLATES_DB_PATH = resolveToolkitPath('stack-templates.json')
 
 export async function GET(req: NextRequest) {
   const authResult = await requireRole(req, 'viewer')

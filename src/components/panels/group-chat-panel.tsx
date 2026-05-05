@@ -111,6 +111,8 @@ const statusClasses: Record<string, string> = {
   unknown: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/25',
 }
 
+const LOCAL_DELIVERY_BOUNDARY = 'Local Mission Control state only. No Telegram, customer, email, or external agent delivery is implied.'
+
 function formatTime(seconds: number): string {
   return new Date(seconds * 1000).toLocaleString('en-US', {
     month: 'short',
@@ -138,8 +140,10 @@ function RoomIcon({ kind }: { kind: RoomKind }) {
 }
 
 function deliverySummary(message: Message): DeliveryState {
-  if (message.delivery.some((d) => d.state === 'seen')) return 'seen'
-  if (message.delivery.some((d) => d.state === 'delivered')) return 'delivered'
+  const recipientDeliveries = message.delivery.filter((d) => d.recipient_type !== 'room')
+  if (recipientDeliveries.length === 0) return 'sent'
+  if (recipientDeliveries.every((d) => d.state === 'seen')) return 'seen'
+  if (recipientDeliveries.some((d) => d.state === 'delivered' || d.state === 'seen')) return 'delivered'
   return 'sent'
 }
 
@@ -254,6 +258,26 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
     const json = await res.json().catch(() => ({}))
     if (!res.ok) {
       setError(json.error || 'Assignment update failed')
+      return
+    }
+    await fetchData()
+  }
+
+  async function updateDelivery(delivery: Delivery, state: DeliveryState) {
+    const res = await fetch('/api/group-chat/delivery', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messageId: delivery.message_id,
+        recipientType: delivery.recipient_type,
+        recipientId: delivery.recipient_id,
+        state,
+        evidence: `${LOCAL_DELIVERY_BOUNDARY} Updated by operator in room ${roomSlug}.`,
+      }),
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      setError(json.error || 'Delivery update failed')
       return
     }
     await fetchData()
@@ -375,6 +399,10 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2">
               <span className="font-semibold text-cyan-200">Delivery follow-up:</span> {roomMetrics.unreadDeliveries} local delivery row(s) are not yet seen.
             </div>
+            <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2">
+              <div className="font-semibold text-cyan-200">Agent local ingress</div>
+              <p className="mt-1">POST `/api/group-chat/messages` with `senderType: agent`, matching `senderId`, and `x-agent-name`. Spoofed agent senders are rejected.</p>
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -417,10 +445,22 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
                     <StatusBadge value={state} />
                   </div>
                   <p className="whitespace-pre-wrap text-sm leading-6 text-slate-100/90">{message.body}</p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
+                  <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/40 px-2.5 py-2 text-[11px] text-slate-300">
+                    {LOCAL_DELIVERY_BOUNDARY}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
                     {message.delivery.map((delivery) => (
-                      <span key={delivery.id} className="rounded-md border border-white/10 bg-slate-950/60 px-2 py-1 text-[10px] text-slate-300">
-                        {delivery.recipient_id}: {delivery.state}
+                      <span key={delivery.id} className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-slate-950/60 px-2 py-1 text-[10px] text-slate-300">
+                        <span>{delivery.recipient_id}: {delivery.state}</span>
+                        {delivery.state !== 'seen' && (
+                          <button
+                            onClick={() => updateDelivery(delivery, 'seen')}
+                            className="rounded border border-emerald-400/20 px-1.5 py-0.5 text-emerald-200 hover:bg-emerald-400/10"
+                            title="Mark seen in Mission Control local state only"
+                          >
+                            mark seen
+                          </button>
+                        )}
                       </span>
                     ))}
                   </div>

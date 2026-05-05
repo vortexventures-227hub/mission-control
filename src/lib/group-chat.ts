@@ -11,6 +11,7 @@ export type GroupChatApprovalTier = 'none' | 'mission_control' | 'chris_explicit
 
 const ACTION_WORDS = /\b(assign|do|build|audit|verify|fix|implement|check|review|create)\b/i
 const MENTION_PATTERN = /@([a-zA-Z][a-zA-Z0-9_-]*)/g
+export const GROUP_CHAT_LOCAL_DELIVERY_BOUNDARY = 'Mission Control local DB only; no Telegram, customer, email, or external agent transport was contacted.'
 
 export interface GroupChatRoom {
   id: number
@@ -104,12 +105,85 @@ function nowSeconds(): number {
   return Math.floor(Date.now() / 1000)
 }
 
+export function normalizeGroupChatAgentId(value: string): string {
+  return value.trim().toLowerCase().replace(/^agent:/, '')
+}
+
+export function canWriteAsGroupChatAgent(input: {
+  senderId: string
+  authAgentName?: string | null
+  authUsername?: string | null
+}): boolean {
+  const senderId = normalizeGroupChatAgentId(input.senderId)
+  const agentName = input.authAgentName ? normalizeGroupChatAgentId(input.authAgentName) : ''
+  const username = input.authUsername ? normalizeGroupChatAgentId(input.authUsername) : ''
+  return senderId.length > 0 && (agentName === senderId || username === senderId)
+}
+
 function displayNameForSender(db: Database.Database, workspaceId: number, senderId: string): string {
   const profile = db.prepare(`
     SELECT display_name FROM group_chat_agent_profile_cards
     WHERE workspace_id = ? AND agent_id = ?
   `).get(workspaceId, senderId) as { display_name: string } | undefined
   return profile?.display_name || senderId
+}
+
+function agentIdFromDmRoom(room: GroupChatRoom): string | null {
+  if (room.kind !== 'agent_dm') return null
+  const fromSlug = room.slug.match(/^dm-(.+)$/)?.[1]
+  if (fromSlug) return normalizeGroupChatAgentId(fromSlug)
+  const fromOwner = room.pinned_owner ? normalizeGroupChatAgentId(room.pinned_owner) : ''
+  return fromOwner || null
+}
+
+function getLocalDeliveryRecipients(db: Database.Database, workspaceId: number, room: GroupChatRoom): Array<{ recipientType: 'human' | 'agent' | 'room'; recipientId: string }> {
+  const recipients = new Map<string, { recipientType: 'human' | 'agent' | 'room'; recipientId: string }>()
+  const add = (recipientType: 'human' | 'agent' | 'room', recipientId: string) => {
+    const normalized = recipientId.trim().toLowerCase()
+    if (!normalized) return
+    recipients.set(`${recipientType}:${normalized}`, { recipientType, recipientId: normalized })
+  }
+
+  add('room', room.slug)
+  add('human', 'chris')
+
+  const dmAgentId = agentIdFromDmRoom(room)
+  if (dmAgentId) {
+    add('agent', dmAgentId)
+  } else if (room.kind === 'command' || room.kind === 'project') {
+    const agents = db.prepare(`
+      SELECT agent_id FROM group_chat_agent_profile_cards
+      WHERE workspace_id = ? AND runtime_type != 'human'
+      ORDER BY agent_id COLLATE NOCASE
+    `).all(workspaceId) as Array<{ agent_id: string }>
+    for (const agent of agents) add('agent', normalizeGroupChatAgentId(agent.agent_id))
+
+    // Keep demo-critical Koda/Herm delivery rows even on a fresh DB without seeded cards.
+    add('agent', 'koda')
+    add('agent', 'herm')
+  }
+
+  return Array.from(recipients.values())
+}
+
+function writeLocalDeliveryRows(
+  db: Database.Database,
+  workspaceId: number,
+  messageId: number,
+  room: GroupChatRoom,
+  senderId: string,
+  now: number,
+) {
+  const delivery = db.prepare(`
+    INSERT OR REPLACE INTO group_chat_message_delivery_state (
+      workspace_id, message_id, recipient_type, recipient_id, state, state_at, evidence
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `)
+  const normalizedSender = normalizeGroupChatAgentId(senderId)
+  for (const recipient of getLocalDeliveryRecipients(db, workspaceId, room)) {
+    const state: GroupChatDeliveryState = recipient.recipientId === normalizedSender ? 'seen' : recipient.recipientType === 'room' ? 'sent' : 'delivered'
+    delivery.run(workspaceId, messageId, recipient.recipientType, recipient.recipientId, state, now, GROUP_CHAT_LOCAL_DELIVERY_BOUNDARY)
+  }
 }
 
 export function listGroupChatRooms(workspaceId = 1): GroupChatRoom[] {
@@ -323,15 +397,7 @@ export function createGroupChatMessage(input: {
       now,
     )
     const messageId = Number(result.lastInsertRowid)
-    const delivery = db.prepare(`
-      INSERT OR REPLACE INTO group_chat_message_delivery_state (
-        workspace_id, message_id, recipient_type, recipient_id, state, state_at, evidence
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `)
-    delivery.run(workspaceId, messageId, 'room', room.slug, 'sent', now, 'local Mission Control DB commit')
-    delivery.run(workspaceId, messageId, 'human', 'chris', input.senderId === 'chris' ? 'seen' : 'delivered', now, 'local fixture delivery')
-    delivery.run(workspaceId, messageId, 'agent', 'koda', input.senderId === 'koda' ? 'seen' : 'delivered', now, 'local fixture delivery')
-    delivery.run(workspaceId, messageId, 'agent', 'herm', input.senderId === 'herm' ? 'seen' : 'delivered', now, 'local fixture delivery')
+    writeLocalDeliveryRows(db, workspaceId, messageId, room, input.senderId, now)
 
     const assignments = parseActionMentions(input.body).map((assignee) =>
       createAssignmentForMention(db, workspaceId, room.id, messageId, assignee, input.body)
@@ -366,7 +432,7 @@ export function updateGroupChatDeliveryState(input: {
     input.recipientId,
     input.state,
     now,
-    input.evidence || 'manual Mission Control update',
+    input.evidence || GROUP_CHAT_LOCAL_DELIVERY_BOUNDARY,
   )
   return db.prepare(`
     SELECT * FROM group_chat_message_delivery_state
@@ -383,17 +449,38 @@ export function updateGroupChatAssignmentStatus(input: {
   const workspaceId = input.workspaceId || 1
   const db = getDatabase()
   const now = nowSeconds()
-  db.prepare(`
-    UPDATE group_chat_assignment_tracker_items
-    SET status = ?, evidence = COALESCE(?, evidence), updated_at = ?
-    WHERE workspace_id = ? AND id = ?
-  `).run(input.status, input.evidence || null, now, workspaceId, input.assignmentId)
-  const assignment = db.prepare(`
-    SELECT * FROM group_chat_assignment_tracker_items
-    WHERE workspace_id = ? AND id = ?
-  `).get(workspaceId, input.assignmentId) as GroupChatAssignment | undefined
-  if (!assignment) throw new Error(`Unknown assignment: ${input.assignmentId}`)
-  return assignment
+  const tx = db.transaction(() => {
+    db.prepare(`
+      UPDATE group_chat_assignment_tracker_items
+      SET status = ?, evidence = COALESCE(?, evidence), updated_at = ?
+      WHERE workspace_id = ? AND id = ?
+    `).run(input.status, input.evidence || null, now, workspaceId, input.assignmentId)
+    const assignment = db.prepare(`
+      SELECT * FROM group_chat_assignment_tracker_items
+      WHERE workspace_id = ? AND id = ?
+    `).get(workspaceId, input.assignmentId) as GroupChatAssignment | undefined
+    if (!assignment) throw new Error(`Unknown assignment: ${input.assignmentId}`)
+
+    const room = db.prepare(`
+      SELECT * FROM group_chat_rooms WHERE workspace_id = ? AND id = ? LIMIT 1
+    `).get(workspaceId, assignment.room_id) as GroupChatRoom | undefined
+    if (room) {
+      const eventBody = [
+        `Assignment #${assignment.id} ${assignment.status}: ${assignment.title}`,
+        assignment.assignee_agent_id ? `Assignee: @${assignment.assignee_agent_id}` : 'Assignee: unassigned',
+        assignment.evidence ? `Evidence: ${assignment.evidence}` : null,
+      ].filter(Boolean).join('\n')
+      const eventResult = db.prepare(`
+        INSERT INTO group_chat_messages (
+          workspace_id, room_id, sender_type, sender_id, body, message_type, parent_message_id, created_at
+        ) VALUES (?, ?, 'system', 'assignment-tracker', ?, 'task_event', ?, ?)
+      `).run(workspaceId, assignment.room_id, eventBody, assignment.source_message_id || null, now)
+      writeLocalDeliveryRows(db, workspaceId, Number(eventResult.lastInsertRowid), room, 'assignment-tracker', now)
+    }
+
+    return assignment
+  })
+  return tx()
 }
 
 export function createGroupChatDecisionReceipt(input: {
@@ -437,15 +524,7 @@ export function createGroupChatDecisionReceipt(input: {
       now,
     )
     const messageId = Number(messageResult.lastInsertRowid)
-    const delivery = db.prepare(`
-      INSERT OR REPLACE INTO group_chat_message_delivery_state (
-        workspace_id, message_id, recipient_type, recipient_id, state, state_at, evidence
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `)
-    delivery.run(workspaceId, messageId, 'room', room.slug, 'sent', now, 'decision receipt created')
-    delivery.run(workspaceId, messageId, 'human', 'chris', 'seen', now, 'decision receipt visible in Mission Control')
-    delivery.run(workspaceId, messageId, 'agent', 'koda', 'delivered', now, 'decision receipt visible in Mission Control')
-    delivery.run(workspaceId, messageId, 'agent', 'herm', 'delivered', now, 'decision receipt visible in Mission Control')
+    writeLocalDeliveryRows(db, workspaceId, messageId, room, 'decision-receipts', now)
     return db.prepare(`
       SELECT * FROM group_chat_decision_receipts
       WHERE workspace_id = ? AND id = ?

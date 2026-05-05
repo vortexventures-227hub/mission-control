@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 
-type SourceType = 'youtube' | 'x' | 'article' | 'pdf' | 'paste' | 'file' | 'folder'
+type SourceType = 'youtube' | 'x' | 'reddit' | 'article' | 'pdf' | 'paste' | 'file' | 'folder'
 type SourceStatus =
   | 'captured'
   | 'extracted'
@@ -21,6 +21,8 @@ interface KnowledgeExtraction {
   summary: string
   key_ideas: string[]
   tools_mentioned: string[]
+  mcp_servers: string[]
+  plugins_mentioned: string[]
   implementation_steps: string[]
   claims_to_verify: string[]
   recommended_destinations: string[]
@@ -68,6 +70,7 @@ function detectLocal(input: string): SourceType {
     const host = url.hostname.toLowerCase()
     if (host.includes('youtube.com') || host.includes('youtu.be')) return 'youtube'
     if (host === 'x.com' || host.endsWith('.x.com') || host.includes('twitter.com')) return 'x'
+    if (host === 'reddit.com' || host.endsWith('.reddit.com') || host === 'redd.it' || host.endsWith('.redd.it')) return 'reddit'
     if (url.pathname.toLowerCase().endsWith('.pdf')) return 'pdf'
     return 'article'
   } catch {
@@ -79,6 +82,7 @@ function sourceBadge(type: SourceType) {
   switch (type) {
     case 'youtube': return 'YouTube'
     case 'x': return 'X / Twitter'
+    case 'reddit': return 'Reddit'
     case 'article': return 'Article'
     case 'pdf': return 'PDF'
     case 'file': return 'File'
@@ -305,6 +309,8 @@ export function KnowledgeIntakePanel() {
                 <div className="grid gap-4 lg:grid-cols-2">
                   <SectionList title="Key Ideas" items={extraction.key_ideas} />
                   <SectionList title="Tools / Tech Mentioned" items={extraction.tools_mentioned} />
+                  <SectionList title="MCP Servers" items={extraction.mcp_servers || []} />
+                  <SectionList title="Plugins / Integrations" items={extraction.plugins_mentioned || []} />
                   <SectionList title="Implementation Steps" items={extraction.implementation_steps} />
                   <SectionList title="Claims To Verify" items={extraction.claims_to_verify} />
                 </div>

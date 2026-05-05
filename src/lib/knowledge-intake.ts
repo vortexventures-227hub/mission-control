@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { config, ensureDirExists } from './config'
 
-export type KnowledgeSourceType = 'youtube' | 'x' | 'article' | 'pdf' | 'paste' | 'file' | 'folder'
+export type KnowledgeSourceType = 'youtube' | 'x' | 'reddit' | 'article' | 'pdf' | 'paste' | 'file' | 'folder'
 export type KnowledgeSourceStatus =
   | 'captured'
   | 'extracted'
@@ -38,6 +38,8 @@ export interface KnowledgeExtraction {
   summary: string
   key_ideas: string[]
   tools_mentioned: string[]
+  mcp_servers: string[]
+  plugins_mentioned: string[]
   implementation_steps: string[]
   claims_to_verify: string[]
   recommended_destinations: string[]
@@ -88,6 +90,7 @@ export interface KnowledgeIntakeSnapshot {
 const SOURCE_TYPE_LABELS: Record<KnowledgeSourceType, string> = {
   youtube: 'YouTube',
   x: 'X / Twitter',
+  reddit: 'Reddit',
   article: 'Article / Web',
   pdf: 'PDF / File',
   paste: 'Pasted Text',
@@ -189,6 +192,7 @@ export function detectKnowledgeSourceType(input: string): KnowledgeSourceType {
   const pathname = url.pathname.toLowerCase()
   if (host.includes('youtube.com') || host.includes('youtu.be')) return 'youtube'
   if (host === 'x.com' || host.endsWith('.x.com') || host.includes('twitter.com')) return 'x'
+  if (host === 'reddit.com' || host.endsWith('.reddit.com') || host === 'redd.it' || host.endsWith('.redd.it')) return 'reddit'
   if (pathname.endsWith('.pdf')) return 'pdf'
   return 'article'
 }
@@ -496,10 +500,43 @@ function extractTools(text: string) {
   const known = [
     'Graphify', 'gBrain', 'Obsidian', 'Retell', 'Supabase', 'SendGrid', 'Telegram', 'Mission Control',
     'OpenClaw', 'Playwright', 'Next.js', 'Vercel', 'Railway', 'Canva', 'Remotion', 'YouTube', 'X',
-    'SQLite', 'Postgres', 'Wiki', 'Brain', 'Memory',
+    'Reddit', 'SQLite', 'Postgres', 'Wiki', 'Brain', 'Memory', 'MCP',
   ]
   const found = known.filter(tool => new RegExp(`\\b${tool.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text))
   return [...new Set(found)]
+}
+
+function extractMcpServers(text: string) {
+  const servers = new Set<string>()
+  const known = [
+    ['filesystem', 'Filesystem'], ['github', 'GitHub'], ['postgres', 'Postgres'], ['sqlite', 'SQLite'], ['slack', 'Slack'], ['notion', 'Notion'],
+    ['linear', 'Linear'], ['browser', 'Browser'], ['playwright', 'Playwright'], ['memory', 'Memory'], ['graph', 'Graph'], ['obsidian', 'Obsidian'],
+  ] as const
+  for (const match of text.matchAll(/\b([A-Za-z0-9][A-Za-z0-9_-]{1,40})\s+(?:mcp\s+)?server\b/g)) {
+    servers.add(`${match[1]} MCP server`)
+  }
+  for (const [name, label] of known) {
+    if (new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+(?:mcp\\s+)?server\\b`, 'i').test(text)) {
+      servers.add(`${label} MCP server`)
+    }
+  }
+  if (/\bMCP\b/i.test(text) && servers.size === 0) servers.add('MCP server mentioned; exact server name requires review')
+  return [...servers].slice(0, 8)
+}
+
+function extractPlugins(text: string) {
+  const plugins = new Set<string>()
+  const known = ['OpenAI', 'Anthropic', 'GitHub', 'Linear', 'Slack', 'Notion', 'Obsidian', 'Playwright', 'Browser', 'Search', 'Calendar', 'Gmail']
+  for (const match of text.matchAll(/\b([A-Z][A-Za-z0-9_-]{1,40})\s+(plugin|extension|connector|integration)\b/g)) {
+    plugins.add(`${match[1]} ${match[2]}`)
+  }
+  for (const name of known) {
+    if (new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+(?:plugin|extension|connector|integration)\\b`, 'i').test(text)) {
+      plugins.add(`${name} plugin`)
+    }
+  }
+  if (/\bplugin|extension|connector|integration\b/i.test(text) && plugins.size === 0) plugins.add('Plugin/integration mentioned; exact name requires review')
+  return [...plugins].slice(0, 8)
 }
 
 function extractSteps(text: string, sourceType: KnowledgeSourceType) {
@@ -530,7 +567,7 @@ function recommendedDestinations(input: CreateKnowledgeSourceInput, type: Knowle
   if (/mission control|blackwire|agent|koda|herm/i.test(scope + text)) destinations.add('Mission Control')
   if (/marketing|campaign|email|seo|aeo/i.test(text)) destinations.add('Marketing')
   if (/task|build|bug|fix|implement|ship/i.test(text)) destinations.add('Task Board')
-  if (type === 'paste' || type === 'article' || type === 'youtube' || type === 'x') destinations.add('General Vortex Wiki')
+  if (type === 'paste' || type === 'article' || type === 'youtube' || type === 'x' || type === 'reddit') destinations.add('General Vortex Wiki')
   destinations.add('Research Command')
   return [...destinations].slice(0, 6)
 }
@@ -561,6 +598,8 @@ async function summarize(input: CreateKnowledgeSourceInput, type: KnowledgeSourc
           summary: sentenceList.slice(0, 2).join(' ') || extracted.slice(0, 260),
           key_ideas: sentenceList.slice(0, 5).length ? sentenceList.slice(0, 5) : topKeywords.map(word => `Important theme: ${word}`),
           tools_mentioned: extractTools(extracted),
+          mcp_servers: extractMcpServers(extracted),
+          plugins_mentioned: extractPlugins(extracted),
           implementation_steps: extractSteps(extracted, type),
           claims_to_verify: extractClaims(extracted, type),
           recommended_destinations: recommendedDestinations(input, type, extracted),
@@ -570,6 +609,8 @@ async function summarize(input: CreateKnowledgeSourceInput, type: KnowledgeSourc
 
     const note = external?.note || (type === 'x'
       ? 'X/Twitter URL captured. Full extraction needs official X credentials or pasted thread text.'
+      : type === 'reddit'
+        ? 'Reddit URL captured. Full extraction is scaffolded; paste post/comment text for immediate summarization.'
       : type === 'pdf'
         ? 'PDF/file URL captured. File OCR/MarkItDown extraction is scaffolded for the next slice.'
         : 'URL captured. Extraction is unavailable; paste source text if immediate summarization is needed.')
@@ -590,6 +631,8 @@ async function summarize(input: CreateKnowledgeSourceInput, type: KnowledgeSourc
           'Manual paste path can produce review-ready summaries immediately.',
         ],
         tools_mentioned: extractTools(content),
+        mcp_servers: extractMcpServers(content),
+        plugins_mentioned: extractPlugins(content),
         implementation_steps: extractSteps(content, type),
         claims_to_verify: extractClaims(content, type),
         recommended_destinations: recommendedDestinations(input, type, content),
@@ -609,6 +652,8 @@ async function summarize(input: CreateKnowledgeSourceInput, type: KnowledgeSourc
       summary: sentenceList.slice(0, 2).join(' ') || content.slice(0, 260),
       key_ideas: keyIdeas.length ? keyIdeas : topKeywords.map(word => `Important theme: ${word}`),
       tools_mentioned: extractTools(content),
+      mcp_servers: extractMcpServers(content),
+      plugins_mentioned: extractPlugins(content),
       implementation_steps: extractSteps(content, type),
       claims_to_verify: extractClaims(content, type),
       recommended_destinations: recommendedDestinations(input, type, content),

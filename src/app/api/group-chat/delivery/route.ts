@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { mutationLimiter } from '@/lib/rate-limit'
-import { updateGroupChatDeliveryState } from '@/lib/group-chat'
+import {
+  GROUP_CHAT_LOCAL_DELIVERY_BOUNDARY,
+  canWriteAsGroupChatAgent,
+  updateGroupChatDeliveryState,
+} from '@/lib/group-chat'
 import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
@@ -27,17 +31,28 @@ export async function PATCH(request: NextRequest) {
     if (typeof body.recipientId !== 'string' || !body.recipientId.trim()) {
       return NextResponse.json({ error: 'recipientId is required' }, { status: 400 })
     }
+    const recipientId = body.recipientId.trim().toLowerCase()
+    if (body.recipientType === 'agent' && auth.user.role !== 'admin' && !canWriteAsGroupChatAgent({
+      senderId: recipientId,
+      authAgentName: auth.user.agent_name,
+      authUsername: auth.user.username,
+    })) {
+      return NextResponse.json({
+        error: 'Agent read-state updates require the same agent identity or admin authority',
+        deliveryBoundary: GROUP_CHAT_LOCAL_DELIVERY_BOUNDARY,
+      }, { status: 403 })
+    }
 
     const delivery = updateGroupChatDeliveryState({
       messageId: body.messageId,
       recipientType: body.recipientType,
-      recipientId: body.recipientId.trim().toLowerCase(),
+      recipientId,
       state: body.state,
-      evidence: typeof body.evidence === 'string' ? body.evidence : undefined,
+      evidence: typeof body.evidence === 'string' ? body.evidence : GROUP_CHAT_LOCAL_DELIVERY_BOUNDARY,
       workspaceId: auth.user.workspace_id || 1,
     })
 
-    return NextResponse.json({ delivery })
+    return NextResponse.json({ delivery, deliveryBoundary: GROUP_CHAT_LOCAL_DELIVERY_BOUNDARY, externalDelivery: false })
   } catch (error) {
     logger.error({ err: error }, 'PATCH /api/group-chat/delivery error')
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update delivery' }, { status: 500 })
