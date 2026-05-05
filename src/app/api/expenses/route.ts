@@ -12,21 +12,25 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const workspaceId = 1
   const category = searchParams.get('category')
+  const kind = searchParams.get('kind')
   const days = parseInt(searchParams.get('days') || '30', 10)
   const since = Date.now() - days * 24 * 60 * 60 * 1000
 
-  // Summary mode
+  // Summary mode keeps subscriptions and one-off expenses separate so the ledger cannot drift into scattered files.
   if (searchParams.get('action') === 'summary') {
     const total = (db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE workspace_id = ? AND expense_date >= ?`).get(workspaceId, since) as any)?.total || 0
+    const oneOffTotal = (db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE workspace_id = ? AND expense_date >= ? AND COALESCE(is_recurring, 0) = 0`).get(workspaceId, since) as any)?.total || 0
     const byCategory = db.prepare(`SELECT category, COALESCE(SUM(amount), 0) as total FROM expenses WHERE workspace_id = ? AND expense_date >= ? GROUP BY category`).all(workspaceId, since) as any[]
     const recurring = (db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE workspace_id = ? AND is_recurring = 1`).get(workspaceId) as any)?.total || 0
-    const subTotal = (db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM subscriptions WHERE workspace_id = ? AND status = 'active'`).get(workspaceId) as any)?.total || 0
-    return NextResponse.json({ total, byCategory, recurring, monthlySubscriptions: subTotal })
+    const subTotal = (db.prepare(`SELECT COALESCE(SUM(CASE WHEN billing_cycle='monthly' THEN amount WHEN billing_cycle='annual' THEN amount/12.0 ELSE 0 END), 0) as total FROM subscriptions WHERE workspace_id = ? AND status = 'active'`).get(workspaceId) as any)?.total || 0
+    return NextResponse.json({ total, oneOffTotal, byCategory, recurring, monthlySubscriptions: subTotal })
   }
 
   let query = `SELECT * FROM expenses WHERE workspace_id = ?`
   const params: any[] = [workspaceId]
   if (category) { query += ` AND category = ?`; params.push(category) }
+  if (kind === 'one_off') query += ` AND COALESCE(is_recurring, 0) = 0`
+  if (kind === 'recurring') query += ` AND is_recurring = 1`
   query += ` ORDER BY expense_date DESC LIMIT 200`
 
   const expenses = db.prepare(query).all(...params)

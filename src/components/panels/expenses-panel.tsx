@@ -35,6 +35,7 @@ interface Subscription {
 
 interface Summary {
   total: number
+  oneOffTotal: number
   byCategory: { category: string; total: number }[]
   recurring: number
   monthlySubscriptions: number
@@ -224,7 +225,7 @@ function AddSubscriptionForm({ onSave, onCancel }: { onSave: () => void; onCance
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function ExpensesPanel() {
-  const [tab, setTab] = useState<'overview' | 'subscriptions' | 'log'>('overview')
+  const [tab, setTab] = useState<'overview' | 'subscriptions' | 'one_off'>('subscriptions')
   const [summary, setSummary] = useState<Summary | null>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
@@ -238,7 +239,7 @@ export function ExpensesPanel() {
     try {
       const [sumRes, expRes, subRes] = await Promise.all([
         fetch('/api/expenses?action=summary&days=30'),
-        fetch('/api/expenses?days=90'),
+        fetch('/api/expenses?days=365&kind=one_off'),
         fetch('/api/subscriptions?status=all'),
       ])
       if (sumRes.ok) setSummary(await sumRes.json())
@@ -269,9 +270,12 @@ export function ExpensesPanel() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div>
-          <h2 className="font-semibold text-sm text-foreground">Expenses</h2>
+          <h2 className="font-semibold text-sm text-foreground">Expense Ledger</h2>
           <p className="text-xs text-muted-foreground">
-            {loading ? 'Loading...' : `${fmt(subTotals.monthly)}/mo subscriptions · ${fmt(summary?.total || 0)} expenses (30d)`}
+            Canonical Mission Control ledger: subscriptions and one-off expenses stay in the app database, not scattered files.
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {loading ? 'Loading...' : `${fmt(subTotals.monthly)}/mo active subscriptions · ${fmt(summary?.oneOffTotal || 0)} one-off expenses (30d)`}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="h-8 text-xs">
@@ -281,10 +285,10 @@ export function ExpensesPanel() {
 
       {/* Tabs */}
       <div className="flex border-b border-border shrink-0">
-        {(['overview', 'subscriptions', 'log'] as const).map(t => (
+        {(['overview', 'subscriptions', 'one_off'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-xs font-medium capitalize transition-colors ${tab === t ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-            {t === 'log' ? 'Expense Log' : t}
+            className={`px-4 py-2.5 text-xs font-medium transition-colors ${tab === t ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+            {t === 'one_off' ? 'One-off Expenses' : t === 'subscriptions' ? 'Subscriptions' : 'Overview'}
             {t === 'subscriptions' && activeSubs.length > 0 && (
               <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground text-[10px]">{activeSubs.length}</span>
             )}
@@ -304,9 +308,9 @@ export function ExpensesPanel() {
                 {/* Stats */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {[
-                    { label: 'Monthly Subscriptions', value: fmt(subTotals.monthly), sub: `${fmt(subTotals.annual)}/yr` },
-                    { label: 'Expenses (30d)', value: fmt(summary?.total || 0), sub: 'one-time & misc' },
-                    { label: 'Total Monthly Burn', value: fmt(subTotals.monthly + (summary?.total || 0)), sub: 'subscriptions + expenses' },
+                    { label: 'Monthly Subscriptions', value: fmt(subTotals.monthly), sub: `${fmt(subTotals.annual)}/yr · ${activeSubs.length} active` },
+                    { label: 'One-off Expenses (30d)', value: fmt(summary?.oneOffTotal || 0), sub: 'manual/non-recurring ledger' },
+                    { label: 'Tracked Monthly Exposure', value: fmt(subTotals.monthly + (summary?.oneOffTotal || 0)), sub: 'active subs + 30d one-offs' },
                   ].map(s => (
                     <div key={s.label} className="p-3 bg-card border border-border rounded-lg">
                       <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -414,11 +418,11 @@ export function ExpensesPanel() {
               </div>
             )}
 
-            {/* EXPENSE LOG TAB */}
-            {tab === 'log' && (
+            {/* ONE-OFF EXPENSES TAB */}
+            {tab === 'one_off' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-muted-foreground">{expenses.length} expenses (last 90 days)</p>
+                  <p className="text-xs text-muted-foreground">{expenses.length} one-off expenses (last 365 days). Recurring subscriptions belong on the Subscriptions tab.</p>
                   <Button size="sm" onClick={() => setShowAddExpense(v => !v)} className="h-8 text-xs">
                     {showAddExpense ? 'Cancel' : '+ Add Expense'}
                   </Button>
@@ -427,7 +431,7 @@ export function ExpensesPanel() {
                 {showAddExpense && <AddExpenseForm onSave={() => { setShowAddExpense(false); fetchAll() }} onCancel={() => setShowAddExpense(false)} />}
 
                 {expenses.length === 0 && !showAddExpense ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">No expenses logged. Add one above.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">No one-off expenses logged in the canonical Mission Control ledger. Add one above.</p>
                 ) : (
                   <div className="space-y-2">
                     {expenses.map(e => (
