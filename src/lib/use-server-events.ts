@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
+import { classifySseReconnect, isLocalSseHost } from '@/lib/sse-reconnect'
 
 const log = createClientLogger('SSE')
 
@@ -74,23 +75,27 @@ export function useServerEvents() {
         es.close()
         eventSourceRef.current = null
 
-        const attempts = sseReconnectAttemptsRef.current
-        if (attempts >= SSE_MAX_RECONNECT_ATTEMPTS) {
-          log.error(`Max reconnect attempts (${SSE_MAX_RECONNECT_ATTEMPTS}) reached`)
+        const nextAttempt = sseReconnectAttemptsRef.current + 1
+        const classification = classifySseReconnect({
+          attempt: nextAttempt,
+          maxAttempts: SSE_MAX_RECONNECT_ATTEMPTS,
+          isLocalHost: isLocalSseHost(window.location.hostname),
+          isOffline: typeof navigator !== 'undefined' ? !navigator.onLine : false,
+          visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'visible',
+        })
+
+        if (!classification.shouldRetry) {
+          log[classification.level](classification.message)
           return
         }
 
         // Exponential backoff with jitter
-        const base = Math.min(Math.pow(2, attempts) * SSE_BASE_DELAY_MS, SSE_MAX_DELAY_MS)
+        const base = Math.min(Math.pow(2, nextAttempt - 1) * SSE_BASE_DELAY_MS, SSE_MAX_DELAY_MS)
         const delay = Math.round(base + Math.random() * base * 0.5)
-        sseReconnectAttemptsRef.current = attempts + 1
+        sseReconnectAttemptsRef.current = nextAttempt
 
-        const attemptLabel = `Reconnecting in ${delay}ms (attempt ${attempts + 1}/${SSE_MAX_RECONNECT_ATTEMPTS})`
-        if (attempts < 2) {
-          log.info(`${attemptLabel}; classified as transient local/dev SSE reconnect`)
-        } else {
-          log.warn(attemptLabel)
-        }
+        const attemptLabel = `Reconnecting in ${delay}ms (attempt ${nextAttempt}/${SSE_MAX_RECONNECT_ATTEMPTS})`
+        log[classification.level](`${attemptLabel}; ${classification.message}`)
         reconnectTimeoutRef.current = setTimeout(() => {
           if (mounted) connect()
         }, delay)
