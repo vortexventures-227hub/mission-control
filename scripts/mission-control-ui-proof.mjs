@@ -13,13 +13,17 @@ fs.mkdirSync(outDir, { recursive: true })
 
 const routes = [
   '/login',
+  '/',
   '/mission-control',
   '/command-truth',
   '/group-chat',
+  '/rooms/blackwire-ops',
+  '/tracker?agent=koda',
   '/tasks',
   '/agents',
   '/exec-approvals',
   '/notifications',
+  '/expenses',
   '/knowledge-intake',
   '/ai-toolkit',
   '/think-tank?commercial=1',

@@ -223,10 +223,37 @@ export function CommandTruthPanel() {
             <StatusBadge status="live" />
             <Button variant="outline" size="sm" onClick={load}>Refresh</Button>
             <Link href="/group-chat" className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-secondary">Open Blackwire</Link>
+            <Link href="/" className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-secondary">HQ Overview</Link>
           </div>
         </div>
         {error && <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
       </div>
+
+      <section className="rounded-2xl border border-border bg-card p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-bold text-foreground">Daily-driver command paths</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Fast links for the operator loop: rooms, tasks, agents, approvals, expenses, intake, and proof surfaces.</p>
+          </div>
+          <StatusBadge status="read_only" />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {[
+            ['Blackwire room', '/rooms/blackwire-ops'],
+            ['Koda tracker', '/tracker?agent=koda'],
+            ['Tasks', '/tasks'],
+            ['Agents', '/agents'],
+            ['Approvals', '/exec-approvals'],
+            ['Expenses', '/expenses'],
+            ['Knowledge', '/knowledge-intake'],
+            ['Security', '/security-command'],
+          ].map(([label, href]) => (
+            <Link key={href} href={href} className="rounded-md border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:border-primary/40 hover:text-primary">
+              {label}
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
         {snapshot && Object.entries(snapshot.metrics).map(([key, value]) => (

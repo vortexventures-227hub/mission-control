@@ -85,7 +85,12 @@ export function useServerEvents() {
         const delay = Math.round(base + Math.random() * base * 0.5)
         sseReconnectAttemptsRef.current = attempts + 1
 
-        log.warn(`Reconnecting in ${delay}ms (attempt ${attempts + 1}/${SSE_MAX_RECONNECT_ATTEMPTS})`)
+        const attemptLabel = `Reconnecting in ${delay}ms (attempt ${attempts + 1}/${SSE_MAX_RECONNECT_ATTEMPTS})`
+        if (attempts < 2) {
+          log.info(`${attemptLabel}; classified as transient local/dev SSE reconnect`)
+        } else {
+          log.warn(attemptLabel)
+        }
         reconnectTimeoutRef.current = setTimeout(() => {
           if (mounted) connect()
         }, delay)

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { useMissionControl } from '@/store'
 import { useNavigateToPanel } from '@/lib/navigation'
 import { useSmartPoll } from '@/lib/use-smart-poll'
@@ -263,6 +264,7 @@ export function Dashboard() {
   return (
     <div className="p-5 space-y-4">
       <OnboardingChecklistWidget />
+      <BlackwireHqOverview />
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -287,5 +289,232 @@ export function Dashboard() {
 
       <WidgetGrid data={dashboardData} />
     </div>
+  )
+}
+
+interface HqSurface {
+  id: string
+  label: string
+  status: string
+  detail: string
+  href?: string
+}
+
+interface HqGate {
+  id: string
+  label: string
+  status: string
+  detail: string
+  requiredEvidence?: string
+  blockedAction?: string
+  href?: string
+}
+
+interface HqSnapshot {
+  generatedAt: number
+  canonical: {
+    activePath: string
+    sourceOfTruth: string
+  }
+  metrics: Record<string, number>
+  surfaces: HqSurface[]
+  blackwireDoneGates: HqGate[]
+  truthGates: HqGate[]
+  agents: Array<{ agent_id: string; display_name: string; status: string; current_assignment: string | null; last_proof: string | null }>
+  assignments: Array<{ id: number; title: string; status: string; priority: string; assignee_agent_id: string | null; evidence: string | null }>
+  receipts: Array<{ id: number; decision: string; approval_tier: string; approved_by: string; evidence: string | null; created_at: number }>
+  queuedAlerts: Array<{ id: number; target_agent_id: string; reason: string; alert_state: string }>
+}
+
+const hqStatusClass: Record<string, string> = {
+  live: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+  read_only: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+  partial: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+  approval_required: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+  evidence_missing: 'border-orange-500/30 bg-orange-500/10 text-orange-300',
+  not_instrumented: 'border-zinc-500/30 bg-zinc-500/10 text-zinc-300',
+  isolated: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+  blocked: 'border-red-500/30 bg-red-500/10 text-red-300',
+}
+
+function HqStatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${hqStatusClass[status] || hqStatusClass.partial}`}>
+      {status.replace(/_/g, ' ')}
+    </span>
+  )
+}
+
+function HqMetric({ label, value, tone = 'neutral' }: { label: string; value: number | string; tone?: 'neutral' | 'warn' | 'bad' | 'good' }) {
+  const toneClass = tone === 'bad'
+    ? 'text-red-200'
+    : tone === 'warn'
+      ? 'text-amber-200'
+      : tone === 'good'
+        ? 'text-emerald-200'
+        : 'text-white'
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+      <div className={`text-2xl font-black tracking-tight ${toneClass}`}>{value}</div>
+      <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</div>
+    </div>
+  )
+}
+
+function BlackwireHqOverview() {
+  const [snapshot, setSnapshot] = useState<HqSnapshot | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      setError(null)
+      const res = await fetch('/api/mission-control-mvp')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to load Mission Control MVP snapshot')
+      setSnapshot(json)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const metrics = snapshot?.metrics || {}
+  const priorityGates = [
+    ...(snapshot?.blackwireDoneGates || []),
+    ...(snapshot?.truthGates || []),
+  ].filter((gate) => ['blocked', 'approval_required', 'evidence_missing', 'not_instrumented'].includes(gate.status)).slice(0, 5)
+  const activeAssignments = (snapshot?.assignments || []).filter((item) => item.status !== 'done').slice(0, 5)
+  const operatorSurfaces = (snapshot?.surfaces || []).filter((surface) => [
+    'blackwire-room',
+    'assignment-boards',
+    'approvals',
+    'agent-registry',
+    'receipts-evidence-search',
+    'brain-memory',
+    'research-command',
+    'asset-library',
+    'marketing-command-center',
+  ].includes(surface.id)).slice(0, 9)
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-cyan-400/15 bg-slate-950 text-slate-100 shadow-2xl shadow-cyan-950/20">
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_12%,rgba(34,211,238,0.18),transparent_30%),linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[length:auto,40px_40px,40px_40px]" />
+        <div className="relative p-4 md:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="max-w-4xl">
+              <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-[0.18em]">
+                <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-cyan-100">Blackwire Ops HQ</span>
+                <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2.5 py-1 text-emerald-100">Local daily-driver</span>
+                <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2.5 py-1 text-amber-100">Evidence before Done</span>
+              </div>
+              <h1 className="mt-3 text-2xl font-black tracking-tight text-white md:text-3xl">Mission Control ground-zero command center</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                Source-of-truth view for rooms, tasks, agents, approvals, receipts, expenses, knowledge intake, and read-only memory boundaries. This is local Mission Control proof, not a production deploy or external delivery claim.
+              </p>
+              <p className="mt-2 break-all text-[11px] text-slate-500">
+                {snapshot?.canonical.sourceOfTruth || 'Loading Mission Control local snapshot...'} · {snapshot?.canonical.activePath || 'canonical path pending'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/command-truth" className="rounded-md border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/15">Command Truth</Link>
+              <Link href="/group-chat" className="rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-white hover:bg-white/[0.08]">Group Chat</Link>
+              <button onClick={load} className="rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.08]">Refresh</button>
+            </div>
+          </div>
+
+          {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>}
+
+          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+            <HqMetric label="Rooms" value={metrics.rooms ?? 0} />
+            <HqMetric label="Messages" value={metrics.messages ?? 0} />
+            <HqMetric label="Tasks" value={metrics.assignments ?? 0} />
+            <HqMetric label="Receipts" value={metrics.receipts ?? 0} />
+            <HqMetric label="Agents" value={metrics.agents ?? 0} />
+            <HqMetric label="Alerts" value={metrics.queuedAlerts ?? 0} tone={(metrics.queuedAlerts ?? 0) > 0 ? 'warn' : 'good'} />
+            <HqMetric label="Evidence gaps" value={metrics.doneWithoutEvidence ?? 0} tone={(metrics.doneWithoutEvidence ?? 0) > 0 ? 'bad' : 'good'} />
+            <HqMetric label="Approval gates" value={metrics.approvalNeededAssignments ?? 0} tone={(metrics.approvalNeededAssignments ?? 0) > 0 ? 'warn' : 'good'} />
+          </div>
+
+          <div className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_1fr_0.9fr]">
+            <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-black uppercase tracking-wide text-white">Priority Gates</h2>
+                <Link href="/command-truth" className="text-xs font-semibold text-cyan-200 hover:underline">Open truth</Link>
+              </div>
+              <div className="space-y-2">
+                {priorityGates.length === 0 ? (
+                  <p className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-100">No blocked/evidence-missing gates in the current Blackwire snapshot.</p>
+                ) : priorityGates.map((gate) => (
+                  <article key={gate.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-slate-100">{gate.label}</h3>
+                      <HqStatusBadge status={gate.status} />
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">{gate.detail}</p>
+                    {(gate.requiredEvidence || gate.blockedAction) && <p className="mt-2 text-xs leading-5 text-amber-100">{gate.requiredEvidence || gate.blockedAction}</p>}
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-sm font-black uppercase tracking-wide text-white">Assignments Now</h2>
+                <Link href="/group-chat" className="text-xs font-semibold text-cyan-200 hover:underline">Open room</Link>
+              </div>
+              <div className="space-y-2">
+                {activeAssignments.length === 0 ? (
+                  <p className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-slate-400">No active Blackwire assignment rows are waiting in the selected room.</p>
+                ) : activeAssignments.map((item) => (
+                  <article key={item.id} className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="line-clamp-2 text-sm font-semibold text-slate-100">{item.title}</h3>
+                      <HqStatusBadge status={item.status} />
+                    </div>
+                    <p className="mt-1 text-[11px] text-slate-500">@{item.assignee_agent_id || 'unassigned'} · {item.priority}</p>
+                    <p className={`mt-2 rounded-lg border px-2 py-1.5 text-xs ${item.evidence ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-100' : 'border-orange-400/20 bg-orange-400/10 text-orange-100'}`}>
+                      {item.evidence ? `Evidence: ${item.evidence}` : 'Evidence Missing: cannot be green.'}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <h2 className="text-sm font-black uppercase tracking-wide text-white">Daily-Driver Links</h2>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {[
+                  ['Tasks', '/tasks'],
+                  ['Agents', '/agents'],
+                  ['Approvals', '/exec-approvals'],
+                  ['Expenses', '/expenses'],
+                  ['Knowledge', '/knowledge-intake'],
+                  ['Brain/Memory', '/brain-memory'],
+                  ['Research', '/research-command'],
+                  ['Assets', '/asset-library'],
+                  ['Security', '/security-command'],
+                  ['Marketing', '/marketing'],
+                ].map(([label, href]) => (
+                  <Link key={href} href={href} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-cyan-300/30 hover:text-cyan-100">{label}</Link>
+                ))}
+              </div>
+              <div className="mt-3 space-y-2">
+                {operatorSurfaces.slice(0, 3).map((surface) => (
+                  <article key={surface.id} className="rounded-xl border border-white/10 bg-black/20 p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-slate-100">{surface.label}</span>
+                      <HqStatusBadge status={surface.status} />
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{surface.detail}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }

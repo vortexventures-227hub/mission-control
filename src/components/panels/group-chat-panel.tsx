@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 
@@ -365,6 +366,11 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
               />
               <Button variant="outline" size="sm" onClick={fetchData}>Refresh</Button>
             </div>
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <Link href="/command-truth" className="rounded-md border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 font-semibold text-cyan-100 hover:bg-cyan-300/15">Command Truth</Link>
+              <Link href="/tracker?agent=koda" className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-slate-200 hover:bg-white/[0.08]">Koda tracker</Link>
+              <Link href="/exec-approvals" className="rounded-md border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 font-semibold text-amber-100 hover:bg-amber-300/15">Approvals</Link>
+            </div>
           </div>
         </div>
         {(error || roomMetrics.doneWithoutEvidence > 0 || roomMetrics.approvalNeeded > 0) && (
@@ -409,6 +415,14 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2">
               <div className="font-semibold text-cyan-200">Agent local ingress</div>
               <p className="mt-1">POST `/api/group-chat/messages` with `senderType: agent`, matching `senderId`, and `x-agent-name`. Spoofed agent senders are rejected.</p>
+            </div>
+            <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2">
+              <div className="font-semibold text-cyan-200">Delivery legend</div>
+              <div className="mt-2 grid gap-1.5">
+                <div className="flex items-center justify-between gap-2"><StatusBadge value="sent" /><span>stored in the room</span></div>
+                <div className="flex items-center justify-between gap-2"><StatusBadge value="delivered" /><span>recipient row exists</span></div>
+                <div className="flex items-center justify-between gap-2"><StatusBadge value="seen" /><span>operator/agent acknowledged locally</span></div>
+              </div>
             </div>
             <Button
               variant="outline"
