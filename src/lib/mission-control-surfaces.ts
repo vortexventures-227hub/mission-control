@@ -700,6 +700,11 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
   }
   if (id === 'asset-library') {
     const assetLibrary = getAssetLibrarySnapshot()
+    const assetNextAction = assetLibrary.summary.evidenceMissing > 0
+      ? 'Attach source files, receipt paths, screenshots, or source URLs before treating assets as verified.'
+      : assetLibrary.summary.blockedAssets > 0
+        ? 'Resolve blocked assets with a receipt and scoped approval before promotion.'
+        : 'Use verified assets as read-only references; keep external publishing approval-gated.'
     return {
       ...snapshot,
       generatedAt: assetLibrary.generatedAt,
@@ -709,6 +714,39 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
       },
       guardrails: Array.from(new Set([...snapshot.guardrails, ...assetLibrary.guardrails])),
       sections: [
+        {
+          id: 'asset-readiness-triage',
+          title: 'Asset readiness triage',
+          status: assetLibrary.summary.evidenceMissing > 0 ? 'evidence_missing' : assetLibrary.summary.blockedAssets > 0 ? 'blocked' : 'read_only',
+          cards: [
+            card({
+              id: 'asset-receipt-coverage',
+              title: 'Receipt coverage',
+              status: assetLibrary.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+              owner: 'Ledger / Design',
+              summary: `${assetLibrary.summary.sourceReceiptsLinked} of ${assetLibrary.summary.totalAssets} assets have a linked source, receipt, screenshot, or URL.`,
+              evidence: `${assetLibrary.summary.evidenceMissing} assets are Evidence Missing; ${assetLibrary.summary.verifiedAssets} are verified read-only references.`,
+              nextAction: assetNextAction,
+              details: [
+                { label: 'Promotion gates visible', value: `${assetLibrary.summary.promotionGatesVisible} asset promotion boundaries are visible.`, status: assetLibrary.summary.promotionGatesVisible >= assetLibrary.summary.totalAssets ? 'read_only' : 'evidence_missing' },
+                { label: 'Verification boundary', value: 'Assets without evidence_path or source_url stay Evidence Missing and must not be presented as verified inventory.', status: 'evidence_missing' },
+              ],
+            }),
+            card({
+              id: 'asset-publish-boundary',
+              title: 'External publish boundary',
+              status: assetLibrary.summary.externalPublishEnabled ? 'blocked' : 'read_only',
+              owner: 'Knox',
+              summary: `External publishing enabled: ${assetLibrary.summary.externalPublishEnabled ? 'yes' : 'no'}. Asset Library is internal reference only.`,
+              evidence: `blockedAssets=${assetLibrary.summary.blockedAssets}; externalPublishEnabled=${assetLibrary.summary.externalPublishEnabled ? 'true' : 'false'}.`,
+              nextAction: 'Require scoped approval before any campaign, design publish, customer-facing use, spend, trade, or memory write.',
+              details: [
+                { label: 'Allowed use', value: 'Read-only asset lookup, receipt review, and internal planning.', status: 'read_only' },
+                { label: 'Blocked use', value: 'No external post, send, spend, deploy, trade, or Graphify/gBrain write from this surface.', status: assetLibrary.summary.externalPublishEnabled ? 'blocked' : 'approval_required' },
+              ],
+            }),
+          ],
+        },
         {
           id: 'db-backed-assets',
           title: 'DB-backed asset inventory',

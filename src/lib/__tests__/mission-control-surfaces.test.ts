@@ -35,7 +35,9 @@ vi.mock('../asset-library-command', () => ({
     guardrails: ['Mock asset guardrail'],
     summary: {
       totalAssets: 3,
+      verifiedAssets: 1,
       evidenceMissing: 1,
+      blockedAssets: 0,
       promotionGatesVisible: 2,
       sourceReceiptsLinked: 1,
       externalPublishEnabled: false,
@@ -287,6 +289,10 @@ describe('mission control surface snapshots', () => {
     expect(assetLibrary?.summary.sourceReceiptsLinked).toBe(1)
     expect(assetLibrary?.summary.externalPublishEnabled).toBe(false)
     expect(assetLibrary?.guardrails.join(' ')).toContain('Mock asset guardrail')
+    expect(assetLibrary?.sections[0]?.id).toBe('asset-readiness-triage')
+    expect(cards.find((card) => card.id === 'asset-receipt-coverage')?.summary).toContain('1 of 3 assets')
+    expect(cards.find((card) => card.id === 'asset-publish-boundary')?.status).toBe('read_only')
+    expect(cards.find((card) => card.id === 'asset-publish-boundary')?.details?.find((detail) => detail.label === 'Blocked use')?.value).toContain('No external post')
     expect(cards.find((card) => card.id === 'asset-mission-control-local-mvp-proof')?.status).toBe('read_only')
     expect(cards.find((card) => card.id === 'asset-design-visual-receipts')?.status).toBe('evidence_missing')
     expect(cards.find((card) => card.id === 'asset-design-visual-receipts')?.details?.find((detail) => detail.label === 'Verification gate')?.status).toBe('evidence_missing')
