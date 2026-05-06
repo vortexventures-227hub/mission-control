@@ -108,6 +108,10 @@ function formatTime(timestamp: number) {
   return new Date(timestamp).toLocaleString()
 }
 
+function isBlockedStatus(status: SourceStatus) {
+  return ['blocked', 'error', 'credentials_needed', 'manual_paste_needed'].includes(status)
+}
+
 function SectionList({ title, items }: { title: string; items: string[] }) {
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
@@ -189,6 +193,14 @@ export function KnowledgeIntakePanel() {
     acc[gate.status] += 1
     return acc
   }, { available: 0, approval_required: 0, blocked: 0 } as Record<'available' | 'approval_required' | 'blocked', number>) || { available: 0, approval_required: 0, blocked: 0 }
+  const readySources = recent.filter(source => ['ready_for_review', 'summarized', 'extracted'].includes(source.status))
+  const blockedSources = recent.filter(source => isBlockedStatus(source.status))
+  const citationCount = recent.reduce((total, source) => total + (source.extraction?.citations?.length || 0), 0)
+  const nextOperatorMove = readySources.length > 0
+    ? 'Review latest extraction card and stage destination approval only when citations look clean.'
+    : blockedSources.length > 0
+      ? 'Resolve blocked sources with pasted text, credentials, or a fresh public source before asking Memory to learn.'
+      : 'Capture a source to create the first review card.'
 
   return (
     <div className="relative min-h-full overflow-hidden bg-[#07080a] text-foreground">
@@ -219,12 +231,12 @@ export function KnowledgeIntakePanel() {
                 <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">Sources</div>
               </div>
               <div className="rounded-2xl border border-amber-300/20 bg-amber-400/[0.08] p-3 text-center">
-                <div className="text-2xl font-black text-amber-100">{gateCounts.approval_required}</div>
-                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber-200/70">Approvals</div>
+                <div className="text-2xl font-black text-amber-100">{blockedSources.length}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-amber-200/70">Needs Input</div>
               </div>
               <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/[0.08] p-3 text-center">
-                <div className="text-2xl font-black text-emerald-100">{gateCounts.available}</div>
-                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200/70">Available</div>
+                <div className="text-2xl font-black text-emerald-100">{readySources.length}</div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200/70">Review Ready</div>
               </div>
             </div>
           </div>
@@ -338,6 +350,30 @@ export function KnowledgeIntakePanel() {
           </div>
 
           <aside className="space-y-5">
+            <section className="rounded-[24px] border border-white/10 bg-[#0f1011]/76 p-4 shadow-[0_18px_70px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-black text-slate-100">Review Queue</h2>
+                <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-100">Operator triage</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-center">
+                {[
+                  ['Review-ready', readySources.length],
+                  ['Needs input', blockedSources.length],
+                  ['Citations', citationCount],
+                  ['Approval gates', gateCounts.approval_required],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                    <div className="text-xl font-black text-slate-100">{value}</div>
+                    <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.07] p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-100/80">Next operator move</p>
+                <p className="mt-1 text-xs leading-5 text-slate-300">{nextOperatorMove}</p>
+              </div>
+            </section>
+
             <section className="rounded-[24px] border border-amber-300/20 bg-amber-400/[0.07] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-bold text-amber-100">Truth Guardrails</h2>
