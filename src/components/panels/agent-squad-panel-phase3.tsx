@@ -421,6 +421,21 @@ export function AgentSquadPanelPhase3() {
         </div>
       )}
 
+      <div className="mx-4 mt-4 grid gap-3 rounded-xl border border-border/70 bg-surface-0/70 p-3 text-xs text-muted-foreground sm:grid-cols-3">
+        <div>
+          <div className="font-semibold uppercase tracking-[0.14em] text-foreground">Roster truth</div>
+          <p className="mt-1">Status is Mission Control local DB plus recent heartbeat proof; it is not external delivery proof.</p>
+        </div>
+        <div>
+          <div className="font-semibold uppercase tracking-[0.14em] text-foreground">Current work</div>
+          <p className="mt-1">Cards show task counts and last activity so idle/active agents are not just colored dots.</p>
+        </div>
+        <div>
+          <div className="font-semibold uppercase tracking-[0.14em] text-foreground">Proof boundary</div>
+          <p className="mt-1">Use Group Chat, receipts, and task evidence before treating work as Done.</p>
+        </div>
+      </div>
+
       {/* Error Display */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 m-4 rounded-lg text-sm flex items-center justify-between">
@@ -645,7 +660,7 @@ export function AgentSquadPanelPhase3() {
               {davidsCrewAgents.length > 0 && (
                 <div>
                   <div className="text-center mb-3">
-                    <span className="text-xs font-semibold text-orange-400/80 uppercase tracking-wider">🔨 David's Crew</span>
+                    <span className="text-xs font-semibold text-orange-400/80 uppercase tracking-wider">🔨 David&apos;s Crew</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {davidsCrewAgents.map(agent => (
@@ -843,6 +858,12 @@ function AgentOrgCard({
               {' '}{part.label}
             </span>
           ))}
+        </div>
+      )}
+
+      {agent.last_activity && (
+        <div className="mb-2 rounded-lg border border-border/40 bg-background/60 px-2.5 py-2 text-[11px] text-muted-foreground">
+          <span className="font-semibold text-foreground">Last proof/activity:</span> {agent.last_activity}
         </div>
       )}
 
