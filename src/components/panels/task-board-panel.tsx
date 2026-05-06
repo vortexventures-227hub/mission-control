@@ -566,6 +566,7 @@ export function TaskBoardPanel() {
     overdue: tasks.filter(task => task.status !== 'done' && task.due_date && task.due_date < nowSeconds).length,
     critical: tasks.filter(task => task.status !== 'done' && (task.priority === 'critical' || task.priority === 'urgent')).length,
     unassigned: tasks.filter(task => task.status !== 'done' && !task.assigned_to).length,
+    awaitingAegis: tasks.filter(task => ['review', 'quality_review'].includes(task.status) && !aegisMap[task.id]).length,
   }
 
   // Drag and drop handlers
@@ -842,12 +843,13 @@ export function TaskBoardPanel() {
       </div>
 
       {/* Operator triage strip */}
-      <div className="grid flex-shrink-0 gap-3 border-b border-border bg-surface-0/70 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid flex-shrink-0 gap-3 border-b border-border bg-surface-0/70 px-4 py-3 sm:grid-cols-2 xl:grid-cols-5">
         {[
           { label: 'Awaiting owner', value: taskTriage.awaitingOwner, tone: 'text-orange-300', detail: 'human or owner action' },
           { label: 'Overdue', value: taskTriage.overdue, tone: 'text-red-300', detail: 'past due and not done' },
           { label: 'Critical / urgent', value: taskTriage.critical, tone: 'text-amber-300', detail: 'highest risk active work' },
           { label: 'Unassigned', value: taskTriage.unassigned, tone: 'text-cyan-300', detail: 'needs an owner before progress' },
+          { label: 'Done gate', value: taskTriage.awaitingAegis, tone: 'text-emerald-300', detail: 'Aegis approval required before Done' },
         ].map((item) => (
           <div key={item.label} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 shadow-sm">
             <div className={`text-lg font-black ${item.tone}`}>{item.value}</div>
