@@ -54,7 +54,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Mission Control',
-  description: 'OpenClaw Agent Orchestration Dashboard',
+  description: 'Blackwire Ops HQ for internal command truth, approvals, receipts, and evidence-gated agent operations.',
   metadataBase,
   icons: {
     icon: [
@@ -66,13 +66,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Mission Control',
-    description: 'OpenClaw Agent Orchestration Dashboard',
+    description: 'Blackwire Ops HQ for internal command truth, approvals, receipts, and evidence-gated agent operations.',
     images: [{ url: '/brand/mc-logo-512.png', width: 512, height: 512, alt: 'Mission Control logo' }],
   },
   twitter: {
     card: 'summary',
     title: 'Mission Control',
-    description: 'OpenClaw Agent Orchestration Dashboard',
+    description: 'Blackwire Ops HQ for internal command truth, approvals, receipts, and evidence-gated agent operations.',
     images: ['/brand/mc-logo-512.png'],
   },
   appleWebApp: {

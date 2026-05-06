@@ -69,14 +69,14 @@ const snapshots: Record<string, Omit<MissionControlSurfaceSnapshot, 'generatedAt
     eyebrow: 'Finish-line surfaces / truthful instrumentation',
     status: 'read_only',
     safetyMode: 'read_only',
-    description: 'One user-visible home for the Mission Control MVP surface map: Command Truth, Blackwire ops, Brain/Memory, Asset Library, Brainstorm Wall, Security, Marketing, Research, Automation, Design, and Trading. It is a read-only command map; missing integrations remain visibly Not Instrumented Yet or Evidence Missing.',
+    description: 'One user-visible home for the Mission Control MVP surface map: Command Truth, Blackwire ops, Brain/Memory, Asset Library, Brainstorm Wall, Security, Marketing, Research, Automation, Design, Trading, and local app packaging. It is a read-only command map; missing integrations remain visibly Not Instrumented Yet or Evidence Missing.',
     guardrails: [
       ...globalGuardrails,
       'No external marketing sends/posts/spend from Mission Control without explicit Chris approval.',
       'No real trades, order placement, wallet/account mutation, or market API-key use from Mission Control without explicit Chris approval.',
       'MiroFish paid simulations require explicit approval before paid run or external compute spend.',
     ],
-    summary: { surfaces: 11, externalExecutionEnabled: false, approvalGatesVisible: true, fakeGreenAllowed: false },
+    summary: { surfaces: 12, externalExecutionEnabled: false, approvalGatesVisible: true, fakeGreenAllowed: false, installMetadataReady: true },
     sections: [
       { id: 'live-ops', title: 'Live ops / evidence-gated Done', cards: [
         card({ id: 'command-truth', title: 'Command Truth + Blackwire flow', status: 'read_only', owner: 'Herm', summary: 'Canonical-root cockpit for Blackwire group chat, task board, approvals, receipts, evidence-gated Done, and rollback truth.', evidence: 'Command Truth panel and Blackwire group chat routes are linked from the app shell.', nextAction: 'Use Command Truth for source-of-truth checks before claiming completion.', links: [{ label: 'Command Truth', href: '/command-truth' }, { label: 'Blackwire Group Chat', href: '/group-chat' }] }),
@@ -94,6 +94,9 @@ const snapshots: Record<string, Omit<MissionControlSurfaceSnapshot, 'generatedAt
         card({ id: 'automation-command', title: 'Automation / n8n MCP Command Center', status: 'approval_required', owner: 'Herm / Knox', summary: 'Read-only workflow registry for n8n MCP automations across Research, Marketing, Security, Trading, and Design.', evidence: 'n8n host, credentials, MCP execution, and approval model are Not Instrumented Yet; no live workflow execution path is enabled.', nextAction: 'Use as planning/approval surface only until read-only auth, credential scoping, and receipts are proven.', links: [{ label: 'Automation Command Center', href: '/automation-command' }] }),
         card({ id: 'design', title: 'Design Studio', status: 'read_only', summary: 'Brand systems, UI QA, visual receipts, color/language psychology, and design decisions.', evidence: 'Visual QA remains Evidence Missing until screenshot receipts are linked.', nextAction: 'Capture and attach visual receipts before approving design claims.', links: [{ label: 'Design Studio', href: '/design' }] }),
         card({ id: 'trading', title: 'Trading Operations Cockpit', status: 'blocked', owner: 'Herald / Atlas / Knox / Spread / Ledger', summary: 'Polymarket/approved-market watchlist, signals, risk shell, spread monitor, ledger placeholders, and no-execution guardrails.', evidence: 'No trading connector, positions, fills, P&L, orders, or wallet/API mutation path exists in this MVP surface.', nextAction: 'Use as read-only research/watch surface only.', links: [{ label: 'Trading Cockpit', href: '/trading' }] }),
+      ]},
+      { id: 'local-app-readiness', title: 'Local app / install readiness', cards: [
+        card({ id: 'pwa-install-shell', title: 'Installable local app shell', status: 'read_only', owner: 'Koda', summary: 'Manifest, Apple web-app metadata, icons, and standalone display mode are present for wrapping or installing Mission Control as an internal daily-driver shell.', evidence: 'public/manifest.json, public/sw.js, and src/app/layout.tsx define install metadata and app icons.', nextAction: 'Use as local/internal packaging evidence only; no deploy, App Store, public launch, or customer-facing packaging claim.', details: [{ label: 'Cache boundary', value: 'Service worker caches static install assets only; API responses, navigations, and dynamic command-center pages are not cached.', status: 'read_only' }, { label: 'Authority boundary', value: 'Install metadata is not deploy authority and does not imply public release readiness.', status: 'approval_required' }] }),
       ]},
     ],
   },

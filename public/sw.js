@@ -1,10 +1,12 @@
-// Mission Control Service Worker v1.0
-const CACHE_NAME = 'mission-control-v1'
+// Mission Control Service Worker v1.1
+const CACHE_NAME = 'mission-control-static-v1'
 const STATIC_ASSETS = [
-  '/',
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/apple-icon.png',
+  '/brand/mc-logo-128.png',
+  '/brand/mc-logo-512.png',
 ]
 
 // Install - cache static assets
@@ -29,18 +31,32 @@ self.addEventListener('activate', (event) => {
   self.clients.claim()
 })
 
-// Fetch - network first, fallback to cache
+function isStaticAsset(requestUrl) {
+  return requestUrl.origin === self.location.origin && STATIC_ASSETS.includes(requestUrl.pathname)
+}
+
+// Fetch - cache install assets only. Never cache dynamic Mission Control pages.
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return
 
-  // Skip API requests (always go to network)
-  if (event.request.url.includes('/api/')) return
+  const requestUrl = new URL(event.request.url)
+
+  // Skip API, navigations, HTML documents, and cross-origin requests so
+  // dynamic command-center data is never stored by the service worker.
+  if (
+    requestUrl.origin !== self.location.origin ||
+    requestUrl.pathname.startsWith('/api/') ||
+    event.request.mode === 'navigate' ||
+    event.request.destination === 'document'
+  ) return
+
+  if (!isStaticAsset(requestUrl)) return
 
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone and cache successful responses
+        // Clone and cache successful static install assets only.
         if (response.status === 200) {
           const clone = response.clone()
           caches.open(CACHE_NAME).then((cache) => {

@@ -1,9 +1,10 @@
 {
   "name": "Mission Control",
   "short_name": "MissionCtrl",
-  "description": "VVAxeOps Command Center - Agent orchestration & monitoring",
+  "description": "Blackwire Ops HQ for internal command truth, approvals, receipts, and evidence-gated agent operations.",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay", "browser"],
   "background_color": "#070912",
   "theme_color": "#22d3ee",
   "orientation": "any",
@@ -22,6 +23,29 @@
     }
   ],
   "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Command Truth",
+      "short_name": "Truth",
+      "description": "Open the Mission Control command-truth cockpit.",
+      "url": "/command-truth",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Blackwire Group Chat",
+      "short_name": "Chat",
+      "description": "Open the Blackwire Ops operating room.",
+      "url": "/rooms/blackwire-ops",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Tasks",
+      "short_name": "Tasks",
+      "description": "Open evidence-gated Mission Control tasks.",
+      "url": "/tasks",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "scope": "/",
   "lang": "en"
 }

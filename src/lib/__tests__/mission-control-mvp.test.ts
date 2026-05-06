@@ -86,6 +86,8 @@ describe('Mission Control MVP snapshot', () => {
     expect(byId['research-command'].detail).toContain('Karpathia connector Not Instrumented Yet')
     expect(byId['trading-operations'].status).toBe('partial')
     expect(byId['trading-operations'].detail).toContain('execution blocked')
+    expect(byId['local-app-packaging'].status).toBe('partial')
+    expect(byId['local-app-packaging'].detail).toContain('static-asset-only')
     expect(byId['design-studio'].status).toBe('partial')
     expect(byId['design-studio'].detail).toContain('4 design inventory rows')
   })
