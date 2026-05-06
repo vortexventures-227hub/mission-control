@@ -52,6 +52,35 @@ function relDate(ms: number) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function daysUntil(ms: number | null) {
+  if (!ms) return null
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  const target = new Date(ms)
+  target.setHours(0, 0, 0, 0)
+  return Math.ceil((target.getTime() - start.getTime()) / 86_400_000)
+}
+
+function renewalTone(days: number | null): 'ok' | 'soon' | 'due' | 'missing' {
+  if (days === null) return 'missing'
+  if (days < 0) return 'due'
+  if (days <= 7) return 'due'
+  if (days <= 30) return 'soon'
+  return 'ok'
+}
+
+function renewalLabel(days: number | null) {
+  if (days === null) return 'Billing date missing'
+  if (days < 0) return `${Math.abs(days)}d overdue`
+  if (days === 0) return 'Due today'
+  return `Due in ${days}d`
+}
+
+function monthlyEquivalent(sub: Subscription) {
+  if (sub.billing_cycle === 'annual') return sub.amount / 12
+  return sub.amount
+}
+
 const CATEGORY_COLORS: Record<string, string> = {
   ai_api: 'text-violet-400',
   api: 'text-violet-400',
@@ -66,6 +95,13 @@ const STATUS_COLORS: Record<string, string> = {
   active: 'bg-green-500/15 text-green-400 border-green-500/30',
   paused: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30',
   cancelled: 'bg-red-500/15 text-red-400 border-red-500/30',
+}
+
+const RENEWAL_COLORS: Record<ReturnType<typeof renewalTone>, string> = {
+  ok: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25',
+  soon: 'bg-amber-500/10 text-amber-400 border-amber-500/25',
+  due: 'bg-red-500/10 text-red-400 border-red-500/25',
+  missing: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/25',
 }
 
 // ─── Add Expense Form ─────────────────────────────────────────────────────────
@@ -264,6 +300,18 @@ export function ExpensesPanel() {
 
   const activeSubs = subscriptions.filter(s => s.status === 'active')
   const inactiveSubs = subscriptions.filter(s => s.status !== 'active')
+  const upcomingRenewals = activeSubs
+    .map((sub) => ({ sub, days: daysUntil(sub.next_billing_date) }))
+    .sort((a, b) => (a.days ?? Number.MAX_SAFE_INTEGER) - (b.days ?? Number.MAX_SAFE_INTEGER))
+  const urgentRenewals = upcomingRenewals.filter(({ days }) => {
+    const tone = renewalTone(days)
+    return tone === 'due' || tone === 'soon' || tone === 'missing'
+  })
+  const missingBillingDates = upcomingRenewals.filter(({ days }) => days === null).length
+  const topMonthlySubs = activeSubs
+    .slice()
+    .sort((a, b) => monthlyEquivalent(b) - monthlyEquivalent(a))
+    .slice(0, 5)
 
   return (
     <div className="flex flex-col h-full">
@@ -277,6 +325,11 @@ export function ExpensesPanel() {
           <p className="text-xs text-muted-foreground mt-0.5">
             {loading ? 'Loading...' : `${fmt(subTotals.monthly)}/mo active subscriptions · ${fmt(summary?.oneOffTotal || 0)} one-off expenses (30d)`}
           </p>
+          {!loading && (
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {urgentRenewals.length} renewal gate(s) need review · {missingBillingDates} missing billing date(s) · DB/API ledger only
+            </p>
+          )}
         </div>
         <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="h-8 text-xs">
           {loading ? <Loader variant="inline" /> : 'Refresh'}
@@ -311,6 +364,7 @@ export function ExpensesPanel() {
                     { label: 'Monthly Subscriptions', value: fmt(subTotals.monthly), sub: `${fmt(subTotals.annual)}/yr · ${activeSubs.length} active` },
                     { label: 'One-off Expenses (30d)', value: fmt(summary?.oneOffTotal || 0), sub: 'manual/non-recurring ledger' },
                     { label: 'Tracked Monthly Exposure', value: fmt(subTotals.monthly + (summary?.oneOffTotal || 0)), sub: 'active subs + 30d one-offs' },
+                    { label: 'Renewal Gates', value: String(urgentRenewals.length), sub: `${missingBillingDates} missing billing dates` },
                   ].map(s => (
                     <div key={s.label} className="p-3 bg-card border border-border rounded-lg">
                       <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -322,22 +376,63 @@ export function ExpensesPanel() {
 
                 {/* Active Subscriptions summary */}
                 <div className="bg-card border border-border rounded-lg p-4">
-                  <h3 className="text-xs font-semibold text-foreground mb-3">Active Subscriptions</h3>
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h3 className="text-xs font-semibold text-foreground">Renewal Watch</h3>
+                    <span className="text-[10px] text-muted-foreground">next 30d + missing dates</span>
+                  </div>
+                  {urgentRenewals.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No renewal gates inside 30 days and no missing billing dates.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {urgentRenewals.slice(0, 6).map(({ sub, days }) => {
+                        const tone = renewalTone(days)
+                        return (
+                          <div key={sub.id} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-medium text-foreground">{sub.name}</p>
+                              <p className="text-[10px] text-muted-foreground">{sub.vendor} · {fmt(monthlyEquivalent(sub))}/mo equivalent</p>
+                            </div>
+                            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${RENEWAL_COLORS[tone]}`}>{renewalLabel(days)}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <h3 className="text-xs font-semibold text-foreground mb-3">Largest Monthly Exposure</h3>
                   {activeSubs.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No active subscriptions.</p>
                   ) : (
                     <div className="space-y-2">
-                      {activeSubs.map(s => (
+                      {topMonthlySubs.map(s => (
                         <div key={s.id} className="flex items-center justify-between">
                           <div>
                             <span className="text-xs font-medium text-foreground">{s.name}</span>
                             <span className="text-xs text-muted-foreground ml-2">{s.vendor}</span>
                           </div>
-                          <span className="text-xs font-mono text-foreground">{fmt(s.amount)}/{s.billing_cycle === 'monthly' ? 'mo' : 'yr'}</span>
+                          <span className="text-xs font-mono text-foreground">{fmt(monthlyEquivalent(s))}/mo eq.</span>
                         </div>
                       ))}
                     </div>
                   )}
+                </div>
+
+                <div className="bg-card border border-border rounded-lg p-4">
+                  <h3 className="text-xs font-semibold text-foreground mb-3">Canonical Ledger Boundary</h3>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {[
+                      ['Source', '/api/expenses + /api/subscriptions'],
+                      ['Storage', 'Mission Control local DB'],
+                      ['Rule', 'No loose ledger files'],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-lg border border-border bg-background px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</p>
+                        <p className="mt-1 text-xs font-medium text-foreground">{value}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Category breakdown */}
@@ -384,11 +479,17 @@ export function ExpensesPanel() {
                         {s.next_billing_date && (
                           <p className="text-xs text-muted-foreground mt-0.5">Next billing: {relDate(s.next_billing_date)}</p>
                         )}
+                        {!s.next_billing_date && (
+                          <p className="text-xs text-amber-400 mt-0.5">Next billing date missing - cannot forecast renewal precisely.</p>
+                        )}
                         {s.notes && <p className="text-[10px] text-muted-foreground/70 mt-1 italic">{s.notes}</p>}
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0 ml-3">
                         <span className="font-bold text-sm text-foreground">{fmt(s.amount)}</span>
                         <span className="text-[10px] text-muted-foreground">/{s.billing_cycle === 'monthly' ? 'mo' : 'yr'}</span>
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${RENEWAL_COLORS[renewalTone(daysUntil(s.next_billing_date))]}`}>
+                          {renewalLabel(daysUntil(s.next_billing_date))}
+                        </span>
                         <button onClick={() => cancelSub(s.id)} className="text-[10px] text-red-400 hover:text-red-300 mt-1">Cancel</button>
                       </div>
                     </div>

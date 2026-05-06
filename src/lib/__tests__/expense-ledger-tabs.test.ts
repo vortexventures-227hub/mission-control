@@ -13,6 +13,9 @@ describe('Mission Control expense ledger tabs', () => {
     expect(source).toContain('One-off Expenses')
     expect(source).toContain('/api/expenses?days=365&kind=one_off')
     expect(source).toContain('Recurring subscriptions belong on the Subscriptions tab')
+    expect(source).toContain('Renewal Watch')
+    expect(source).toContain('Canonical Ledger Boundary')
+    expect(source).toContain('No loose ledger files')
   })
 
   it('keeps API summary and listing support separated one-off expense reads', () => {
