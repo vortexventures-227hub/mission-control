@@ -83,6 +83,8 @@ export function ExecApprovalPanel() {
   useEffect(() => { loadApprovals() }, [loadApprovals])
 
   const handleAction = (id: string, decision: 'allow-once' | 'allow-always' | 'deny') => {
+    if (approvalSource === 'local-read-only') return
+
     const sent = sendMessage({
       type: 'req',
       method: 'exec.approval.resolve',
@@ -182,6 +184,7 @@ export function ExecApprovalPanel() {
                   key={approval.id}
                   approval={approval}
                   onAction={handleAction}
+                  readOnly={approvalSource === 'local-read-only'}
                 />
               ))}
             </div>
@@ -463,9 +466,11 @@ function AgentAllowlistCard({
 function ApprovalCard({
   approval,
   onAction,
+  readOnly,
 }: {
   approval: ExecApprovalRequest
   onAction: (id: string, decision: 'allow-once' | 'allow-always' | 'deny') => void
+  readOnly: boolean
 }) {
   const t = useTranslations('execApproval')
   const riskBorder = RISK_BORDER[approval.risk]
@@ -520,7 +525,11 @@ function ApprovalCard({
 
       {/* Action row */}
       <div className="flex items-center gap-2 mt-3">
-        {isPending ? (
+        {readOnly ? (
+          <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-300">
+            Local proof row - gateway resolution unavailable
+          </span>
+        ) : isPending ? (
           <>
             <Button
               size="sm"
