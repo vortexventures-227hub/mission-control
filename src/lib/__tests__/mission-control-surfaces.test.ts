@@ -155,6 +155,8 @@ vi.mock('../design-studio-command', () => ({
     summary: {
       totalDesignItems: 4,
       evidenceMissing: 1,
+      blockedDesignItems: 1,
+      approvalRequiredItems: 0,
       visualReceiptsLinked: 1,
       qaGatesVisible: 4,
       designReceiptsLinked: 3,
@@ -385,6 +387,10 @@ describe('mission control surface snapshots', () => {
     expect(design?.summary.externalPublishEnabled).toBe(false)
     expect(design?.summary.patchRuntimeAuthority).toBe(false)
     expect(design?.guardrails.join(' ')).toContain('Mock design guardrail')
+    expect(design?.sections[0]?.id).toBe('visual-receipt-triage')
+    expect(cards.find((card) => card.id === 'design-visual-qa-coverage')?.summary).toContain('1 visual receipts')
+    expect(cards.find((card) => card.id === 'design-authority-boundary')?.evidence).toContain('1 blocked design items')
+    expect(cards.find((card) => card.id === 'design-authority-boundary')?.details?.find((detail) => detail.label === 'Blocked authority')?.value).toContain('No deploy')
     expect(cards.find((card) => card.id === 'design-mission-control-brand-system')?.status).toBe('planned')
     expect(cards.find((card) => card.id === 'design-blackwire-room-visual-receipt')?.status).toBe('read_only')
     expect(cards.find((card) => card.id === 'design-unproven-design-claim')?.status).toBe('evidence_missing')

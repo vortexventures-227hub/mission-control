@@ -112,6 +112,8 @@ export function getDesignStudioSnapshot(workspaceId = 1) {
     summary: {
       totalDesignItems: items.length,
       evidenceMissing: countBy(`SELECT COUNT(*) as count FROM mission_control_design_studio_items WHERE workspace_id = ? AND status = 'evidence_missing'`, workspaceId),
+      blockedDesignItems: countBy(`SELECT COUNT(*) as count FROM mission_control_design_studio_items WHERE workspace_id = ? AND status = 'blocked'`, workspaceId),
+      approvalRequiredItems: countBy(`SELECT COUNT(*) as count FROM mission_control_design_studio_items WHERE workspace_id = ? AND status = 'approval_required'`, workspaceId),
       visualReceiptsLinked: countBy(`SELECT COUNT(*) as count FROM mission_control_design_studio_items WHERE workspace_id = ? AND screenshot_path IS NOT NULL`, workspaceId),
       qaGatesVisible: enrichedItems.filter((item) => item.details.some((detail) => detail.label === 'Visual QA gate')).length,
       designReceiptsLinked: enrichedItems.filter((item) => Boolean(item.evidence_path)).length,

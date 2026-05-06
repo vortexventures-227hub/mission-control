@@ -536,6 +536,11 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
   }
   if (id === 'design') {
     const design = getDesignStudioSnapshot()
+    const designNextAction = design.summary.evidenceMissing > 0
+      ? 'Capture browser proof or screenshot receipts before claiming visual QA is complete.'
+      : design.summary.blockedDesignItems > 0
+        ? 'Resolve blocked design items before any external publish or customer-facing mutation.'
+        : 'Use receipt-backed design items as read-only QA baselines; keep deploy/publish authority approval-gated.'
     return {
       ...snapshot,
       generatedAt: design.generatedAt,
@@ -545,6 +550,39 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
       },
       guardrails: Array.from(new Set([...snapshot.guardrails, ...design.guardrails])),
       sections: [
+        {
+          id: 'visual-receipt-triage',
+          title: 'Visual receipt triage',
+          status: design.summary.evidenceMissing > 0 ? 'evidence_missing' : design.summary.blockedDesignItems > 0 ? 'blocked' : 'read_only',
+          cards: [
+            card({
+              id: 'design-visual-qa-coverage',
+              title: 'Visual QA coverage',
+              status: design.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+              owner: 'Design / QA',
+              summary: `${design.summary.visualReceiptsLinked} visual receipts linked across ${design.summary.totalDesignItems} design items.`,
+              evidence: `${design.summary.evidenceMissing} items are Evidence Missing; visualQaProven=${design.summary.visualQaProven ? 'true' : 'false'}.`,
+              nextAction: designNextAction,
+              details: [
+                { label: 'QA gates visible', value: `${design.summary.qaGatesVisible} visual QA gates are visible.`, status: design.summary.qaGatesVisible >= design.summary.totalDesignItems ? 'read_only' : 'evidence_missing' },
+                { label: 'Design receipts linked', value: `${design.summary.designReceiptsLinked} design decision/receipt paths are linked.`, status: design.summary.designReceiptsLinked > 0 ? 'read_only' : 'evidence_missing' },
+              ],
+            }),
+            card({
+              id: 'design-authority-boundary',
+              title: 'Authority boundary',
+              status: design.summary.externalPublishEnabled || design.summary.patchRuntimeAuthority ? 'blocked' : 'read_only',
+              owner: 'Knox / Patch',
+              summary: `externalPublishEnabled=${design.summary.externalPublishEnabled ? 'true' : 'false'}; patchRuntimeAuthority=${design.summary.patchRuntimeAuthority ? 'true' : 'false'}.`,
+              evidence: `${design.summary.blockedDesignItems} blocked design items; ${design.summary.approvalRequiredItems} items explicitly require approval.`,
+              nextAction: 'Keep Design Studio as read-only QA/planning unless Chris scopes deploy, publish, env, customer-facing, or memory-write authority.',
+              details: [
+                { label: 'Allowed use', value: 'Internal screenshots, QA receipts, component status, brand decisions, and design planning.', status: 'read_only' },
+                { label: 'Blocked authority', value: 'No deploy, env mutation, external publish, customer-facing change, trading action, or Graphify/gBrain write from this surface.', status: 'blocked' },
+              ],
+            }),
+          ],
+        },
         {
           id: 'db-backed-design-items',
           title: 'DB-backed design inventory / visual receipt gates',
