@@ -505,6 +505,11 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
   }
   if (id === 'trading') {
     const trading = getTradingOperationsSnapshot()
+    const tradingNextAction = trading.summary.blockedItems > 0
+      ? 'Keep execution blocked; use watchlist and risk cards as read-only research until explicit approval and external receipts exist.'
+      : trading.summary.evidenceMissing > 0
+        ? 'Attach timestamped market sources, research citations, risk notes, or ledger receipts before treating signals as actionable.'
+        : 'Continue read-only monitoring; real trading still requires scoped approval and an external execution receipt.'
     return {
       ...snapshot,
       generatedAt: trading.generatedAt,
@@ -514,6 +519,39 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
       },
       guardrails: Array.from(new Set([...snapshot.guardrails, ...trading.guardrails])),
       sections: [
+        {
+          id: 'trading-readiness-triage',
+          title: 'Trading readiness triage',
+          status: trading.summary.executionEnabled || trading.summary.walletMutationEnabled ? 'blocked' : trading.summary.blockedItems > 0 ? 'blocked' : trading.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+          cards: [
+            card({
+              id: 'trading-market-evidence',
+              title: 'Market evidence coverage',
+              status: trading.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+              owner: 'Herald / Atlas',
+              summary: `${trading.summary.sourceReceiptsLinked} source receipts linked across ${trading.summary.totalWatchItems} watch items; ${trading.summary.evidenceMissing} items still need evidence.`,
+              evidence: `detailGatesVisible=${trading.summary.detailGatesVisible}; connectorInstrumented=${trading.summary.connectorInstrumented ? 'true' : 'false'}.`,
+              nextAction: tradingNextAction,
+              details: [
+                { label: 'Connector truth', value: 'No live market connector, quote feed, order book, or paid data source is claimed unless instrumented with receipts.', status: trading.summary.connectorInstrumented ? 'read_only' : 'not_instrumented' },
+                { label: 'Research promotion gate', value: 'Signals need timestamped sources plus Research Command/MiroFish receipts before review.', status: 'approval_required' },
+              ],
+            }),
+            card({
+              id: 'trading-execution-boundary',
+              title: 'Execution boundary',
+              status: trading.summary.executionEnabled || trading.summary.walletMutationEnabled ? 'blocked' : 'read_only',
+              owner: 'Knox / Ledger',
+              summary: `executionEnabled=${trading.summary.executionEnabled ? 'true' : 'false'}; walletMutationEnabled=${trading.summary.walletMutationEnabled ? 'true' : 'false'}; approvalRequiredForTrades=${trading.summary.approvalRequiredForTrades ? 'true' : 'false'}.`,
+              evidence: `livePositionsImported=${trading.summary.livePositionsImported ? 'true' : 'false'}; fillsImported=${trading.summary.fillsImported ? 'true' : 'false'}; pnlImported=${trading.summary.pnlImported ? 'true' : 'false'}; ledgerReceiptsLinked=${trading.summary.ledgerReceiptsLinked}.`,
+              nextAction: 'No orders, cancellations, wallet actions, positions, fills, P&L, or account-affecting changes from Mission Control.',
+              details: [
+                { label: 'No fake performance', value: 'Positions, fills, P&L, bankroll, hit rate, and drawdown remain Evidence Missing unless imported from verified receipts.', status: 'blocked' },
+                { label: 'Approval object requirement', value: 'Any real trade needs Chris approval with venue, order, size, slippage/spread guard, stop plan, and execution receipt path.', status: 'approval_required' },
+              ],
+            }),
+          ],
+        },
         {
           id: 'db-backed-trading-watch-items',
           title: 'DB-backed trading watchlist / signals / risk gates',

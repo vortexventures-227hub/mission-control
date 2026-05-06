@@ -127,6 +127,7 @@ vi.mock('../trading-operations-command', () => ({
     summary: {
       totalWatchItems: 4,
       evidenceMissing: 1,
+      approvalRequired: 1,
       blockedItems: 1,
       detailGatesVisible: 12,
       sourceReceiptsLinked: 3,
@@ -372,6 +373,10 @@ describe('mission control surface snapshots', () => {
     expect(trading?.summary.walletMutationEnabled).toBe(false)
     expect(trading?.summary.approvalRequiredForTrades).toBe(true)
     expect(trading?.guardrails.join(' ')).toContain('Mock trading guardrail')
+    expect(trading?.sections[0]?.id).toBe('trading-readiness-triage')
+    expect(cards.find((card) => card.id === 'trading-market-evidence')?.summary).toContain('3 source receipts')
+    expect(cards.find((card) => card.id === 'trading-execution-boundary')?.evidence).toContain('pnlImported=false')
+    expect(cards.find((card) => card.id === 'trading-execution-boundary')?.details?.find((detail) => detail.label === 'No fake performance')?.status).toBe('blocked')
     expect(cards.find((card) => card.id === 'trading-polymarket-watchlist-shell')?.status).toBe('planned')
     expect(cards.find((card) => card.id === 'trading-execution-hard-block')?.status).toBe('blocked')
     expect(cards.find((card) => card.id === 'trading-approval-gated-risk-note')?.status).toBe('approval_required')
