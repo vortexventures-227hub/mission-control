@@ -6,7 +6,9 @@ const nextConfig = {
   outputFileTracingExcludes: {
     '/*': ['./.data/**/*'],
   },
-  turbopack: {},
+  turbopack: {
+    root: __dirname,
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
