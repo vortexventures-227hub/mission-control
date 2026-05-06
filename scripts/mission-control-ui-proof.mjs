@@ -21,6 +21,8 @@ const routes = [
   '/exec-approvals',
   '/notifications',
   '/knowledge-intake',
+  '/ai-toolkit',
+  '/think-tank?commercial=1',
   '/brain-memory',
   '/security-command',
   '/security',
@@ -86,7 +88,7 @@ try {
         firstText: text.trim().replace(/\s+/g, ' ').slice(0, 220),
       }
     })
-    const safeName = route === '/' ? 'home' : route.replace(/^\//, '').replace(/\//g, '__')
+    const safeName = route === '/' ? 'home' : route.replace(/^\//, '').replace(/[^a-z0-9-]+/gi, '_').replace(/^_+|_+$/g, '')
     const screenshot = path.join(outDir, `${safeName || 'home'}.png`)
     await page.screenshot({ path: screenshot, fullPage: true })
     const statusOk = Boolean(response && response.status() >= 200 && response.status() < 400)

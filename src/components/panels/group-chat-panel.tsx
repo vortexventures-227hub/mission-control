@@ -97,6 +97,12 @@ interface GroupChatResponse {
   generatedAt: number
 }
 
+const statusLabels: Record<string, string> = {
+  sent: 'local sent',
+  delivered: 'local delivered',
+  seen: 'local seen',
+}
+
 const statusClasses: Record<string, string> = {
   sent: 'bg-sky-500/15 text-sky-300 border-sky-500/25',
   delivered: 'bg-amber-500/15 text-amber-300 border-amber-500/25',
@@ -123,9 +129,10 @@ function formatTime(seconds: number): string {
 }
 
 function StatusBadge({ value }: { value: string }) {
+  const label = statusLabels[value] || value.replace(/_/g, ' ')
   return (
     <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${statusClasses[value] || statusClasses.unknown}`}>
-      {value.replace(/_/g, ' ')}
+      {label}
     </span>
   )
 }
@@ -395,9 +402,9 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
           </div>
           <div className="mt-4 rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.06] p-3 text-xs text-slate-300 shadow-lg shadow-cyan-950/20">
             <div className="font-semibold text-white">Local proof boundary</div>
-            <p className="mt-1">Messages prove sent/delivered/seen in the local MVP dataset only. @mentions create local board items; no external agent/customer channel is contacted.</p>
+            <p className="mt-1">Delivery states are local proof labels only — local sent, local delivered, and local seen. @mentions create local board items; no external agent/customer channel is contacted.</p>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2">
-              <span className="font-semibold text-cyan-200">Delivery follow-up:</span> {roomMetrics.unreadDeliveries} local delivery row(s) are not yet seen.
+              <span className="font-semibold text-cyan-200">Review queue:</span> {roomMetrics.unreadDeliveries} local proof row(s) still need operator review.
             </div>
             <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2">
               <div className="font-semibold text-cyan-200">Agent local ingress</div>
@@ -451,14 +458,14 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {message.delivery.map((delivery) => (
                       <span key={delivery.id} className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-slate-950/60 px-2 py-1 text-[10px] text-slate-300">
-                        <span>{delivery.recipient_id}: {delivery.state}</span>
+                        <span>{delivery.recipient_id}: {statusLabels[delivery.state] || delivery.state}</span>
                         {delivery.state !== 'seen' && (
                           <button
                             onClick={() => updateDelivery(delivery, 'seen')}
                             className="rounded border border-emerald-400/20 px-1.5 py-0.5 text-emerald-200 hover:bg-emerald-400/10"
-                            title="Mark seen in Mission Control local state only"
+                            title="Mark locally seen in Mission Control state only"
                           >
-                            mark seen
+                            mark locally seen
                           </button>
                         )}
                       </span>

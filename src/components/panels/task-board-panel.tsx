@@ -159,6 +159,7 @@ const priorityColors: Record<string, string> = {
   medium: 'border-l-yellow-500',
   high: 'border-l-orange-500',
   critical: 'border-l-red-500',
+  urgent: 'border-l-red-600',
 }
 
 function useMentionTargets() {
@@ -559,6 +560,14 @@ export function TaskBoardPanel() {
     return acc
   }, {} as Record<string, Task[]>)
 
+  const nowSeconds = Math.floor(Date.now() / 1000)
+  const taskTriage = {
+    awaitingOwner: tasks.filter(detectAwaitingOwner).length,
+    overdue: tasks.filter(task => task.status !== 'done' && task.due_date && task.due_date < nowSeconds).length,
+    critical: tasks.filter(task => task.status !== 'done' && (task.priority === 'critical' || task.priority === 'urgent')).length,
+    unassigned: tasks.filter(task => task.status !== 'done' && !task.assigned_to).length,
+  }
+
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, task: Task) => {
     setDraggedTask(task)
@@ -832,6 +841,22 @@ export function TaskBoardPanel() {
         </div>
       </div>
 
+      {/* Operator triage strip */}
+      <div className="grid flex-shrink-0 gap-3 border-b border-border bg-surface-0/70 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Awaiting owner', value: taskTriage.awaitingOwner, tone: 'text-orange-300', detail: 'human or owner action' },
+          { label: 'Overdue', value: taskTriage.overdue, tone: 'text-red-300', detail: 'past due and not done' },
+          { label: 'Critical / urgent', value: taskTriage.critical, tone: 'text-amber-300', detail: 'highest risk active work' },
+          { label: 'Unassigned', value: taskTriage.unassigned, tone: 'text-cyan-300', detail: 'needs an owner before progress' },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 shadow-sm">
+            <div className={`text-lg font-black ${item.tone}`}>{item.value}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">{item.label}</div>
+            <div className="mt-0.5 text-[11px] text-muted-foreground">{item.detail}</div>
+          </div>
+        ))}
+      </div>
+
       {/* Spawn Form (collapsible) */}
       {showSpawnForm && (
         <div className="border-b border-border bg-surface-0 p-4">
@@ -926,13 +951,13 @@ export function TaskBoardPanel() {
       )}
 
       {/* Kanban Board */}
-      <div className="flex-1 min-h-0 flex gap-4 p-4 overflow-x-auto" role="region" aria-label={t('taskBoard')}>
+      <div className="flex-1 min-h-0 flex flex-wrap content-start gap-4 p-4 overflow-y-auto" role="region" aria-label={t('taskBoard')}>
         {statusColumns.map(column => (
           <div
             key={column.key}
             role="region"
             aria-label={t('columnAriaLabel', { title: column.title, count: tasksByStatus[column.key]?.length || 0 })}
-            className="flex-1 min-w-80 min-h-0 bg-surface-0 border border-border/60 rounded-xl flex flex-col transition-colors duration-200 [&.drag-over]:border-primary/40 [&.drag-over]:bg-primary/[0.02]"
+            className="w-56 shrink-0 min-h-0 bg-surface-0 border border-border/60 rounded-xl flex flex-col transition-colors duration-200 [&.drag-over]:border-primary/40 [&.drag-over]:bg-primary/[0.02]"
             onDragEnter={(e) => handleDragEnter(e, column.key)}
             onDragLeave={handleDragLeave}
             onDragOver={handleDragOver}
@@ -1111,12 +1136,13 @@ export function TaskBoardPanel() {
 
               {/* Empty State */}
               {tasksByStatus[column.key]?.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/30">
-                  <svg className="w-8 h-8 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border/70 bg-background/45 px-4 py-8 text-center text-muted-foreground">
+                  <svg className="mb-3 h-8 w-8 text-primary/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
                     <path d="M9 12h6M12 9v6" strokeLinecap="round" />
                   </svg>
-                  <span className="text-xs">{t('dropTasksHere')}</span>
+                  <span className="text-xs font-semibold text-foreground">No {column.title.toLowerCase()} tasks</span>
+                  <span className="mt-1 max-w-36 text-[11px] leading-4 text-muted-foreground/80">Drop work here or create a task with owner, evidence, and next action.</span>
                 </div>
               )}
             </div>
