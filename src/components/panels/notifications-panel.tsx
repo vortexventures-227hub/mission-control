@@ -23,9 +23,11 @@ export function NotificationsPanel() {
   const t = useTranslations('notifications')
   const [recipient, setRecipient] = useState<string>(() => {
     if (typeof window === 'undefined') return ''
-    return window.localStorage.getItem('mc.notifications.recipient') || ''
+    return window.localStorage.getItem('mc.notifications.recipient') || 'operator'
   })
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,6 +40,8 @@ export function NotificationsPanel() {
       if (!response.ok) throw new Error('Failed to fetch notifications')
       const data = await response.json()
       setNotifications(data.notifications || [])
+      setUnreadCount(Number(data.unreadCount || 0))
+      setTotalCount(Number(data.total || 0))
     } catch (err) {
       setError('Failed to fetch notifications')
     } finally {
@@ -86,7 +90,12 @@ export function NotificationsPanel() {
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
-        <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
+        <div>
+          <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Local Mission Control notification queue only. No email, SMS, push, or external agent delivery is implied.
+          </p>
+        </div>
         <Button
           onClick={markAllRead}
           variant="secondary"
@@ -98,12 +107,41 @@ export function NotificationsPanel() {
 
       <div className="p-4 border-b border-border flex-shrink-0">
         <label className="block text-sm text-muted-foreground mb-2">{t('recipientLabel')}</label>
-        <input
-          value={recipient}
-          onChange={(e) => setRecipient(e.target.value)}
-          className="w-full bg-surface-1 text-foreground rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
-          placeholder={t('recipientPlaceholder')}
-        />
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <input
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            className="min-w-0 flex-1 bg-surface-1 text-foreground rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50"
+            placeholder={t('recipientPlaceholder')}
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {['operator', 'Chris', 'koda', 'herm'].map((item) => (
+              <button
+                key={item}
+                onClick={() => setRecipient(item)}
+                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  recipient === item
+                    ? 'border-primary/50 bg-primary/10 text-primary'
+                    : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+          {[
+            ['Unread', unreadCount],
+            ['Total', totalCount],
+            ['Delivered rows', notifications.filter((item) => item.delivered_at).length],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-border bg-card px-3 py-2">
+              <div className="text-lg font-black text-foreground">{value}</div>
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {error && (
