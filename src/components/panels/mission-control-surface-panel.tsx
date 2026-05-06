@@ -55,6 +55,7 @@ const surfaceLinks = [
   { id: 'design', label: 'Design' },
   { id: 'brain-memory', label: 'Brain/Memory' },
   { id: 'asset-library', label: 'Assets' },
+  { id: 'think-tank', label: 'Think Tank' },
   { id: 'brainstorm', label: 'Brainstorm' },
   { id: 'marketing', label: 'Marketing' },
   { id: 'security-command', label: 'Security Center' },

@@ -539,6 +539,7 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'design':
     case 'brain-memory':
     case 'asset-library':
+    case 'think-tank':
     case 'brainstorm':
       return <MissionControlSurfacePanel surfaceId={tab} />
     case 'marketing':

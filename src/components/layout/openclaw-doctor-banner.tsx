@@ -121,8 +121,9 @@ export function OpenClawDoctorBanner() {
           secondary: 'text-amber-300 border-amber-500/20 hover:border-amber-500/40 hover:text-amber-200',
         }
 
-  const visibleIssues = doctor.issues.slice(0, 3)
+  const visibleIssues = doctor.issues.slice(0, 1)
   const extraCount = Math.max(doctor.issues.length - visibleIssues.length, 0)
+  const issueSummary = visibleIssues[0]
   const busy = state === 'fixing'
   const headline =
     state === 'success'
@@ -137,31 +138,25 @@ export function OpenClawDoctorBanner() {
 
   return (
     <div className="mx-4 mt-3 mb-0">
-      <div className={`flex items-start gap-3 px-4 py-3 rounded-lg border text-sm ${tone.frame}`}>
-        <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${tone.dot}`} />
+      <div className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-xs shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur ${tone.frame}`}>
+        <span className={`h-2 w-2 shrink-0 rounded-full ${tone.dot}`} />
         <div className="min-w-0 flex-1">
-          <p className="text-xs">
-            <span className={`font-medium ${tone.primary}`}>{headline}</span>
+          <p className="truncate">
+            <span className={`font-semibold ${tone.primary}`}>{headline}</span>
             {' — '}
-            {state === 'error' ? errorMsg || doctor.summary : doctor.summary}
+            <span className="opacity-90">{state === 'error' ? errorMsg || doctor.summary : doctor.summary}</span>
+            {issueSummary && (
+              <span className="ml-2 hidden opacity-70 lg:inline">
+                {issueSummary}
+                {extraCount > 0 ? ` · ${extraCount} more` : ''}
+              </span>
+            )}
           </p>
-          {visibleIssues.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {visibleIssues.map(issue => (
-                <p key={issue} className="text-2xs opacity-90">
-                  - {issue}
-                </p>
-              ))}
-              {extraCount > 0 && (
-                <p className="text-2xs opacity-75">{tc('moreIssues', { count: extraCount })}</p>
-              )}
-            </div>
-          )}
           {busy && fixProgress && (
-            <p className="mt-2 text-2xs opacity-85">{fixProgress}</p>
+            <p className="mt-1 truncate text-2xs opacity-85">{fixProgress}</p>
           )}
           {!busy && state === 'success' && fixProgress && (
-            <p className="mt-2 text-2xs opacity-85">{fixProgress}</p>
+            <p className="mt-1 truncate text-2xs opacity-85">{fixProgress}</p>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -169,14 +164,14 @@ export function OpenClawDoctorBanner() {
             <button
               onClick={handleFix}
               disabled={busy}
-              className={`shrink-0 rounded px-2.5 py-1 text-2xs font-medium transition-colors ${tone.button}`}
+              className={`shrink-0 rounded-md px-2.5 py-1 text-2xs font-semibold transition-colors ${tone.button}`}
             >
               {busy ? t('runningFix') : t('runDoctorFix')}
             </button>
           )}
           <button
             onClick={() => setShowDetails(value => !value)}
-            className={`shrink-0 rounded border px-2 py-1 text-2xs font-medium transition-colors ${tone.secondary}`}
+            className={`shrink-0 rounded-md border px-2 py-1 text-2xs font-semibold transition-colors ${tone.secondary}`}
           >
             {showDetails ? tc('hideDetails') : tc('showDetails')}
           </button>
@@ -194,7 +189,7 @@ export function OpenClawDoctorBanner() {
         </div>
       </div>
       {showDetails && (
-        <div className={`mt-1 max-h-80 overflow-y-auto rounded-lg border px-4 py-3 text-xs whitespace-pre-wrap ${tone.frame}`}>
+        <div className={`mt-1 max-h-80 overflow-y-auto rounded-xl border px-4 py-3 font-mono text-xs whitespace-pre-wrap ${tone.frame}`}>
           {doctor.raw || doctor.summary}
         </div>
       )}

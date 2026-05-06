@@ -177,12 +177,28 @@ describe('mission control surface snapshots', () => {
       'design',
       'brain-memory',
       'asset-library',
+      'think-tank',
       'brainstorm',
       'marketing',
       'security-command',
     ]))
   })
 
+  it('exposes Think Tank as a read-only source-backed opportunity mining surface', () => {
+    const thinkTank = getMissionControlSurfaceSnapshot('think-tank')
+    const cards = thinkTank?.sections.flatMap((section) => section.cards) || []
+
+    expect(thinkTank?.status).toBe('read_only')
+    expect(thinkTank?.summary.autoPromotionEnabled).toBe(false)
+    expect(thinkTank?.summary.sourceDocsSeeded).toBe(7)
+    expect(thinkTank?.summary.axisAuditStatus).toBe('seeded_not_complete')
+    expect(thinkTank?.guardrails.join(' ')).toContain('no automatic task creation')
+    expect(cards.find((card) => card.id === 'source-scout-post')?.evidence).toContain('scout_post.txt')
+    expect(cards.find((card) => card.id === 'source-mushroom-ideas')?.evidence).toContain('mushroom_ideas.md')
+    expect(cards.find((card) => card.id === 'opp-agent-dashboard')?.summary).toContain('Every agent on one screen')
+    expect(cards.find((card) => card.id === 'opp-strain-savers')?.summary).toContain('Personal mushroom strain library')
+    expect(cards.find((card) => card.id === 'audit-pass-2')?.status).toBe('planned')
+  })
 
   it('surfaces Security Command audit hooks and false-green evidence gates', () => {
     const security = getMissionControlSurfaceSnapshot('security-command')
