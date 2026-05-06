@@ -38,6 +38,15 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badgeClass[status] || badgeClass.planned}`}>{status.replace(/_/g, ' ')}</span>
 }
 
+function summaryNumber(snapshot: MarketingSnapshot | null, key: string) {
+  const value = snapshot?.summary[key]
+  return typeof value === 'number' ? value : 0
+}
+
+function summaryBoolean(snapshot: MarketingSnapshot | null, key: string) {
+  return snapshot?.summary[key] === true
+}
+
 function PanelCard({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-4">
@@ -100,6 +109,35 @@ export function MarketingCommandCenterPanel() {
           </div>
         ))}
       </div>
+
+      <PanelCard title="Daily marketing triage" action={<StatusBadge status={summaryBoolean(snapshot, 'publicLaunchBlocked') ? 'blocked' : 'approval_required'} />}>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="rounded-xl border border-border bg-background p-3">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-sm font-semibold text-foreground">Draft readiness</h3>
+              <StatusBadge status={summaryNumber(snapshot, 'projectsWithEvidenceMissing') > 0 ? 'evidence_missing' : 'planned'} />
+            </div>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              {summaryNumber(snapshot, 'safeDraftsReady')} safe internal drafts across {summaryNumber(snapshot, 'projectProfiles')} project profiles; {summaryNumber(snapshot, 'projectsWithEvidenceMissing')} projects still need proof or instrumentation.
+            </p>
+            <p className="mt-2 text-xs leading-5 text-amber-200">
+              Analytics live is not implied by draft readiness. Missing analytics must remain Not Instrumented Yet.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-background p-3">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-sm font-semibold text-foreground">External action boundary</h3>
+              <StatusBadge status="approval_required" />
+            </div>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Email, SMS, social, marketplace, ads, campaign settings, public launch, and spend all require scoped approval before execution.
+            </p>
+            <p className="mt-2 text-xs leading-5 text-primary">
+              Next: create an approval packet with channel, audience, spend/send/post scope, blast radius, proof plan, and rollback/stop plan.
+            </p>
+          </div>
+        </div>
+      </PanelCard>
 
       <PanelCard title="External action guardrails" action={<StatusBadge status="approval_required" />}>
         <div className="grid gap-2 md:grid-cols-2">

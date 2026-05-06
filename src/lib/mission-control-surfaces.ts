@@ -605,6 +605,11 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
   }
   if (id === 'marketing') {
     const marketing = getMarketingCommandCenterSnapshot()
+    const marketingNextAction = marketing.summary.publicLaunchBlocked
+      ? 'Keep marketing internal/draft-only until Security Command Center evidence and explicit approval clear the launch gate.'
+      : marketing.summary.projectsWithEvidenceMissing > 0
+        ? 'Attach proof receipts and analytics source notes before requesting external-action approval.'
+        : 'Prepare scoped approval packets before any send, post, listing, campaign mutation, or spend.'
     return {
       ...snapshot,
       generatedAt: marketing.generatedAt,
@@ -614,6 +619,39 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
       },
       guardrails: Array.from(new Set([...snapshot.guardrails, ...marketing.externalActionGuardrails])),
       sections: [
+        {
+          id: 'daily-marketing-triage',
+          title: 'Daily marketing triage',
+          status: marketing.summary.publicLaunchBlocked ? 'blocked' : 'approval_required',
+          cards: [
+            card({
+              id: 'marketing-draft-readiness',
+              title: 'Draft readiness',
+              status: marketing.summary.projectsWithEvidenceMissing > 0 ? 'evidence_missing' : 'planned',
+              owner: 'Growth / Chris',
+              summary: `${marketing.summary.safeDraftsReady} safe internal drafts across ${marketing.summary.projectProfiles} project profiles; ${marketing.summary.projectsWithEvidenceMissing} projects still need proof or instrumentation.`,
+              evidence: `${marketing.summary.projectTabCount} project tabs; analytics live is not implied by draft readiness.`,
+              nextAction: marketingNextAction,
+              details: [
+                { label: 'Proof gate', value: 'Public copy must lag product proof, screenshots, route receipts, analytics, or approved operator notes.', status: marketing.summary.projectsWithEvidenceMissing > 0 ? 'evidence_missing' : 'read_only' },
+                { label: 'Analytics gate', value: 'Missing analytics must remain Not Instrumented Yet; do not show fake campaign results.', status: 'not_instrumented' },
+              ],
+            }),
+            card({
+              id: 'marketing-external-action-boundary',
+              title: 'External action boundary',
+              status: marketing.summary.externalActionsApprovalGated ? 'approval_required' : 'blocked',
+              owner: 'Knox / Growth',
+              summary: 'Email, SMS, social, marketplace, ad, and campaign-setting actions remain approval-gated.',
+              evidence: `publicLaunchBlocked=${marketing.summary.publicLaunchBlocked ? 'true' : 'false'}; securityOpenFindings=${marketing.summary.securityOpenFindings}; securityCriticalFindings=${marketing.summary.securityCriticalFindings}.`,
+              nextAction: 'Create an approval packet with channel, audience, spend/send/post scope, blast radius, proof plan, and rollback/stop plan.',
+              details: [
+                { label: 'Allowed use', value: 'Internal drafting, research, offer/ICP work, experiment cards, and approval-packet preparation.', status: 'read_only' },
+                { label: 'Blocked without approval', value: 'No external send, post, marketplace listing, paid campaign, spend, or campaign-setting mutation.', status: 'approval_required' },
+              ],
+            }),
+          ],
+        },
         {
           id: 'security-launch-gate',
           title: 'Security Command Center launch gate',
