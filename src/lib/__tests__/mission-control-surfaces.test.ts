@@ -100,6 +100,12 @@ vi.mock('../research-command', () => ({
     summary: {
       totalBriefs: 4,
       evidenceMissing: 1,
+      approvalRequired: 1,
+      researchedBriefs: 1,
+      citationReceiptsAttached: 2,
+      promotionGatesVisible: true,
+      notInstrumentedLanes: 1,
+      approvalBlockedBriefs: 1,
       paidSimulationApprovalRequired: true,
       karpathiaConnectorInstrumented: false,
       autoPromotionEnabled: false,
@@ -333,6 +339,10 @@ describe('mission control surface snapshots', () => {
     expect(research?.summary.karpathiaConnectorInstrumented).toBe(false)
     expect(research?.summary.autoPromotionEnabled).toBe(false)
     expect(research?.guardrails.join(' ')).toContain('Mock research guardrail')
+    expect(research?.sections[0]?.id).toBe('daily-research-triage')
+    expect(cards.find((card) => card.id === 'research-evidence-gaps')?.evidence).toContain('2 citation receipts')
+    expect(cards.find((card) => card.id === 'research-approval-queue')?.nextAction).toContain('paid simulation')
+    expect(cards.find((card) => card.id === 'research-instrumentation-boundary')?.status).toBe('not_instrumented')
     expect(cards.find((card) => card.id === 'research-karpathia-source-plan')?.status).toBe('planned')
     expect(cards.find((card) => card.id === 'research-karpathia-source-plan')?.summary).toContain('Not Instrumented Yet')
     expect(cards.find((card) => card.id === 'research-karpathia-source-plan')?.details?.find((detail) => detail.label === 'Readiness gate')?.status).toBe('not_instrumented')

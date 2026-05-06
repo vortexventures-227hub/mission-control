@@ -424,6 +424,11 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
   }
   if (id === 'research-command') {
     const research = getResearchCommandSnapshot()
+    const researchNextAction = research.summary.evidenceMissing > 0
+      ? 'Attach source/citation receipts to evidence-missing briefs before any promotion.'
+      : research.summary.approvalRequired > 0
+        ? 'Review approval-required simulation or promotion briefs with explicit scope and spend/account boundaries.'
+        : 'Use researched briefs as read-only support; keep external/paid/memory actions approval-gated.'
     return {
       ...snapshot,
       generatedAt: research.generatedAt,
@@ -433,6 +438,52 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
       },
       guardrails: Array.from(new Set([...snapshot.guardrails, ...research.guardrails])),
       sections: [
+        {
+          id: 'daily-research-triage',
+          title: 'Daily research triage',
+          status: research.summary.evidenceMissing > 0 ? 'evidence_missing' : research.summary.approvalRequired > 0 ? 'approval_required' : 'read_only',
+          cards: [
+            card({
+              id: 'research-evidence-gaps',
+              title: 'Evidence gaps',
+              status: research.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
+              owner: 'Atlas',
+              summary: `${research.summary.evidenceMissing} briefs still need source, citation, or simulation receipts before they can support action.`,
+              evidence: `${research.summary.citationReceiptsAttached} citation receipts attached across ${research.summary.totalBriefs} briefs.`,
+              nextAction: researchNextAction,
+              details: [
+                { label: 'Citation receipt coverage', value: `${research.summary.citationReceiptsAttached}/${research.summary.totalBriefs} briefs have evidence paths.`, status: research.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only' },
+                { label: 'Promotion gates visible', value: research.summary.promotionGatesVisible ? 'Every DB-backed brief exposes a promotion gate.' : 'Promotion gate visibility is incomplete.', status: research.summary.promotionGatesVisible ? 'read_only' : 'blocked' },
+              ],
+            }),
+            card({
+              id: 'research-approval-queue',
+              title: 'Approval queue',
+              status: research.summary.approvalRequired > 0 || research.summary.paidSimulationApprovalRequired ? 'approval_required' : 'read_only',
+              owner: 'MiroFish / Chris',
+              summary: `${research.summary.approvalRequired} briefs explicitly require approval; paid simulation approval remains ${research.summary.paidSimulationApprovalRequired ? 'required' : 'not required'}.`,
+              evidence: `approvalBlockedBriefs=${research.summary.approvalBlockedBriefs}; paidSimulationApprovalRequired=${research.summary.paidSimulationApprovalRequired ? 'true' : 'false'}.`,
+              nextAction: 'Prepare scoped approval packets before any paid simulation, external compute spend, or account-affecting promotion.',
+              details: [
+                { label: 'Paid simulation gate', value: 'MiroFish simulation runs are brief-only until Chris approves spend and scope.', status: 'approval_required' },
+                { label: 'Auto-promotion gate', value: `autoPromotionEnabled=${research.summary.autoPromotionEnabled ? 'true' : 'false'}.`, status: research.summary.autoPromotionEnabled ? 'blocked' : 'read_only' },
+              ],
+            }),
+            card({
+              id: 'research-instrumentation-boundary',
+              title: 'Instrumentation boundary',
+              status: research.summary.karpathiaConnectorInstrumented ? 'read_only' : 'not_instrumented',
+              owner: 'Karpathia',
+              summary: `Karpathia connector instrumented: ${research.summary.karpathiaConnectorInstrumented ? 'yes' : 'no'}; not-instrumented lanes visible: ${research.summary.notInstrumentedLanes}.`,
+              evidence: 'No autonomous external research connector receipt is attached in this MVP slice.',
+              nextAction: 'Keep Karpathia as source-planning/read-only orchestration until connector receipts exist.',
+              details: [
+                { label: 'Connector truth', value: 'Not Instrumented Yet means no live autonomous fetch is claimed.', status: research.summary.karpathiaConnectorInstrumented ? 'read_only' : 'not_instrumented' },
+                { label: 'External action boundary', value: 'No tasks, marketing sends, trades, or Graphify/gBrain writes can be promoted without evidence plus scoped approval.', status: 'approval_required' },
+              ],
+            }),
+          ],
+        },
         {
           id: 'db-backed-research-briefs',
           title: 'DB-backed research briefs',
