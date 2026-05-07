@@ -601,12 +601,14 @@ export function getMissionControlSurfaceSnapshot(id: string): MissionControlSurf
               title: 'Visual QA coverage',
               status: design.summary.evidenceMissing > 0 ? 'evidence_missing' : 'read_only',
               owner: 'Design / QA',
-              summary: `${design.summary.visualReceiptsLinked} visual receipts linked across ${design.summary.totalDesignItems} design items.`,
-              evidence: `${design.summary.evidenceMissing} items are Evidence Missing; visualQaProven=${design.summary.visualQaProven ? 'true' : 'false'}.`,
+              summary: `${design.summary.visualReceiptsLinked} DB-linked visual receipts and ${design.summary.localProofScreenshotsFound} latest local proof screenshots across ${design.summary.totalDesignItems} design items.`,
+              evidence: `${design.summary.evidenceMissing} items are Evidence Missing; visualQaProven=${design.summary.visualQaProven ? 'true' : 'false'}; latestLocalProofDir=${design.summary.latestLocalProofDir || 'Evidence Missing'}.`,
               nextAction: designNextAction,
               details: [
                 { label: 'QA gates visible', value: `${design.summary.qaGatesVisible} visual QA gates are visible.`, status: design.summary.qaGatesVisible >= design.summary.totalDesignItems ? 'read_only' : 'evidence_missing' },
                 { label: 'Design receipts linked', value: `${design.summary.designReceiptsLinked} design decision/receipt paths are linked.`, status: design.summary.designReceiptsLinked > 0 ? 'read_only' : 'evidence_missing' },
+                { label: 'Latest local proof', value: design.localVisualReceipts.latestProofDir ? `${design.localVisualReceipts.screenshotsFound} screenshots found in ${design.localVisualReceipts.latestProofDir}.` : 'Evidence Missing: no local Mission Control UI proof folder found.', status: design.localVisualReceipts.latestProofDir ? 'read_only' : 'evidence_missing' },
+                { label: 'Receipt boundary', value: 'Local screenshots are internal visual QA receipts only; they do not grant deploy, publish, customer-facing, or memory-write authority.', status: 'approval_required' },
               ],
             }),
             card({

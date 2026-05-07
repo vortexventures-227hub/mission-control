@@ -161,6 +161,8 @@ vi.mock('../design-studio-command', () => ({
       visualReceiptsLinked: 1,
       qaGatesVisible: 4,
       designReceiptsLinked: 3,
+      localProofScreenshotsFound: 23,
+      latestLocalProofDir: 'docs/outputs/mission-control-ui-proof-current',
       externalPublishEnabled: false,
       visualQaProven: true,
       patchRuntimeAuthority: false,
@@ -171,6 +173,13 @@ vi.mock('../design-studio-command', () => ({
       { id: 3, item_key: 'unproven-design-claim', title: 'Unproven design claim', lane: 'ui_qa', status: 'evidence_missing', owner_agent: 'Neon Forge', evidence_path: null, screenshot_path: null, next_action: 'Capture browser proof.', details: [{ label: 'Visual QA gate', value: 'Evidence Missing: no screenshot.', status: 'evidence_missing' }, { label: 'Authority boundary', value: 'No deploy authority.', status: 'approval_required' }] },
       { id: 4, item_key: 'external-publish-guard', title: 'External publish guard', lane: 'publish_guard', status: 'blocked', owner_agent: 'Knox', evidence_path: '/receipts/no-publish.md', screenshot_path: null, next_action: 'Do not publish externally.', details: [{ label: 'Visual QA gate', value: 'Blocked from external publish.', status: 'blocked' }, { label: 'Authority boundary', value: 'No external publish authority.', status: 'blocked' }] },
     ],
+    localVisualReceipts: {
+      latestProofDir: 'docs/outputs/mission-control-ui-proof-current',
+      latestProofMtime: 1760000000000,
+      screenshotsFound: 23,
+      routesCovered: ['mission-control', 'group-chat'],
+      summaryPath: 'docs/outputs/mission-control-ui-proof-current/summary.json',
+    },
   }),
 }))
 
@@ -396,7 +405,10 @@ describe('mission control surface snapshots', () => {
     expect(design?.summary.patchRuntimeAuthority).toBe(false)
     expect(design?.guardrails.join(' ')).toContain('Mock design guardrail')
     expect(design?.sections[0]?.id).toBe('visual-receipt-triage')
-    expect(cards.find((card) => card.id === 'design-visual-qa-coverage')?.summary).toContain('1 visual receipts')
+    expect(cards.find((card) => card.id === 'design-visual-qa-coverage')?.summary).toContain('1 DB-linked visual receipts')
+    expect(cards.find((card) => card.id === 'design-visual-qa-coverage')?.summary).toContain('23 latest local proof screenshots')
+    expect(cards.find((card) => card.id === 'design-visual-qa-coverage')?.details?.find((detail) => detail.label === 'Latest local proof')?.status).toBe('read_only')
+    expect(cards.find((card) => card.id === 'design-visual-qa-coverage')?.details?.find((detail) => detail.label === 'Receipt boundary')?.value).toContain('internal visual QA receipts')
     expect(cards.find((card) => card.id === 'design-authority-boundary')?.evidence).toContain('1 blocked design items')
     expect(cards.find((card) => card.id === 'design-authority-boundary')?.details?.find((detail) => detail.label === 'Blocked authority')?.value).toContain('No deploy')
     expect(cards.find((card) => card.id === 'design-mission-control-brand-system')?.status).toBe('planned')

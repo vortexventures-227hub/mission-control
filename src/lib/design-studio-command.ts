@@ -1,4 +1,5 @@
 import { getDatabase } from './db'
+import { getLocalVisualReceiptSnapshot } from './local-visual-receipts'
 
 export type DesignStudioItemStatus =
   | 'planned'
@@ -101,6 +102,7 @@ function enrichDesignItem(item: DesignStudioItem): EnrichedDesignStudioItem {
 export function getDesignStudioSnapshot(workspaceId = 1) {
   const items = listDesignStudioItems(workspaceId)
   const enrichedItems = items.map(enrichDesignItem)
+  const localVisualReceipts = getLocalVisualReceiptSnapshot()
   return {
     generatedAt: Date.now(),
     guardrails: [
@@ -117,10 +119,13 @@ export function getDesignStudioSnapshot(workspaceId = 1) {
       visualReceiptsLinked: countBy(`SELECT COUNT(*) as count FROM mission_control_design_studio_items WHERE workspace_id = ? AND screenshot_path IS NOT NULL`, workspaceId),
       qaGatesVisible: enrichedItems.filter((item) => item.details.some((detail) => detail.label === 'Visual QA gate')).length,
       designReceiptsLinked: enrichedItems.filter((item) => Boolean(item.evidence_path)).length,
+      localProofScreenshotsFound: localVisualReceipts.screenshotsFound,
+      latestLocalProofDir: localVisualReceipts.latestProofDir,
       externalPublishEnabled: false,
       visualQaProven: countBy(`SELECT COUNT(*) as count FROM mission_control_design_studio_items WHERE workspace_id = ? AND status = 'receipt_backed' AND screenshot_path IS NOT NULL`, workspaceId) > 0,
       patchRuntimeAuthority: false,
     },
     items: enrichedItems,
+    localVisualReceipts,
   }
 }
