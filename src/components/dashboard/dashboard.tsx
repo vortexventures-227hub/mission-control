@@ -8,6 +8,7 @@ import { useSmartPoll } from '@/lib/use-smart-poll'
 import { SignalPill, getLocalOsStatus, getProviderHealth, getMcHealth } from './widget-primitives'
 import { OnboardingChecklistWidget } from './widgets/onboarding-checklist-widget'
 import { WidgetGrid } from './widget-grid'
+import { BoundaryBanner, Btn, Chip, HudPanel, Stat } from '@/components/mc/hud'
 import type { DbStats, ClaudeStats, LogLike, DashboardData } from './widget-primitives'
 
 export function Dashboard() {
@@ -398,18 +399,18 @@ function BlackwireHqOverview() {
   ].includes(surface.id)).slice(0, 9)
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-cyan-400/15 bg-slate-950 text-slate-100 shadow-2xl shadow-cyan-950/20">
+    <section className="mc-surface overflow-hidden border border-[color:var(--mc-hairline-2)] text-slate-100 shadow-2xl shadow-cyan-950/20">
       <div className="relative">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_12%,rgba(34,211,238,0.18),transparent_30%),linear-gradient(rgba(148,163,184,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.05)_1px,transparent_1px)] bg-[length:auto,40px_40px,40px_40px]" />
+        <div className="mc-scan" />
         <div className="relative p-4 md:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-4xl">
-              <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-[0.18em]">
-                <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-1 text-cyan-100">Blackwire Ops HQ</span>
-                <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2.5 py-1 text-emerald-100">Local daily-driver</span>
-                <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2.5 py-1 text-amber-100">Evidence before Done</span>
+              <div className="flex flex-wrap gap-2">
+                <Chip tone="teal" pulse>Blackwire Ops HQ</Chip>
+                <Chip tone="purple">Local daily-driver</Chip>
+                <Chip tone="amber">Evidence before Done</Chip>
               </div>
-              <h1 className="mt-3 text-2xl font-black tracking-tight text-white md:text-3xl">Mission Control ground-zero command center</h1>
+              <h1 className="mc-title-glitch mt-3 font-mono text-2xl font-black uppercase tracking-[0.06em] text-white md:text-3xl">Mission Control ground-zero command center</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
                 Source-of-truth view for rooms, tasks, agents, approvals, receipts, expenses, knowledge intake, and read-only memory boundaries. This is local Mission Control proof, not a production deploy or external delivery claim.
               </p>
@@ -418,31 +419,33 @@ function BlackwireHqOverview() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href="/command-truth" className="rounded-md border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/15">Command Truth</Link>
-              <Link href="/group-chat" className="rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-white hover:bg-white/[0.08]">Group Chat</Link>
-              <button onClick={load} className="rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-semibold text-slate-200 hover:bg-white/[0.08]">Refresh</button>
+              <Link href="/command-truth"><Btn as="span" variant="primary">Command Truth</Btn></Link>
+              <Link href="/group-chat"><Btn as="span">Group Chat</Btn></Link>
+              <Btn onClick={load}>Refresh</Btn>
             </div>
           </div>
 
           {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>}
 
+          <div className="mt-4">
+            <BoundaryBanner tone="amber" title="Local mode">
+              Runtime is bound to the local gateway. No external mutations, no external sends, and no provider-side state changes are claimed from this HQ screen.
+            </BoundaryBanner>
+          </div>
+
           <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-            <HqMetric label="Rooms" value={metrics.rooms ?? 0} />
-            <HqMetric label="Messages" value={metrics.messages ?? 0} />
-            <HqMetric label="Tasks" value={metrics.assignments ?? 0} />
-            <HqMetric label="Receipts" value={metrics.receipts ?? 0} />
-            <HqMetric label="Agents" value={metrics.agents ?? 0} />
-            <HqMetric label="Alerts" value={metrics.queuedAlerts ?? 0} tone={(metrics.queuedAlerts ?? 0) > 0 ? 'warn' : 'good'} />
-            <HqMetric label="Evidence gaps" value={metrics.doneWithoutEvidence ?? 0} tone={(metrics.doneWithoutEvidence ?? 0) > 0 ? 'bad' : 'good'} />
-            <HqMetric label="Approval gates" value={metrics.approvalNeededAssignments ?? 0} tone={(metrics.approvalNeededAssignments ?? 0) > 0 ? 'warn' : 'good'} />
+            <Stat label="Rooms" value={metrics.rooms ?? 0} />
+            <Stat label="Messages" value={metrics.messages ?? 0} />
+            <Stat label="Tasks" value={metrics.assignments ?? 0} />
+            <Stat label="Receipts" value={metrics.receipts ?? 0} />
+            <Stat label="Agents" value={metrics.agents ?? 0} />
+            <Stat label="Alerts" value={metrics.queuedAlerts ?? 0} accent={(metrics.queuedAlerts ?? 0) > 0 ? 'amber' : 'teal'} />
+            <Stat label="Evidence gaps" value={metrics.doneWithoutEvidence ?? 0} accent={(metrics.doneWithoutEvidence ?? 0) > 0 ? 'rose' : 'teal'} />
+            <Stat label="Approval gates" value={metrics.approvalNeededAssignments ?? 0} accent={(metrics.approvalNeededAssignments ?? 0) > 0 ? 'amber' : 'teal'} />
           </div>
 
           <div className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_1fr_0.9fr]">
-            <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-sm font-black uppercase tracking-wide text-white">Priority Gates</h2>
-                <Link href="/command-truth" className="text-xs font-semibold text-cyan-200 hover:underline">Open truth</Link>
-              </div>
+            <HudPanel kicker="01" title="Priority Gates" right={<Link href="/command-truth" className="font-mono text-xs font-semibold text-cyan-200 hover:underline">Open truth</Link>} glow>
               <div className="space-y-2">
                 {priorityGates.length === 0 ? (
                   <p className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm text-emerald-100">No blocked/evidence-missing gates in the current Blackwire snapshot.</p>
@@ -457,13 +460,9 @@ function BlackwireHqOverview() {
                   </article>
                 ))}
               </div>
-            </section>
+            </HudPanel>
 
-            <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-sm font-black uppercase tracking-wide text-white">Assignments Now</h2>
-                <Link href="/group-chat" className="text-xs font-semibold text-cyan-200 hover:underline">Open room</Link>
-              </div>
+            <HudPanel kicker="02" title="Assignments Now" right={<Link href="/group-chat" className="font-mono text-xs font-semibold text-cyan-200 hover:underline">Open room</Link>}>
               <div className="space-y-2">
                 {activeAssignments.length === 0 ? (
                   <p className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-slate-400">No active Blackwire assignment rows are waiting in the selected room.</p>
@@ -480,10 +479,9 @@ function BlackwireHqOverview() {
                   </article>
                 ))}
               </div>
-            </section>
+            </HudPanel>
 
-            <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <h2 className="text-sm font-black uppercase tracking-wide text-white">Daily-Driver Links</h2>
+            <HudPanel kicker="03" title="Daily-Driver Links">
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {[
                   ['Tasks', '/tasks'],
@@ -511,7 +509,7 @@ function BlackwireHqOverview() {
                   </article>
                 ))}
               </div>
-            </section>
+            </HudPanel>
           </div>
         </div>
       </div>
