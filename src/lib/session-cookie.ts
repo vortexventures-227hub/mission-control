@@ -33,9 +33,21 @@ function envFlag(name: string): boolean | undefined {
   return undefined
 }
 
-export function getMcSessionCookieOptions(input: { maxAgeSeconds: number; isSecureRequest?: boolean }): Partial<ResponseCookie> {
+function isPlainLocalRequest(requestUrl?: string): boolean {
+  if (!requestUrl) return false
+  try {
+    const url = new URL(requestUrl)
+    return url.protocol === 'http:' && ['127.0.0.1', 'localhost', '::1'].includes(url.hostname)
+  } catch {
+    return false
+  }
+}
+
+export function getMcSessionCookieOptions(input: { maxAgeSeconds: number; isSecureRequest?: boolean; requestUrl?: string }): Partial<ResponseCookie> {
   const secureEnv = envFlag('MC_COOKIE_SECURE')
-  const secure = secureEnv ?? input.isSecureRequest ?? false
+  const secure = isPlainLocalRequest(input.requestUrl)
+    ? false
+    : secureEnv ?? input.isSecureRequest ?? false
 
   return {
     httpOnly: true,

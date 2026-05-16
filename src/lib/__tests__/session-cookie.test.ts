@@ -37,4 +37,16 @@ describe('getMcSessionCookieOptions', () => {
     const options = getMcSessionCookieOptions({ maxAgeSeconds: 60, isSecureRequest: false })
     expect(options.secure).toBe(true)
   })
+
+  it('keeps plain localhost cookies usable even when MC_COOKIE_SECURE is enabled', () => {
+    env.NODE_ENV = 'production'
+    env.MC_COOKIE_SECURE = '1'
+
+    const options = getMcSessionCookieOptions({
+      maxAgeSeconds: 60,
+      isSecureRequest: false,
+      requestUrl: 'http://127.0.0.1:3110/api/auth/login',
+    })
+    expect(options.secure).toBe(false)
+  })
 })

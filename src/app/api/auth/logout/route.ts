@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const isSecureRequest = isRequestSecure(request)
   const cookieName = getMcSessionCookieName(isSecureRequest)
   response.cookies.set(cookieName, '', {
-    ...getMcSessionCookieOptions({ maxAgeSeconds: 0, isSecureRequest }),
+    ...getMcSessionCookieOptions({ maxAgeSeconds: 0, isSecureRequest, requestUrl: request.url }),
   })
 
   return response
