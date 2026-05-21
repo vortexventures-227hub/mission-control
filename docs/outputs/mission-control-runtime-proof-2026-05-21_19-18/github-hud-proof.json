@@ -1,0 +1,15 @@
+{
+  "route": "/github",
+  "url": "http://127.0.0.1:3110/github",
+  "capturedAt": "2026-05-21T23:01:23.920Z",
+  "hasGithubCommand": true,
+  "hasTokenStatus": true,
+  "hasImportBoundary": true,
+  "hasRemoteWriteBoundary": true,
+  "hasStats": true,
+  "hasImportPanel": true,
+  "hasHistoryPanel": true,
+  "hasEvidencePanel": true,
+  "logoLoaded": true,
+  "sample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/github\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n16/100\nEVENTS\nLive\nMODE GATEWAY\n19:01\nGITHUB / SYNC COMMAND\nGITHUB ISSUES SYNC\n\nImport GitHub issues as Mission Control tasks\n\nTOKEN MISSING\nIMPORT CREATES LOCAL TASKS\nREMOTE WRITES NEED EXPLICIT ACTION\nGITHUB: NOT CONFIGURED\n0\nLINKED TASKS\nGitHub-backed local work\n0\nPROJECTS LINKED\nproject rows with repo\n0\nSYNC ENABLED\ntwo-way project sync\n0\nSYNC HISTORY\nrecorded sync runs\n0\nNON-GREEN RUNS\nneeds operator review\n△\nGITHUB T"
+}

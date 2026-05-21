@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 
 interface GitHubLabel {
@@ -289,76 +290,98 @@ export function GitHubSyncPanel() {
     }
   }
 
+  const linkedProjectCount = projects.filter(p => p.github_repo).length
+  const enabledProjectCount = projects.filter(p => p.github_repo && p.github_sync_enabled).length
+  const failedSyncCount = syncHistory.filter(sync => sync.status !== 'success').length
+
   if (loading) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center gap-3 min-h-[200px]">
-        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-muted-foreground">{t('loading')}</span>
-      </div>
+      <Page
+        kicker="GITHUB / LOAD"
+        title={t('title')}
+        subtitle="Hydrating GitHub token status, project links, sync history, agents, and linked task evidence."
+        badges={<Chip tone="amber">TOKEN CHECK</Chip>}
+      >
+        <HudPanel title={t('loading')} glow>
+          <div className="flex min-h-[200px] flex-col items-center justify-center gap-3">
+            <div className="w-5 h-5 border-2 border-[color:var(--mc-teal)] border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-[color:var(--mc-ink-2)]">{t('loading')}</span>
+          </div>
+        </HudPanel>
+      </Page>
     )
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t('subtitle')}
-          </p>
-        </div>
-        {/* Connection status badge */}
-        <div className="flex items-center gap-2">
-          <span className={`text-2xs px-2 py-1 rounded flex items-center gap-1.5 ${
+    <Page
+      kicker="GITHUB / SYNC COMMAND"
+      title={t('title')}
+      subtitle={t('subtitle')}
+      badges={(
+        <>
+          <Chip tone={tokenStatus?.connected ? 'teal' : 'rose'} pulse={tokenStatus?.connected}>
+            {tokenStatus?.connected ? 'Token Connected' : 'Token Missing'}
+          </Chip>
+          <Chip tone="amber">Import Creates Local Tasks</Chip>
+          <Chip tone="rose">Remote Writes Need Explicit Action</Chip>
+        </>
+      )}
+      actions={(
+        <span className={`inline-flex items-center gap-1.5 border px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] ${
             tokenStatus?.connected
-              ? 'bg-green-500/10 text-green-400'
-              : 'bg-destructive/10 text-destructive'
+              ? 'border-[color:var(--mc-teal-dim)] bg-[rgba(46,230,214,0.10)] text-[color:var(--mc-teal-soft)]'
+              : 'border-[color:var(--mc-rose)] bg-[rgba(255,85,119,0.12)] text-[color:var(--mc-rose)]'
           }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              tokenStatus?.connected ? 'bg-green-500' : 'bg-destructive'
+          <span className={`w-1.5 h-1.5 rounded-full ${
+              tokenStatus?.connected ? 'bg-[color:var(--mc-teal)]' : 'bg-[color:var(--mc-rose)]'
             }`} />
-            {tokenStatus?.connected
+          {tokenStatus?.connected
               ? t('connectedAs', { user: tokenStatus.user || 'connected' })
               : t('notConfigured')}
-          </span>
+        </span>
+      )}
+    >
+      <div className="mx-auto max-w-5xl space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Stat label="Linked Tasks" value={linkedTasks.length} sub="GitHub-backed local work" accent="teal" />
+          <Stat label="Projects Linked" value={linkedProjectCount} sub="project rows with repo" accent="purple" />
+          <Stat label="Sync Enabled" value={enabledProjectCount} sub="two-way project sync" accent="amber" glow={enabledProjectCount > 0} />
+          <Stat label="Sync History" value={syncHistory.length} sub="recorded sync runs" accent="teal" />
+          <Stat label="Non-Green Runs" value={failedSyncCount} sub="needs operator review" accent="rose" glow={failedSyncCount > 0} />
         </div>
-      </div>
 
       {/* Not configured notice */}
       {tokenStatus && !tokenStatus.connected && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
-          <div className="flex items-start gap-3">
-            <span className="text-amber-400 text-lg mt-0.5">!</span>
+        <BoundaryBanner tone="amber" title={t('tokenNotConfigured')}>
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{t('tokenNotConfigured')}</p>
               <p className="text-xs text-muted-foreground">
                 {t.rich('tokenNotConfiguredDesc', { code: (chunks) => <code className="px-1 py-0.5 rounded bg-secondary text-foreground font-mono text-2xs">{chunks}</code> })}
               </p>
             </div>
-          </div>
-        </div>
+        </BoundaryBanner>
       )}
 
       {/* Feedback */}
       {feedback && (
-        <div className={`rounded-lg p-3 text-xs font-medium ${
-          feedback.ok ? 'bg-green-500/10 text-green-400' : 'bg-destructive/10 text-destructive'
-        }`}>
+        <BoundaryBanner tone={feedback.ok ? 'teal' : 'rose'} title={feedback.ok ? 'GitHub Action Complete' : 'GitHub Action Failed'}>
           {feedback.text}
-        </div>
+        </BoundaryBanner>
       )}
 
       {/* Sync result banner */}
       {syncResult && (
-        <div className="rounded-lg p-3 text-xs bg-blue-500/10 text-blue-400 flex items-center gap-4">
+        <BoundaryBanner tone={syncResult.errors > 0 ? 'amber' : 'teal'} title="Import Result">
+        <div className="flex flex-wrap items-center gap-4">
           <span>{t('syncResultImported', { count: syncResult.imported })}</span>
           <span>{t('syncResultSkipped', { count: syncResult.skipped })}</span>
           {syncResult.errors > 0 && <span className="text-destructive">{t('syncResultErrors', { count: syncResult.errors })}</span>}
         </div>
+        </BoundaryBanner>
       )}
 
       {/* Import Issues Form */}
+      <HudPanel kicker="ISSUES / TASK IMPORT" title={t('importIssues')} glow>
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-medium text-foreground">{t('importIssues')}</h3>
@@ -459,8 +482,10 @@ export function GitHubSyncPanel() {
           </div>
         </div>
       </div>
+      </HudPanel>
 
       {/* Two-Way Sync */}
+      <HudPanel kicker="PROJECTS / TWO-WAY SYNC" title={t('twoWaySync')}>
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-medium text-foreground">{t('twoWaySync')}</h3>
@@ -522,9 +547,11 @@ export function GitHubSyncPanel() {
           )}
         </div>
       </div>
+      </HudPanel>
 
       {/* Issue Preview Table */}
       {previewIssues.length > 0 && (
+        <HudPanel kicker="ISSUES / PREVIEW" title={t('previewTitle', { count: previewIssues.length })}>
         <div className="rounded-lg border border-border bg-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <h3 className="text-sm font-medium text-foreground">
@@ -586,9 +613,11 @@ export function GitHubSyncPanel() {
             </table>
           </div>
         </div>
+        </HudPanel>
       )}
 
       {/* Sync History */}
+      <HudPanel kicker="SYNC / HISTORY" title={t('syncHistory')}>
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-medium text-foreground">{t('syncHistory')}</h3>
@@ -634,8 +663,10 @@ export function GitHubSyncPanel() {
           </div>
         )}
       </div>
+      </HudPanel>
 
       {/* Linked Tasks */}
+      <HudPanel kicker="TASKS / GITHUB EVIDENCE" title={linkedTasks.length > 0 ? t('linkedTasksWithCount', { count: linkedTasks.length }) : t('linkedTasks')}>
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
           <h3 className="text-sm font-medium text-foreground">
@@ -703,6 +734,8 @@ export function GitHubSyncPanel() {
           </div>
         )}
       </div>
+      </HudPanel>
     </div>
+    </Page>
   )
 }
