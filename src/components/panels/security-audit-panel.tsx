@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, Gauge, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
@@ -200,16 +201,13 @@ export function SecurityAuditPanel() {
 
   const [selectedTimeframe, setSelectedTimeframe] = useState<'hour' | 'day' | 'week' | 'month'>('day')
   const [data, setData] = useState<SecurityAuditData | null>(null)
-  const [evalsData, setEvalsData] = useState<AgentEvalsData | null>(null)
+  const [evalsData] = useState<AgentEvalsData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const fetchData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [auditRes, evalsRes] = await Promise.all([
-        fetch(`/api/security-audit?timeframe=${selectedTimeframe}`),
-        fetch(`/api/agents/evals?timeframe=${selectedTimeframe}`),
-      ])
+      const auditRes = await fetch(`/api/security-audit?timeframe=${selectedTimeframe}`)
       if (auditRes.ok) {
         const audit = await auditRes.json()
         // API returns authEvents as { loginFailures, tokenRotations, accessDenials, recentEvents }
@@ -297,10 +295,6 @@ export function SecurityAuditPanel() {
           setSecurityPosture(audit.posture)
         }
       }
-      if (evalsRes.ok) {
-        const evals = await evalsRes.json()
-        setEvalsData(evals)
-      }
     } catch {
       // Silent failure — data will remain stale
     } finally {
@@ -345,71 +339,65 @@ export function SecurityAuditPanel() {
   })
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="border-b border-border pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
-            <p className="text-muted-foreground mt-2">
-              {t('subtitle')}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            {isLoading && (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
-            )}
-            <div className="flex space-x-2">
-              {(['hour', 'day', 'week', 'month'] as const).map((tf) => (
-                <Button
-                  key={tf}
-                  onClick={() => setSelectedTimeframe(tf)}
-                  variant={selectedTimeframe === tf ? 'default' : 'secondary'}
-                >
-                  {t(`timeframe${tf.charAt(0).toUpperCase() + tf.slice(1)}` as 'timeframeHour' | 'timeframeDay' | 'timeframeWeek' | 'timeframeMonth')}
-                </Button>
-              ))}
-            </div>
+    <Page
+      kicker="Blackwire Ops / Audit Telemetry"
+      title={t('title')}
+      subtitle={t('subtitle')}
+      badges={
+        <>
+          <Chip tone="amber">local audit</Chip>
+          <Chip tone="dim">read only dashboard</Chip>
+          {data?.posture.level && <Chip tone={data.posture.score >= 80 ? 'teal' : data.posture.score >= 60 ? 'amber' : 'rose'}>{data.posture.level}</Chip>}
+        </>
+      }
+      actions={
+        <div className="flex items-center gap-3">
+          {isLoading && <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-[color:var(--mc-teal)]" />}
+          <div className="flex flex-wrap gap-2">
+            {(['hour', 'day', 'week', 'month'] as const).map((tf) => (
+              <Button
+                key={tf}
+                onClick={() => setSelectedTimeframe(tf)}
+                variant={selectedTimeframe === tf ? 'default' : 'secondary'}
+                size="sm"
+                className="h-8 border-[color:var(--mc-hairline-2)] font-mono text-[10px] uppercase tracking-[0.12em]"
+              >
+                {t(`timeframe${tf.charAt(0).toUpperCase() + tf.slice(1)}` as 'timeframeHour' | 'timeframeDay' | 'timeframeWeek' | 'timeframeMonth')}
+              </Button>
+            ))}
           </div>
         </div>
-      </div>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Audit boundary">
+          This screen reads local security telemetry and scan receipts. It does not perform external remediation, approve findings, or mark security status green without evidence.
+        </BoundaryBanner>
 
       {!data ? (
         <Loader variant="panel" label={t('loadingSecurityData')} />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Posture Score Header */}
-          <div className="bg-card border border-border rounded-lg p-6">
-            <div className="flex items-center gap-6">
-              {/* Circular gauge */}
-              <div className="relative w-24 h-24 flex-shrink-0">
-                <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90">
-                  <circle cx="18" cy="18" r="15.9" fill="none" className="stroke-muted" strokeWidth="2.5" />
-                  <circle
-                    cx="18" cy="18" r="15.9" fill="none"
-                    className={postureRingColor(data.posture.score)}
-                    strokeWidth="2.5"
-                    strokeDasharray={`${data.posture.score} ${100 - data.posture.score}`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-2xl font-bold ${postureColor(data.posture.score)}`}>
-                    {data.posture.score}
+          <section className="grid gap-3 xl:grid-cols-[minmax(280px,0.9fr)_repeat(4,minmax(0,1fr))]">
+            <HudPanel kicker="security posture" title={t('securityPosture')} glow>
+              <div className="flex items-center gap-5">
+                <Gauge value={data.posture.score} label={data.posture.level} color={data.posture.score >= 80 ? 'var(--mc-teal)' : data.posture.score >= 60 ? 'var(--mc-amber)' : 'var(--mc-rose)'} />
+                <div>
+                  <span className={`inline-block px-2 py-0.5 text-xs font-medium ${postureBgColor(data.posture.level)}`}>
+                    {data.posture.level}
                   </span>
+                  <p className="mt-3 text-sm leading-6 text-[color:var(--mc-ink-1)]">
+                    {t('blendedScore')}
+                  </p>
                 </div>
               </div>
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">{t('securityPosture')}</h2>
-                <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded ${postureBgColor(data.posture.level)}`}>
-                  {data.posture.level}
-                </span>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {t('blendedScore')}
-                </p>
-              </div>
-            </div>
-          </div>
+            </HudPanel>
+            <Stat label="Auth Events" value={data.authEvents.length} sub={selectedTimeframe} accent={data.authEvents.length > 0 ? 'amber' : 'teal'} />
+            <Stat label="Secret Alerts" value={data.secretAlerts.length} sub="active/local" accent={data.secretAlerts.length > 0 ? 'rose' : 'teal'} glow={data.secretAlerts.length > 0} />
+            <Stat label="Injection Attempts" value={data.injectionAttempts.length} sub="blocked vs passed" accent={data.injectionAttempts.length > 0 ? 'amber' : 'teal'} />
+            <Stat label="Rate Signals" value={data.rateLimits.length} sub="abuse watch" accent={data.rateLimits.length > 0 ? 'amber' : 'teal'} />
+          </section>
 
           {/* Infrastructure Scan Categories */}
           {data.scan && (
@@ -769,6 +757,7 @@ export function SecurityAuditPanel() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
