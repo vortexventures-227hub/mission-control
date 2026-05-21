@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { BoundaryBanner, Btn, Chip, DataTable, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 
 type SurfaceStatus = 'live' | 'partial' | 'not_instrumented' | 'isolated'
+type GateStatus = 'approval_required' | 'not_instrumented' | 'blocked' | 'evidence_missing' | 'read_only'
 
 interface Surface {
   id: string
@@ -27,7 +29,7 @@ interface EvidenceRow {
 interface TruthGate {
   id: string
   label: string
-  status: 'approval_required' | 'not_instrumented' | 'blocked' | 'evidence_missing' | 'read_only'
+  status: GateStatus
   detail: string
   blockedAction: string
   evidence: string
@@ -85,43 +87,71 @@ interface MvpSnapshot {
   newProjectChecklist: EvidenceRow[]
 }
 
-const badgeClass: Record<SurfaceStatus | string, string> = {
-  live: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-  partial: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  not_instrumented: 'border-zinc-500/30 bg-zinc-500/10 text-zinc-300',
-  isolated: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
-  manual: 'border-violet-500/30 bg-violet-500/10 text-violet-300',
-  evidence_missing: 'border-red-500/30 bg-red-500/10 text-red-300',
+function statusTone(status: string): 'teal' | 'purple' | 'amber' | 'rose' | 'neutral' | 'dim' {
+  switch (status) {
+    case 'live':
+    case 'read_only':
+      return 'teal'
+    case 'isolated':
+    case 'manual':
+    case 'alias':
+      return 'purple'
+    case 'partial':
+    case 'approval_required':
+    case 'evidence_missing':
+      return 'amber'
+    case 'blocked':
+      return 'rose'
+    case 'not_instrumented':
+      return 'dim'
+    default:
+      return 'neutral'
+  }
 }
 
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${badgeClass[status] || badgeClass.partial}`}>{status.replace(/_/g, ' ')}</span>
+function StatusChip({ status, pulse = false }: { status: string; pulse?: boolean }) {
+  return <Chip tone={statusTone(status)} pulse={pulse}>{status.replace(/_/g, ' ')}</Chip>
 }
 
 function formatReceiptTime(seconds: number) {
   return new Date(seconds * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+function routeTarget(path: string) {
+  return path.startsWith('/api/') ? '/command-truth?tab=routes' : path
+}
+
+function McLink({ href, children }: { href: string; children: string }) {
+  return (
+    <Link
+      href={href}
+      className="mc-btn-glitch inline-flex border border-[color:var(--mc-hairline-2)] bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[color:var(--mc-ink-1)] transition-colors hover:border-[color:var(--mc-teal)]/55 hover:text-[color:var(--mc-teal-soft)]"
+    >
+      {children}
+    </Link>
+  )
+}
+
 function EvidenceRows({ title, rows }: { title: string; rows: EvidenceRow[] }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4">
-      <h2 className="font-bold text-foreground">{title}</h2>
-      <div className="mt-3 space-y-2">
-        {rows.map((row) => (
-          <article key={row.id} className="rounded-xl border border-border bg-background p-3">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <h3 className="text-sm font-semibold text-foreground">{row.label}</h3>
-              <StatusBadge status={row.status} />
-            </div>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">{row.evidence}</p>
-            <p className="mt-2 break-all text-[11px] text-primary">{row.sourcePath}</p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Last checked: {row.lastChecked ? formatReceiptTime(row.lastChecked) : 'Not Instrumented Yet'}
-            </p>
-          </article>
-        ))}
-      </div>
-    </section>
+    <HudPanel kicker="EVIDENCE REGISTER" title={title} right={<Chip tone="dim">{rows.length} rows</Chip>}>
+      <DataTable
+        columns={[
+          { key: 'label', label: 'Item', width: '20%' },
+          { key: 'status', label: 'State', width: '120px', render: (row) => <StatusChip status={String(row.status)} /> },
+          { key: 'evidence', label: 'Evidence' },
+          { key: 'sourcePath', label: 'Source', mute: true },
+          {
+            key: 'lastChecked',
+            label: 'Checked',
+            width: '120px',
+            render: (row) => row.lastChecked ? formatReceiptTime(Number(row.lastChecked)) : 'Not Instrumented Yet',
+            mute: true,
+          },
+        ]}
+        rows={rows as unknown as Array<Record<string, unknown>>}
+      />
+    </HudPanel>
   )
 }
 
@@ -158,6 +188,7 @@ export function CommandTruthPanel() {
   useEffect(() => { load() }, [load])
 
   const liveCount = useMemo(() => snapshot?.surfaces.filter((surface) => surface.status === 'live').length || 0, [snapshot])
+  const receiptBacked = useMemo(() => snapshot?.assignments.filter((assignment) => Boolean(assignment.evidence)).length || 0, [snapshot])
 
   async function createProject() {
     const name = projectName.trim()
@@ -205,241 +236,261 @@ export function CommandTruthPanel() {
   }
 
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center"><Loader variant="inline" /></div>
+    return (
+      <Page kicker="COMMAND TRUTH" title="INITIALIZING" badges={<Chip tone="teal" pulse>AUTHED LOCAL READ</Chip>}>
+        <HudPanel title="Loading mission control proof bus" glow>
+          <div className="flex min-h-[220px] items-center justify-center text-[color:var(--mc-ink-1)]">
+            <Loader variant="inline" />
+          </div>
+        </HudPanel>
+      </Page>
+    )
   }
 
   return (
-    <div className="space-y-4 p-4 md:p-6">
-      <div className="rounded-2xl border border-border bg-card p-4 md:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">Command Truth</div>
-            <h1 className="mt-1 text-2xl font-black text-foreground">Mission Control MVP cockpit</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              User-visible proof surface for Blackwire flow, canonical roots, queues, approvals, metrics, assets, brainstorms, memory isolation, and new project creation.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge status="live" />
-            <Button variant="outline" size="sm" onClick={load}>Refresh</Button>
-            <Link href="/group-chat" className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-secondary">Open Blackwire</Link>
-            <Link href="/" className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-secondary">HQ Overview</Link>
-          </div>
+    <Page
+      kicker="COMMAND TRUTH / SOURCE OF RECORD"
+      title="Mission Control MVP Cockpit"
+      subtitle="User-visible proof surface for Blackwire flow, canonical roots, queues, approvals, metrics, assets, brainstorms, memory isolation, and new project creation."
+      badges={(
+        <>
+          <StatusChip status="live" pulse />
+          <Chip tone="teal">LOCAL AUTHED</Chip>
+          <Chip tone="amber">DONE MEANS PROVEN</Chip>
+          <Chip tone="rose">NO EXTERNAL EXECUTION</Chip>
+        </>
+      )}
+      actions={(
+        <>
+          <Btn onClick={load} variant="primary">Refresh</Btn>
+          <McLink href="/group-chat">Open Blackwire</McLink>
+          <McLink href="/">HQ Overview</McLink>
+        </>
+      )}
+    >
+      {error && (
+        <div className="mb-4">
+          <BoundaryBanner tone="rose" title="Command Truth warning">{error}</BoundaryBanner>
         </div>
-        {error && <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>}
-      </div>
+      )}
 
-      <section className="rounded-2xl border border-border bg-card p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-bold text-foreground">Daily-driver command paths</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Fast links for the operator loop: rooms, tasks, agents, approvals, expenses, intake, and proof surfaces.</p>
-          </div>
-          <StatusBadge status="read_only" />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {[
-            ['Blackwire room', '/rooms/blackwire-ops'],
-            ['Koda tracker', '/tracker?agent=koda'],
-            ['Tasks', '/tasks'],
-            ['Agents', '/agents'],
-            ['Approvals', '/exec-approvals'],
-            ['Expenses', '/expenses'],
-            ['Knowledge', '/knowledge-intake'],
-            ['Security', '/security-command'],
-          ].map(([label, href]) => (
-            <Link key={href} href={href} className="rounded-md border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground hover:border-primary/40 hover:text-primary">
-              {label}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
-        {snapshot && Object.entries(snapshot.metrics).map(([key, value]) => (
-          <div key={key} className="rounded-xl border border-border bg-card p-3">
-            <div className="text-2xl font-black text-foreground">{value}</div>
-            <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{key.replace(/([A-Z])/g, ' $1')}</div>
-          </div>
-        ))}
-      </div>
-
-      <section className="rounded-2xl border border-cyan-500/20 bg-card p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-bold text-foreground">Blackwire runbook route contract</h2>
-            <p className="mt-1 text-xs text-muted-foreground">{routeContract?.localMvpBoundary || 'Commercial-demo candidate only; route contract loading.'}</p>
-          </div>
-          <StatusBadge status="read_only" />
-        </div>
-        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {(routeContract?.routes || []).map((route) => (
-            <article key={route.id} className="rounded-xl border border-border bg-background p-3">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="text-sm font-semibold text-foreground">{route.surface}</h3>
-                <StatusBadge status={route.status} />
-              </div>
-              <Link className="mt-2 block break-all text-xs font-semibold text-primary hover:underline" href={route.path.startsWith('/api/') ? '/command-truth?tab=routes' : route.path}>{route.path}</Link>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">{route.requirement}</p>
-              <p className="mt-2 text-xs leading-5 text-orange-200">Evidence: {route.evidence}</p>
-              <p className="mt-2 text-xs leading-5 text-red-200">Boundary: {route.noFakeGreenBoundary}</p>
-            </article>
-          ))}
-        </div>
-        <p className="mt-3 break-all text-[11px] text-muted-foreground">Runbook: {routeContract?.runbook || 'docs/PATCH_S4_BLACKWIRE_DEMO_RUNBOOK_2026-05-02.md'} · API: /api/command-truth/routes</p>
-      </section>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.7fr)]">
-        <section className="rounded-2xl border border-border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div>
-              <h2 className="font-bold text-foreground">MVP surface readiness</h2>
-              <p className="text-xs text-muted-foreground">{liveCount}/{snapshot?.surfaces.length || 0} live; empty integrations show honest not-instrumented/isolation status.</p>
-            </div>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {(snapshot?.surfaces || []).map((surface) => (
-              <article key={surface.id} className="rounded-xl border border-border bg-background p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-foreground">{surface.label}</h3>
-                  <StatusBadge status={surface.status} />
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">{surface.detail}</p>
-                {surface.href && <Link className="mt-2 inline-block text-xs font-semibold text-primary hover:underline" href={surface.href}>Open surface →</Link>}
-              </article>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-8">
+            {snapshot && Object.entries(snapshot.metrics).map(([key, value], index) => (
+              <Stat
+                key={key}
+                label={key.replace(/([A-Z])/g, ' $1')}
+                value={value}
+                sub={index === 0 ? 'mvp pulse' : undefined}
+                accent={index % 3 === 0 ? 'teal' : index % 3 === 1 ? 'purple' : 'amber'}
+                glow={index === 0}
+              />
             ))}
           </div>
-        </section>
 
-        <section className="rounded-2xl border border-red-500/20 bg-card p-4">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="font-bold text-foreground">No-fake-green truth gates</h2>
-              <p className="text-xs text-muted-foreground">Approval-required, Not Instrumented Yet, Evidence Missing, and blocked actions stay visible before any surface can claim Done.</p>
+          <HudPanel
+            kicker="OPERATOR LOOP"
+            title="Daily-driver command paths"
+            right={<StatusChip status="read_only" />}
+            glow
+          >
+            <p className="mb-3 text-xs leading-5 text-[color:var(--mc-ink-1)]">Fast links for the operator loop: rooms, tasks, agents, approvals, expenses, intake, and proof surfaces.</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['Blackwire room', '/rooms/blackwire-ops'],
+                ['Koda tracker', '/tracker?agent=koda'],
+                ['Tasks', '/tasks'],
+                ['Agents', '/agents'],
+                ['Approvals', '/exec-approvals'],
+                ['Expenses', '/expenses'],
+                ['Knowledge', '/knowledge-intake'],
+                ['Security', '/security-command'],
+              ].map(([label, href]) => <McLink key={href} href={href}>{label}</McLink>)}
             </div>
-            <StatusBadge status="evidence_missing" />
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {(snapshot?.truthGates || []).map((gate) => (
-              <article key={gate.id} className="rounded-xl border border-border bg-background p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-foreground">{gate.label}</h3>
-                  <StatusBadge status={gate.status} />
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">{gate.detail}</p>
-                <p className="mt-2 text-xs leading-5 text-red-200">Blocked: {gate.blockedAction}</p>
-                <p className="mt-2 text-xs leading-5 text-orange-200">Evidence: {gate.evidence}</p>
-                {gate.href && <Link className="mt-2 inline-block text-xs font-semibold text-primary hover:underline" href={gate.href}>Open gate surface →</Link>}
-              </article>
-            ))}
-          </div>
-        </section>
+          </HudPanel>
 
-        <aside className="space-y-4">
-          <section className="rounded-2xl border border-border bg-card p-4">
-            <h2 className="font-bold text-foreground">Blackwire integrated proof</h2>
-            <ol className="mt-3 space-y-2 text-xs text-muted-foreground">
-              {(snapshot?.blackwireFlow || []).map((step, index) => (
-                <li key={step} className="flex gap-2"><span className="font-black text-primary">{index + 1}.</span><span>{step}</span></li>
-              ))}
-            </ol>
-          </section>
-
-          <section className="rounded-2xl border border-red-500/20 bg-card p-4">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h2 className="font-bold text-foreground">Blackwire Done gates</h2>
-                <p className="mt-1 text-xs text-muted-foreground">Group chat, board, approvals, receipts, and delivery proof must be visible before Done is treated as real.</p>
-              </div>
-              <StatusBadge status="evidence_missing" />
-            </div>
-            <div className="mt-3 space-y-2">
-              {(snapshot?.blackwireDoneGates || []).map((gate) => (
-                <article key={gate.id} className="rounded-xl border border-border bg-background p-3">
+          <HudPanel
+            kicker="ROUTE CONTRACT"
+            title="Blackwire runbook route contract"
+            right={<StatusChip status="read_only" />}
+          >
+            <BoundaryBanner tone="amber" title="Local MVP boundary">
+              {routeContract?.localMvpBoundary || 'Commercial-demo candidate only; route contract loading.'}
+            </BoundaryBanner>
+            <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {(routeContract?.routes || []).map((route) => (
+                <article key={route.id} className="mc-bevel p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground">{gate.label}</h3>
-                    <StatusBadge status={gate.status} />
+                    <h3 className="font-mono text-xs font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{route.surface}</h3>
+                    <StatusChip status={route.status} />
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{gate.detail}</p>
-                  <p className="mt-2 text-xs leading-5 text-orange-200">Required evidence: {gate.requiredEvidence}</p>
-                  <p className="mt-2 break-all text-[11px] text-primary">Source: {gate.source}</p>
-                  {gate.href && <Link className="mt-2 inline-block text-xs font-semibold text-primary hover:underline" href={gate.href}>Open gate →</Link>}
+                  <Link className="mt-2 block break-all font-mono text-[11px] font-bold text-[color:var(--mc-teal-soft)] hover:underline" href={routeTarget(route.path)}>{route.path}</Link>
+                  <p className="mt-2 text-xs leading-5 text-[color:var(--mc-ink-1)]">{route.requirement}</p>
+                  <BoundaryBanner tone={route.evidence.toLowerCase().includes('missing') ? 'amber' : 'teal'} title="Evidence">{route.evidence}</BoundaryBanner>
+                  <div className="mt-2">
+                    <BoundaryBanner tone="rose" title="No fake green">{route.noFakeGreenBoundary}</BoundaryBanner>
+                  </div>
                 </article>
               ))}
             </div>
-          </section>
+            <p className="mt-3 break-all font-mono text-[10px] uppercase tracking-[0.1em] text-[color:var(--mc-ink-2)]">Runbook: {routeContract?.runbook || 'docs/PATCH_S4_BLACKWIRE_DEMO_RUNBOOK_2026-05-02.md'} · API: /api/command-truth/routes</p>
+          </HudPanel>
 
-          <section className="rounded-2xl border border-border bg-card p-4">
-            <h2 className="font-bold text-foreground">Canonical roots</h2>
-            <div className="mt-3 space-y-2 text-xs text-muted-foreground">
-              <p><span className="font-semibold text-foreground">Active:</span> {snapshot?.canonical.activePath}</p>
-              <p><span className="font-semibold text-foreground">Truth:</span> {snapshot?.canonical.sourceOfTruth}</p>
-              <p><span className="font-semibold text-foreground">Rollback:</span> {snapshot?.canonical.legacyRollback}</p>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+            <HudPanel kicker="SURFACE STATUS" title="MVP surface readiness" right={<Chip tone="teal">{liveCount}/{snapshot?.surfaces.length || 0} live</Chip>}>
+              <div className="grid gap-3 md:grid-cols-2">
+                {(snapshot?.surfaces || []).map((surface) => (
+                  <article key={surface.id} className="mc-bevel p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-mono text-xs font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{surface.label}</h3>
+                      <StatusChip status={surface.status} />
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-[color:var(--mc-ink-1)]">{surface.detail}</p>
+                    {surface.href && <div className="mt-3"><McLink href={surface.href}>Open surface</McLink></div>}
+                  </article>
+                ))}
+              </div>
+            </HudPanel>
+
+            <HudPanel kicker="NO FAKE GREEN" title="Truth gates" right={<StatusChip status="evidence_missing" />} glow>
+              <div className="grid gap-3">
+                {(snapshot?.truthGates || []).map((gate) => (
+                  <article key={gate.id} className="mc-bevel p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-mono text-xs font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{gate.label}</h3>
+                      <StatusChip status={gate.status} />
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-[color:var(--mc-ink-1)]">{gate.detail}</p>
+                    <BoundaryBanner tone="rose" title="Blocked">{gate.blockedAction}</BoundaryBanner>
+                    <div className="mt-2">
+                      <BoundaryBanner tone="amber" title="Evidence">{gate.evidence}</BoundaryBanner>
+                    </div>
+                    {gate.href && <div className="mt-3"><McLink href={gate.href}>Open gate</McLink></div>}
+                  </article>
+                ))}
+              </div>
+            </HudPanel>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <HudPanel kicker="ALPHA ACTION" title="New project creation" right={<Chip tone="amber">audit gated</Chip>}>
+              <div className="flex gap-2">
+                <input value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="Project name" className="h-9 min-w-0 flex-1 border border-[color:var(--mc-hairline-2)] bg-black/25 px-3 font-mono text-xs text-[color:var(--mc-ink-0)] outline-none focus:border-[color:var(--mc-teal)]" />
+                <Button onClick={createProject} disabled={!projectName.trim() || creatingProject}>Create</Button>
+              </div>
+            </HudPanel>
+
+            <HudPanel kicker="CAPTURE" title="Asset library" right={<StatusChip status="not_instrumented" />}>
+              <div className="flex gap-2">
+                <input value={assetNote} onChange={(event) => setAssetNote(event.target.value)} placeholder="Capture asset/evidence note" className="h-9 min-w-0 flex-1 border border-[color:var(--mc-hairline-2)] bg-black/25 px-3 font-mono text-xs text-[color:var(--mc-ink-0)] outline-none focus:border-[color:var(--mc-teal)]" />
+                <Button variant="outline" onClick={sendAssetNoteToBlackwire} disabled={!assetNote.trim()}>Log</Button>
+              </div>
+            </HudPanel>
+
+            <HudPanel kicker="CAPTURE" title="Brainstorm wall" right={<StatusChip status="isolated" />}>
+              <div className="flex gap-2">
+                <input value={idea} onChange={(event) => setIdea(event.target.value)} placeholder="Capture idea, keep isolated" className="h-9 min-w-0 flex-1 border border-[color:var(--mc-hairline-2)] bg-black/25 px-3 font-mono text-xs text-[color:var(--mc-ink-0)] outline-none focus:border-[color:var(--mc-teal)]" />
+                <Button variant="outline" onClick={sendBrainstormToBlackwire} disabled={!idea.trim()}>Post</Button>
+              </div>
+            </HudPanel>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <EvidenceRows title="Brain / Memory inventory" rows={snapshot?.memoryInventory || []} />
+            <EvidenceRows title="Asset Library v0" rows={snapshot?.assetLibrary || []} />
+            <EvidenceRows title="Brainstorm wall state" rows={snapshot?.brainstormWall || []} />
+            <EvidenceRows title="New project checklist" rows={snapshot?.newProjectChecklist || []} />
+          </div>
+
+          <HudPanel kicker="ROOM PROOF" title="Recent Blackwire messages + delivery">
+            <div className="grid gap-2 lg:grid-cols-2">
+              {(snapshot?.messages || []).slice(-6).map((message) => (
+                <article key={message.id} className="mc-bevel p-3 text-xs">
+                  <div className="font-mono font-black uppercase tracking-[0.12em] text-[color:var(--mc-ink-0)]">@{message.sender_id}</div>
+                  <p className="mt-2 line-clamp-2 text-[color:var(--mc-ink-1)]">{message.body}</p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {message.delivery.map((delivery) => (
+                      <span key={`${message.id}-${delivery.recipient_id}`} className="border border-[color:var(--mc-hairline)] bg-black/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.08em] text-[color:var(--mc-ink-2)]">
+                        {delivery.recipient_id}: {delivery.state}
+                      </span>
+                    ))}
+                  </div>
+                </article>
+              ))}
             </div>
-          </section>
+          </HudPanel>
+        </div>
+
+        <aside className="space-y-4">
+          <HudPanel kicker="CANONICAL ROOTS" title="Source paths" glow>
+            <div className="space-y-2 font-mono text-[11px] uppercase tracking-[0.11em] text-[color:var(--mc-ink-1)]">
+              <p><span className="text-[color:var(--mc-ink-3)]">Active:</span> {snapshot?.canonical.activePath}</p>
+              <p><span className="text-[color:var(--mc-ink-3)]">Truth:</span> {snapshot?.canonical.sourceOfTruth}</p>
+              <p><span className="text-[color:var(--mc-ink-3)]">Rollback:</span> {snapshot?.canonical.legacyRollback}</p>
+            </div>
+          </HudPanel>
+
+          <HudPanel kicker="FLOW" title="Blackwire integrated proof">
+            <ol className="space-y-2 text-xs text-[color:var(--mc-ink-1)]">
+              {(snapshot?.blackwireFlow || []).map((step, index) => (
+                <li key={step} className="mc-bevel flex gap-2 p-2">
+                  <span className="font-mono font-black text-[color:var(--mc-teal)]">{index + 1}.</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          </HudPanel>
+
+          <HudPanel kicker="DONE GATES" title="Blackwire Done gates" right={<StatusChip status="evidence_missing" />}>
+            <div className="space-y-2">
+              {(snapshot?.blackwireDoneGates || []).map((gate) => (
+                <article key={gate.id} className="mc-bevel p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-mono text-xs font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{gate.label}</h3>
+                    <StatusChip status={gate.status} />
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-[color:var(--mc-ink-1)]">{gate.detail}</p>
+                  <BoundaryBanner tone="amber" title="Required evidence">{gate.requiredEvidence}</BoundaryBanner>
+                  <p className="mt-2 break-all font-mono text-[10px] text-[color:var(--mc-teal-soft)]">Source: {gate.source}</p>
+                  {gate.href && <div className="mt-3"><McLink href={gate.href}>Open gate</McLink></div>}
+                </article>
+              ))}
+            </div>
+          </HudPanel>
+
+          <HudPanel kicker="AGENTS" title="Agent cards" right={<Chip tone="amber">{receiptBacked} assignments with evidence</Chip>}>
+            <div className="space-y-2">
+              {(snapshot?.agents || []).slice(0, 8).map((agent) => (
+                <div key={agent.agent_id} className="mc-bevel p-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{agent.display_name}</span>
+                    <StatusChip status={agent.status} />
+                  </div>
+                  <p className="mt-1 text-[color:var(--mc-ink-1)]">{agent.current_assignment || agent.last_proof || 'No proof yet.'}</p>
+                </div>
+              ))}
+            </div>
+          </HudPanel>
+
+          <HudPanel kicker="APPROVALS" title="Approvals / queues">
+            <div className="space-y-2 text-xs">
+              {(snapshot?.receipts || []).slice(0, 4).map((receipt) => (
+                <div key={receipt.id} className="mc-bevel p-2">
+                  <div className="font-mono font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{receipt.decision}</div>
+                  <div className="mt-1 text-[color:var(--mc-ink-2)]">{receipt.approval_tier} · {receipt.approved_by} · {formatReceiptTime(receipt.created_at)}</div>
+                </div>
+              ))}
+              {(snapshot?.queuedAlerts || []).slice(0, 4).map((alert) => (
+                <div key={alert.id} className="mc-bevel p-2">
+                  <div className="font-mono font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">@{alert.target_agent_id} queued</div>
+                  <div className="mt-1 text-[color:var(--mc-ink-2)]">{alert.reason}</div>
+                </div>
+              ))}
+            </div>
+          </HudPanel>
         </aside>
       </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="font-bold text-foreground">New project creation</h2>
-          <div className="mt-3 flex gap-2">
-            <input value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="Project name" className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
-            <Button onClick={createProject} disabled={!projectName.trim() || creatingProject}>Create</Button>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between"><h2 className="font-bold text-foreground">Asset library</h2><StatusBadge status="not_instrumented" /></div>
-          <div className="mt-3 flex gap-2">
-            <input value={assetNote} onChange={(event) => setAssetNote(event.target.value)} placeholder="Capture asset/evidence note" className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
-            <Button variant="outline" onClick={sendAssetNoteToBlackwire} disabled={!assetNote.trim()}>Log</Button>
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between"><h2 className="font-bold text-foreground">Brainstorm wall</h2><StatusBadge status="isolated" /></div>
-          <div className="mt-3 flex gap-2">
-            <input value={idea} onChange={(event) => setIdea(event.target.value)} placeholder="Capture idea, keep isolated" className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
-            <Button variant="outline" onClick={sendBrainstormToBlackwire} disabled={!idea.trim()}>Post</Button>
-          </div>
-        </section>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-2">
-        <EvidenceRows title="Brain / Memory inventory" rows={snapshot?.memoryInventory || []} />
-        <EvidenceRows title="Asset Library v0" rows={snapshot?.assetLibrary || []} />
-        <EvidenceRows title="Brainstorm wall state" rows={snapshot?.brainstormWall || []} />
-        <EvidenceRows title="New project checklist" rows={snapshot?.newProjectChecklist || []} />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-4">
-        <section className="rounded-2xl border border-border bg-card p-4 xl:col-span-2">
-          <h2 className="font-bold text-foreground">Recent Blackwire messages + delivery</h2>
-          <div className="mt-3 space-y-2">
-            {(snapshot?.messages || []).slice(-5).map((message) => (
-              <div key={message.id} className="rounded-lg border border-border bg-background p-3 text-xs">
-                <div className="font-semibold text-foreground">@{message.sender_id}</div>
-                <p className="mt-1 line-clamp-2 text-muted-foreground">{message.body}</p>
-                <div className="mt-2 flex flex-wrap gap-1">{message.delivery.map((delivery) => <span key={`${message.id}-${delivery.recipient_id}`} className="rounded bg-card px-2 py-1 text-[10px] text-muted-foreground">{delivery.recipient_id}: {delivery.state}</span>)}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="font-bold text-foreground">Agent cards</h2>
-          <div className="mt-3 space-y-2">{(snapshot?.agents || []).slice(0, 6).map((agent) => <div key={agent.agent_id} className="rounded-lg bg-background p-2 text-xs"><div className="flex items-center justify-between gap-2"><span className="font-semibold text-foreground">{agent.display_name}</span><StatusBadge status={agent.status} /></div><p className="mt-1 text-muted-foreground">{agent.current_assignment || agent.last_proof || 'No proof yet.'}</p></div>)}</div>
-        </section>
-
-        <section className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="font-bold text-foreground">Approvals / queues</h2>
-          <div className="mt-3 space-y-2 text-xs">
-            {(snapshot?.receipts || []).slice(0, 3).map((receipt) => <div key={receipt.id} className="rounded-lg bg-background p-2"><div className="font-semibold text-foreground">{receipt.decision}</div><div className="mt-1 text-muted-foreground">{receipt.approval_tier} · {receipt.approved_by} · {formatReceiptTime(receipt.created_at)}</div></div>)}
-            {(snapshot?.queuedAlerts || []).slice(0, 3).map((alert) => <div key={alert.id} className="rounded-lg bg-background p-2"><div className="font-semibold text-foreground">@{alert.target_agent_id} queued</div><div className="mt-1 text-muted-foreground">{alert.reason}</div></div>)}
-          </div>
-        </section>
-      </div>
-    </div>
+    </Page>
   )
 }
