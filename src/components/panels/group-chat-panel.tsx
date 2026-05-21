@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 
@@ -104,20 +105,6 @@ const statusLabels: Record<string, string> = {
   seen: 'local seen',
 }
 
-const statusClasses: Record<string, string> = {
-  sent: 'bg-sky-500/15 text-sky-300 border-sky-500/25',
-  delivered: 'bg-amber-500/15 text-amber-300 border-amber-500/25',
-  seen: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/25',
-  created: 'bg-slate-500/15 text-slate-300 border-slate-500/25',
-  accepted: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/25',
-  working: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/25',
-  blocked: 'bg-red-500/15 text-red-300 border-red-500/25',
-  done: 'bg-green-500/15 text-green-300 border-green-500/25',
-  online_proven: 'bg-green-500/15 text-green-300 border-green-500/25',
-  queued: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/25',
-  unknown: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/25',
-}
-
 const LOCAL_DELIVERY_BOUNDARY = 'Local Mission Control state only. No Telegram, customer, email, or external agent delivery is implied.'
 
 function formatTime(seconds: number): string {
@@ -131,17 +118,26 @@ function formatTime(seconds: number): string {
 
 function StatusBadge({ value }: { value: string }) {
   const label = statusLabels[value] || value.replace(/_/g, ' ')
+  const tone = value === 'seen' || value === 'done' || value === 'online_proven'
+    ? 'teal'
+    : value === 'delivered' || value === 'working' || value === 'queued'
+      ? 'amber'
+      : value === 'blocked'
+        ? 'rose'
+        : value === 'accepted' || value === 'isolated'
+          ? 'purple'
+          : value === 'created' || value === 'sent'
+            ? 'dim'
+            : 'neutral'
   return (
-    <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold ${statusClasses[value] || statusClasses.unknown}`}>
-      {label}
-    </span>
+    <Chip tone={tone}>{label}</Chip>
   )
 }
 
 function RoomIcon({ kind }: { kind: RoomKind }) {
   const label = kind === 'agent_dm' ? 'DM' : kind === 'command' ? 'HQ' : kind === 'system' ? 'SYS' : 'OPS'
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-[10px] font-black text-primary">
+    <div className="mc-bevel flex h-9 w-9 shrink-0 items-center justify-center font-mono text-[10px] font-black uppercase tracking-[0.12em] text-[color:var(--mc-teal-soft)]">
       {label}
     </div>
   )
@@ -320,71 +316,71 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader variant="inline" />
-      </div>
+      <Page kicker="BLACKWIRE ROOM" title="INITIALIZING" badges={<Chip tone="teal" pulse>LOCAL MESSAGE BUS</Chip>}>
+        <HudPanel title="Loading group chat proof state" glow>
+          <div className="flex min-h-[220px] items-center justify-center text-[color:var(--mc-ink-1)]">
+            <Loader variant="inline" />
+          </div>
+        </HudPanel>
+      </Page>
     )
   }
 
   return (
-    <div className="relative flex h-full min-h-[calc(100vh-8rem)] flex-col overflow-hidden bg-slate-950 text-slate-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(129,140,248,0.14),transparent_32%),linear-gradient(rgba(148,163,184,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.045)_1px,transparent_1px)] bg-[length:auto,auto,36px_36px,36px_36px]" />
-      <div className="relative border-b border-cyan-400/15 bg-slate-950/85 px-4 py-4 shadow-2xl shadow-cyan-950/20 backdrop-blur">
+    <Page
+      kicker="BLACKWIRE GROUP CHAT / LOCAL OPS ROOM"
+      title="Mission Control Group Chat"
+      subtitle="Blackwire room, DMs, delivery proof, assignment tracker, and decision receipts. This is a local command deck; no production messaging or agent autonomy is implied."
+      badges={(
+        <>
+          <Chip tone="teal" pulse>LOCAL MVP DEMO</Chip>
+          <Chip tone="amber">EVIDENCE BEFORE DONE</Chip>
+          <Chip tone="rose">NO EXTERNAL SENDS</Chip>
+        </>
+      )}
+      actions={(
+        <>
+          <Link href="/command-truth" className="mc-btn-glitch inline-flex border border-[color:var(--mc-teal)]/55 bg-[rgba(46,230,214,0.11)] px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.12em] text-[color:var(--mc-teal-soft)]">Command Truth</Link>
+          <Link href="/tracker?agent=koda" className="mc-btn-glitch inline-flex border border-[color:var(--mc-hairline-2)] bg-white/[0.04] px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.12em] text-[color:var(--mc-ink-1)]">Koda Tracker</Link>
+          <Link href="/exec-approvals" className="mc-btn-glitch inline-flex border border-[color:var(--mc-amber)]/45 bg-[rgba(245,165,36,0.10)] px-3 py-2 font-mono text-xs font-bold uppercase tracking-[0.12em] text-[color:var(--mc-amber)]">Approvals</Link>
+        </>
+      )}
+    >
+      <div className="flex h-full min-h-[calc(100vh-11rem)] flex-col overflow-hidden">
+      <div className="relative mb-3">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <div className="mb-2 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">
-              <span className="rounded-full border border-cyan-400/25 bg-cyan-400/10 px-2.5 py-1">Local MVP demo</span>
-              <span className="rounded-full border border-amber-400/25 bg-amber-400/10 px-2.5 py-1 text-amber-200">Evidence before Done</span>
-              <span className="rounded-full border border-slate-500/40 bg-slate-900/80 px-2.5 py-1 text-slate-300">No external sends</span>
-            </div>
-            <h1 className="text-2xl font-black tracking-tight text-white">Mission Control Group Chat</h1>
-            <p className="mt-1 text-sm text-slate-300">
-              Blackwire room, DMs, delivery proof, assignment tracker, and decision receipts — readable as a command deck without claiming production messaging or agent autonomy.
-            </p>
+          <div className="grid flex-1 grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <Stat label="Messages" value={roomMetrics.messages} glow />
+            <Stat label="Tasks" value={roomMetrics.assignments} accent="purple" />
+            <Stat label="Receipts" value={roomMetrics.receipts} accent="amber" />
+            <Stat label="Review Rows" value={roomMetrics.unreadDeliveries} accent={roomMetrics.unreadDeliveries ? 'amber' : 'teal'} />
+            <Stat label="Approval Gates" value={roomMetrics.approvalNeeded} accent={roomMetrics.approvalNeeded ? 'amber' : 'teal'} />
+            <Stat label="Done Without Proof" value={roomMetrics.doneWithoutEvidence} accent={roomMetrics.doneWithoutEvidence ? 'rose' : 'teal'} />
           </div>
-          <div className="flex flex-col gap-2 sm:min-w-80">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
-                <div className="text-lg font-black text-white">{roomMetrics.messages}</div>
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">Messages</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
-                <div className="text-lg font-black text-white">{roomMetrics.assignments}</div>
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">Tasks</div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
-                <div className="text-lg font-black text-white">{roomMetrics.receipts}</div>
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">Receipts</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
+          <HudPanel kicker="FILTER" title="Room search" className="sm:min-w-80">
+            <div className="flex flex-col gap-2">
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search messages, tasks, receipts..."
-                className="h-9 min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-900/90 px-3 text-xs text-slate-100 outline-none placeholder:text-slate-500 focus:border-cyan-300"
+                className="h-9 min-w-0 border border-[color:var(--mc-hairline-2)] bg-black/25 px-3 font-mono text-xs text-[color:var(--mc-ink-0)] outline-none placeholder:text-[color:var(--mc-ink-3)] focus:border-[color:var(--mc-teal)]"
               />
               <Button variant="outline" size="sm" onClick={fetchData}>Refresh</Button>
             </div>
-            <div className="flex flex-wrap gap-2 text-[11px]">
-              <Link href="/command-truth" className="rounded-md border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 font-semibold text-cyan-100 hover:bg-cyan-300/15">Command Truth</Link>
-              <Link href="/tracker?agent=koda" className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-slate-200 hover:bg-white/[0.08]">Koda tracker</Link>
-              <Link href="/exec-approvals" className="rounded-md border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 font-semibold text-amber-100 hover:bg-amber-300/15">Approvals</Link>
-            </div>
-          </div>
+          </HudPanel>
         </div>
         {(error || roomMetrics.doneWithoutEvidence > 0 || roomMetrics.approvalNeeded > 0) && (
-          <div className="mt-3 grid gap-2 text-xs md:grid-cols-3">
-            {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">{error}</div>}
-            {roomMetrics.approvalNeeded > 0 && <div className="rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-amber-100">{roomMetrics.approvalNeeded} assignment gate(s) need approval or blocker resolution.</div>}
-            {roomMetrics.doneWithoutEvidence > 0 && <div className="rounded-lg border border-red-400/25 bg-red-400/10 px-3 py-2 text-red-100">{roomMetrics.doneWithoutEvidence} Done item(s) have missing evidence and must not be treated green.</div>}
+          <div className="mt-3 grid gap-2 md:grid-cols-3">
+            {error && <BoundaryBanner tone="rose" title="Group Chat warning">{error}</BoundaryBanner>}
+            {roomMetrics.approvalNeeded > 0 && <BoundaryBanner tone="amber" title="Approval gates">{roomMetrics.approvalNeeded} assignment gate(s) need approval or blocker resolution.</BoundaryBanner>}
+            {roomMetrics.doneWithoutEvidence > 0 && <BoundaryBanner tone="rose" title="No fake green">{roomMetrics.doneWithoutEvidence} Done item(s) have missing evidence and must not be treated green.</BoundaryBanner>}
           </div>
         )}
       </div>
 
-      <div className="relative grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[280px_minmax(0,1fr)_380px]">
-        <aside className="border-b border-cyan-400/10 bg-slate-950/70 p-3 backdrop-blur lg:border-b-0 lg:border-r lg:border-cyan-400/10">
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Rooms</div>
+      <div className="relative grid flex-1 grid-cols-1 overflow-hidden border border-[color:var(--mc-hairline)] lg:grid-cols-[280px_minmax(0,1fr)_380px]">
+        <aside className="border-b border-[color:var(--mc-hairline)] bg-black/20 p-3 backdrop-blur lg:border-b-0 lg:border-r">
+          <div className="mb-2 font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--mc-ink-2)]">Rooms</div>
           <div className="space-y-1">
             {(data?.rooms || []).map((room) => (
               <button
@@ -611,6 +607,7 @@ export function GroupChatPanel({ initialRoomSlug = 'blackwire-ops', initialSearc
           </div>
         </aside>
       </div>
-    </div>
+      </div>
+    </Page>
   )
 }
