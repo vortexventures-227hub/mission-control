@@ -283,25 +283,31 @@ export function NavRail() {
       <nav
         role="navigation"
         aria-label="Main navigation"
-        className={`hidden md:flex flex-col bg-gradient-to-b from-card to-background border-r border-border shrink-0 transition-all duration-200 ease-in-out ${
-          sidebarExpanded ? 'w-[220px]' : 'w-14'
+        className={`hidden md:flex flex-col bg-[linear-gradient(180deg,var(--mc-bg-1),var(--mc-bg-0))] border-r border-[color:var(--mc-hairline)] shrink-0 transition-all duration-200 ease-in-out ${
+          sidebarExpanded ? 'w-[244px]' : 'w-16'
         }`}
       >
         {/* Header: Logo + toggle */}
-        <div className={`flex items-center shrink-0 ${sidebarExpanded ? 'px-3 py-3 gap-2.5' : 'flex-col py-3 gap-2'}`}>
-          <div className="w-9 h-9 rounded-lg overflow-hidden bg-background border border-border/50 flex items-center justify-center shrink-0 hover:border-void-cyan/40 hover:glow-cyan transition-smooth">
+        <div className={`mc-bevel mx-2 mt-2 flex items-center shrink-0 overflow-hidden ${sidebarExpanded ? 'px-2.5 py-2.5 gap-2.5' : 'flex-col px-1.5 py-2 gap-2'}`}>
+          <div className="relative w-11 h-11 overflow-hidden border border-[color:var(--mc-teal)]/30 bg-black flex items-center justify-center shrink-0 shadow-[0_0_22px_rgba(46,230,214,0.18)]">
             <Image
-              src="/brand/mc-logo-128.png"
-              alt="Mission Control logo"
-              width={36}
-              height={36}
-              className="w-full h-full object-cover"
+              src="/brand/vortex-ventures-w.png"
+              alt="Vortex Ventures logo"
+              width={44}
+              height={44}
+              className="h-full w-full object-cover object-center mix-blend-screen"
+              priority
             />
+            <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(46,230,214,0.18),transparent_68%)]" />
           </div>
           {sidebarExpanded && (
-            <div className="flex items-baseline gap-2 truncate flex-1 min-w-0">
-              <span className="text-sm font-semibold text-foreground truncate">Mission Control</span>
-              <span className="text-2xs text-muted-foreground font-mono-tight shrink-0">v{APP_VERSION}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-mono text-[13px] font-black uppercase tracking-[0.12em] text-[color:var(--mc-ink-0)] drop-shadow-[0_0_8px_rgba(46,230,214,0.3)]">
+                Vortex Ventures
+              </div>
+              <div className="mt-0.5 truncate font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-[color:var(--mc-ink-2)]">
+                Blackwire Ops · v{APP_VERSION}
+              </div>
             </div>
           )}
           <Button
@@ -309,7 +315,7 @@ export function NavRail() {
             size="icon-xs"
             onClick={toggleSidebar}
             title={sidebarExpanded ? tn('collapseSidebar') : tn('expandSidebar')}
-            className="shrink-0"
+            className="shrink-0 text-[color:var(--mc-ink-2)] hover:text-[color:var(--mc-teal)]"
           >
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
               {sidebarExpanded ? (

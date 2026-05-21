@@ -207,11 +207,11 @@ export default function LoginPage() {
             <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10 shadow-[0_0_48px_rgba(34,211,238,0.22),inset_0_1px_0_rgba(255,255,255,0.16)]">
               <div className="h-12 w-12 overflow-hidden rounded-xl border border-white/10 bg-background">
                 <Image
-                  src="/brand/mc-logo-128.png"
-                  alt="Mission Control logo"
+                  src="/brand/vortex-ventures-w.png"
+                  alt="Vortex Ventures logo"
                   width={48}
                   height={48}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover object-center mix-blend-screen"
                   priority
                 />
               </div>
