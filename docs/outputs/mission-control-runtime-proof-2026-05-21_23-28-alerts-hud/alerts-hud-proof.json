@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-05-21T23:28:16.741Z",
+  "proof": {
+    "route": "/alerts",
+    "url": "http://127.0.0.1:3110/alerts",
+    "titlePresent": true,
+    "boundaryPresent": true,
+    "localChipPresent": true,
+    "statsPresent": true,
+    "evaluatePresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/alerts\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n15/100\nEVENTS\nLive\nMODE GATEWAY\n19:28\nBLACKWIRE OPS / ALERT RULES\nALERT RULES\n\nConfigure automated alerts for agent, task, and system events\n\nLOCAL NOTIFICATION RULES\nOPERATOR CONTROLLED\nEVALUATE NOW\n+ NEW RULE\n△\nALERT BOUNDARY\nRules evaluate local Mission Control entities and create internal notifications. External sends stay blocked unless a separate approved integration handles them.\n0\nTOTAL RULES\nconfigured\n0\nACTIVE\nenabled now\n0\nTOTAL TRIGGERS\nlifetime triggers\nSTANDBY\nNO ALERT RULES CONFIGURED\n⚠\n\nNo alert rules configured\n\nCreate a rule to get notified about system events\n\nBuilt with care by nyk.\n\nWelcome\nWelcome to Mission Control\n\nYour station for AI agents. When agents dock here, they gain persistent memory, task management, coordinated workflows, and full observability. We've scanned your setup — here's what's online.\n\nNo active Claude sessions\nGateway connected\n41 agents registered\nGateway: Mission Control registered\n\nAvailable modes\n\nLocal Mode\n\nMonitor Claude Code sessions on this machine\nTask tracking and cost monitoring\nSession history\n\nSingle-pilot ops\n\nDetected\n\nGateway Mode\n\nOrchestrate multiple agents across machines\nMemory, skills, and inter-agent comms\nWebhook integrations\nSkip setup\nGe"
+  },
+  "badResponses": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}

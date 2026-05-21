@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 
 interface AlertRule {
@@ -48,11 +49,11 @@ const OPERATORS = [
   { value: 'age_minutes_above', label: 'age (min) >' },
 ]
 
-const ENTITY_COLORS: Record<string, string> = {
-  agent: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  task: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  session: 'bg-green-500/20 text-green-400 border-green-500/30',
-  activity: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+const ENTITY_TONES: Record<string, 'teal' | 'purple' | 'amber' | 'rose' | 'neutral' | 'dim'> = {
+  agent: 'purple',
+  task: 'teal',
+  session: 'teal',
+  activity: 'amber',
 }
 
 export function AlertRulesPanel() {
@@ -111,22 +112,25 @@ export function AlertRulesPanel() {
   const totalTriggers = rules.reduce((sum, r) => sum + r.trigger_count, 0)
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t('description')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <Page
+      kicker="Blackwire Ops / Alert Rules"
+      title={t('title')}
+      subtitle={t('description')}
+      badges={
+        <>
+          <Chip tone="amber">local notification rules</Chip>
+          <Chip tone="dim">operator controlled</Chip>
+          {enabledCount > 0 && <Chip tone="teal" pulse>{enabledCount} active</Chip>}
+        </>
+      }
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={evaluateAll}
             disabled={evaluating || rules.length === 0}
             variant="secondary"
             size="sm"
-            className="flex items-center gap-1.5"
+            className="flex items-center gap-1.5 border-[color:var(--mc-hairline-2)] font-mono text-[10px] uppercase tracking-[0.12em]"
           >
             {evaluating ? (
               <>
@@ -143,53 +147,49 @@ export function AlertRulesPanel() {
           <Button
             onClick={() => setShowCreate(!showCreate)}
             size="sm"
+            className="border-[color:var(--mc-hairline-2)] font-mono text-[10px] uppercase tracking-[0.12em]"
           >
             {t('newRule')}
           </Button>
         </div>
-      </div>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Alert boundary">
+          Rules evaluate local Mission Control entities and create internal notifications. External sends stay blocked unless a separate approved integration handles them.
+        </BoundaryBanner>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-card border border-border rounded-lg p-3">
-          <div className="text-2xs text-muted-foreground">{t('statTotalRules')}</div>
-          <div className="text-xl font-bold text-foreground mt-0.5">{rules.length}</div>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-3">
-          <div className="text-2xs text-muted-foreground">{t('statActive')}</div>
-          <div className="text-xl font-bold text-green-400 mt-0.5">{enabledCount}</div>
-        </div>
-        <div className="bg-card border border-border rounded-lg p-3">
-          <div className="text-2xs text-muted-foreground">{t('statTotalTriggers')}</div>
-          <div className="text-xl font-bold text-amber-400 mt-0.5">{totalTriggers}</div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Stat label={t('statTotalRules')} value={rules.length} sub="configured" />
+        <Stat label={t('statActive')} value={enabledCount} sub="enabled now" accent={enabledCount > 0 ? 'teal' : 'dim'} glow={enabledCount > 0} />
+        <Stat label={t('statTotalTriggers')} value={totalTriggers} sub="lifetime triggers" accent={totalTriggers > 0 ? 'amber' : 'dim'} />
       </div>
 
       {/* Eval Results */}
       {evalResults && (
-        <div className="bg-card border border-border rounded-lg p-4">
+        <HudPanel kicker="manual evaluation" title={t('evalResultsTitle')}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-foreground">{t('evalResultsTitle')}</h3>
             <Button onClick={() => setEvalResults(null)} variant="ghost" size="xs">
               {t('dismiss')}
             </Button>
           </div>
           <div className="space-y-1.5">
             {evalResults.map(r => (
-              <div key={r.rule_id} className={`flex items-center justify-between py-1.5 px-3 rounded-md text-xs ${
-                r.triggered ? 'bg-red-500/10 border border-red-500/20' : 'bg-secondary/50'
+              <div key={r.rule_id} className={`flex items-center justify-between border px-3 py-1.5 font-mono text-[11px] ${
+                r.triggered ? 'border-[color:var(--mc-rose)]/40 bg-[rgba(255,85,119,0.10)]' : 'border-[color:var(--mc-hairline)] bg-black/20'
               }`}>
-                <span className="font-medium text-foreground">{r.rule_name}</span>
-                <span className={r.triggered ? 'text-red-400 font-medium' : 'text-muted-foreground'}>
+                <span className="font-medium text-[color:var(--mc-ink-0)]">{r.rule_name}</span>
+                <span className={r.triggered ? 'font-medium text-[color:var(--mc-rose)]' : 'text-[color:var(--mc-ink-2)]'}>
                   {r.triggered ? t('triggered') : r.reason}
                 </span>
               </div>
             ))}
             {evalResults.length === 0 && (
-              <div className="text-xs text-muted-foreground text-center py-2">{t('noRulesToEvaluate')}</div>
+              <div className="py-2 text-center text-xs text-[color:var(--mc-ink-2)]">{t('noRulesToEvaluate')}</div>
             )}
           </div>
-        </div>
+        </HudPanel>
       )}
 
       {/* Create Form */}
@@ -199,13 +199,15 @@ export function AlertRulesPanel() {
 
       {/* Rules List */}
       {loading ? (
-        <div className="text-center text-xs text-muted-foreground py-8">{t('loadingRules')}</div>
+        <HudPanel><div className="py-8 text-center font-mono text-xs uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">{t('loadingRules')}</div></HudPanel>
       ) : rules.length === 0 ? (
-        <div className="text-center py-12 bg-card border border-border rounded-lg">
-          <div className="text-3xl mb-2 opacity-30">&#9888;</div>
-          <p className="text-sm text-muted-foreground">{t('noRulesConfigured')}</p>
-          <p className="text-xs text-muted-foreground mt-1">{t('createRuleHint')}</p>
-        </div>
+        <HudPanel kicker="standby" title={t('noRulesConfigured')}>
+          <div className="py-8 text-center">
+            <div className="mb-2 text-3xl opacity-40">&#9888;</div>
+            <p className="text-sm text-[color:var(--mc-ink-1)]">{t('noRulesConfigured')}</p>
+            <p className="mt-1 text-xs text-[color:var(--mc-ink-2)]">{t('createRuleHint')}</p>
+          </div>
+        </HudPanel>
       ) : (
         <div className="space-y-2">
           {rules.map(rule => (
@@ -213,7 +215,8 @@ export function AlertRulesPanel() {
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 
@@ -225,22 +228,19 @@ function RuleCard({ rule, onToggle, onDelete }: { rule: AlertRule; onToggle: () 
     : t('never')
 
   return (
-    <div className={`bg-card border rounded-lg p-4 transition-smooth ${
-      rule.enabled ? 'border-border' : 'border-border/50 opacity-60'
-    }`}>
+    <HudPanel className={rule.enabled ? '' : 'opacity-60'}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`text-2xs px-1.5 py-0.5 rounded border ${ENTITY_COLORS[rule.entity_type] || 'bg-muted text-muted-foreground border-border'}`}>
-              {rule.entity_type}
-            </span>
-            <h3 className="text-sm font-semibold text-foreground truncate">{rule.name}</h3>
+            <Chip tone={ENTITY_TONES[rule.entity_type] || 'neutral'}>{rule.entity_type}</Chip>
+            <Chip tone={rule.enabled ? 'teal' : 'dim'}>{rule.enabled ? 'enabled' : 'disabled'}</Chip>
+            <h3 className="truncate font-mono text-sm font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{rule.name}</h3>
           </div>
           {rule.description && (
-            <p className="text-xs text-muted-foreground mt-1 truncate">{rule.description}</p>
+            <p className="mt-2 truncate text-xs text-[color:var(--mc-ink-1)]">{rule.description}</p>
           )}
-          <div className="flex items-center gap-3 mt-2 text-2xs text-muted-foreground flex-wrap">
-            <span className="font-mono bg-secondary/50 px-1.5 py-0.5 rounded">
+          <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[10px] text-[color:var(--mc-ink-2)]">
+            <span className="border border-[color:var(--mc-hairline)] bg-black/20 px-1.5 py-0.5">
               {rule.condition_field} {operator?.label || rule.condition_operator} {rule.condition_value}
             </span>
             <span>{t('cooldown', { minutes: rule.cooldown_minutes })}</span>
@@ -272,7 +272,7 @@ function RuleCard({ rule, onToggle, onDelete }: { rule: AlertRule; onToggle: () 
           </Button>
         </div>
       </div>
-    </div>
+    </HudPanel>
   )
 }
 
@@ -328,8 +328,8 @@ function CreateRuleForm({ onCreated, onCancel }: { onCreated: () => void; onCanc
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card border border-primary/20 rounded-lg p-4 space-y-3">
-      <h3 className="text-sm font-semibold text-foreground">{t('newRuleTitle')}</h3>
+    <HudPanel kicker="rule builder" title={t('newRuleTitle')} glow>
+      <form onSubmit={handleSubmit} className="space-y-3">
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
@@ -444,7 +444,8 @@ function CreateRuleForm({ onCreated, onCancel }: { onCreated: () => void; onCanc
           {saving ? t('creating') : t('createRule')}
         </Button>
       </div>
-    </form>
+      </form>
+    </HudPanel>
   )
 }
 
