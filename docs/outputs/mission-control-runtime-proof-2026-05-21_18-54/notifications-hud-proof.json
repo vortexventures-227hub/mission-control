@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-05-21T22:48:55.416Z",
+  "hasDeliveryBoundary": true,
+  "hasExternalBoundary": true,
+  "hasLocalQueue": true,
+  "hasNotificationsQueue": true,
+  "hasQueueControls": true,
+  "hasStats": true,
+  "hasStream": true,
+  "logoLoaded": true,
+  "route": "/notifications",
+  "sample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/notifications\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n16/100\nEVENTS\nLive\nMODE GATEWAY\n18:48\nNOTIFICATIONS / LOCAL QUEUE\nNOTIFICATIONS\n\nOperator notification queue for Mission Control events, delivery rows, and unread work. This is local command visibility, not email, SMS, push, or external agent delivery.\n\nLOCAL QUEUE\nDELIVERY ROW IS NOT RECEIPT\nNO EXTERNAL SEND IMPLIED\n",
+  "url": "http://127.0.0.1:3110/notifications"
+}
