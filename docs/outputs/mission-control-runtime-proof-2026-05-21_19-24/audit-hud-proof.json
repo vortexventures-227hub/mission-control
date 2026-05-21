@@ -1,0 +1,14 @@
+{
+  "route": "/audit",
+  "url": "http://127.0.0.1:3110/audit",
+  "capturedAt": "2026-05-21T23:04:22.421Z",
+  "hasAuditEvidence": true,
+  "hasLocalAudit": true,
+  "hasEventEvidence": true,
+  "hasAdminGate": true,
+  "hasStats": true,
+  "hasControls": true,
+  "hasEventsPanel": true,
+  "logoLoaded": true,
+  "sample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/audit\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n16/100\nEVENTS\nLive\nMODE GATEWAY\n19:04\nAUDIT / LOCAL EVIDENCE\nAUDIT TRAIL\n\nAdmin-gated audit trail for authentication, access, agent, workspace, token, gateway, backup, cleanup, and export events.\n\nLOCAL AUDIT LOG\nEVENT IS EVIDENCE ROW\nADMIN GATED\nRefresh\n293\nTOTAL EVENTS\n293 events logged\n50\nVISIBLE ROWS\ncurrent page\n3\nACTORS\nvisible actors\n2\nSECURITY ROWS\ndenied/delete/failures\n22\nSYSTEM ROWS\nautomation/system events\nFILTE"
+}

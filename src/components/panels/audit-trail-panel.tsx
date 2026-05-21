@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { useSmartPoll } from '@/lib/use-smart-poll'
 
@@ -152,6 +153,9 @@ export function AuditTrailPanel() {
   useSmartPoll(fetchEvents, 30000, { pauseWhenDisconnected: true })
 
   const totalPages = Math.ceil(total / limit)
+  const securityEventCount = events.filter(event => ['login_failed', 'role_denied', 'access_deny', 'user_delete', 'agent_delete'].includes(event.action)).length
+  const actorCount = new Set(events.map(event => event.actor)).size
+  const systemEventCount = events.filter(event => ['auto_backup', 'heartbeat_check', 'agent_config_sync', 'local_agent_sync', 'cleanup'].includes(event.action)).length
 
   function formatTime(ts: number) {
     const d = new Date(ts * 1000)
@@ -194,22 +198,32 @@ export function AuditTrailPanel() {
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400">
+      <Page
+        kicker="AUDIT / ACCESS BOUNDARY"
+        title={t('title')}
+        subtitle="Mission Control audit trail is admin-gated local evidence. Access failures are shown explicitly."
+        badges={<Chip tone="rose">ADMIN BOUNDARY</Chip>}
+      >
+        <BoundaryBanner tone="rose" title="Audit Runtime Warning">
           {error}
-        </div>
-      </div>
+        </BoundaryBanner>
+      </Page>
     )
   }
 
   return (
-    <div className="p-5 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{t('eventsLogged', { count: total })}</p>
-        </div>
+    <Page
+      kicker="AUDIT / LOCAL EVIDENCE"
+      title={t('title')}
+      subtitle="Admin-gated audit trail for authentication, access, agent, workspace, token, gateway, backup, cleanup, and export events."
+      badges={(
+        <>
+          <Chip tone="teal" pulse>LOCAL AUDIT LOG</Chip>
+          <Chip tone="amber">EVENT IS EVIDENCE ROW</Chip>
+          <Chip tone="rose">ADMIN GATED</Chip>
+        </>
+      )}
+      actions={(
         <Button
           onClick={() => { setPage(0); fetchEvents() }}
           variant="ghost"
@@ -217,14 +231,24 @@ export function AuditTrailPanel() {
         >
           {t('refresh')}
         </Button>
-      </div>
+      )}
+    >
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Stat label="Total Events" value={total} sub={t('eventsLogged', { count: total })} accent="teal" glow />
+          <Stat label="Visible Rows" value={events.length} sub="current page" accent="purple" />
+          <Stat label="Actors" value={actorCount} sub="visible actors" accent="teal" />
+          <Stat label="Security Rows" value={securityEventCount} sub="denied/delete/failures" accent="rose" glow={securityEventCount > 0} />
+          <Stat label="System Rows" value={systemEventCount} sub="automation/system events" accent="dim" />
+        </div>
 
       {/* Filters */}
+      <HudPanel kicker="FILTERS / AUDIT QUERY" title="Audit Controls">
       <div className="flex gap-2">
         <select
           value={filter.action}
           onChange={e => { setFilter(f => ({ ...f, action: e.target.value })); setPage(0) }}
-          className="h-8 px-2 text-xs rounded-md bg-secondary border border-border text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="h-8 border border-[color:var(--mc-hairline-2)] bg-black/30 px-2 font-mono text-xs text-[color:var(--mc-ink-0)] focus:outline-none focus:ring-2 focus:ring-[color:var(--mc-teal)]/40"
         >
           <option value="">{t('allActions')}</option>
           <optgroup label={t('groupAuth')}>
@@ -278,11 +302,18 @@ export function AuditTrailPanel() {
           value={filter.actor}
           onChange={e => { setFilter(f => ({ ...f, actor: e.target.value })); setPage(0) }}
           placeholder={t('filterByActor')}
-          className="h-8 px-2.5 text-xs rounded-md bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-40"
+          className="h-8 w-40 border border-[color:var(--mc-hairline-2)] bg-black/30 px-2.5 font-mono text-xs text-[color:var(--mc-ink-0)] placeholder:text-[color:var(--mc-ink-3)] focus:outline-none focus:ring-2 focus:ring-[color:var(--mc-teal)]/40"
         />
       </div>
+      </HudPanel>
 
       {/* Event List */}
+      <HudPanel
+        kicker="AUDIT / EVENT ROWS"
+        title="Audit Events"
+        right={<Chip tone={loading ? 'amber' : 'teal'}>{loading ? 'Loading' : `${events.length} rows`}</Chip>}
+        glow
+      >
       {loading ? (
         <div className="space-y-2">
           {[...Array(8)].map((_, i) => (
@@ -340,10 +371,12 @@ export function AuditTrailPanel() {
           })}
         </div>
       )}
+      </HudPanel>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2">
+        <HudPanel padded={false}>
+        <div className="flex items-center justify-between p-3">
           <Button
             onClick={() => setPage(p => Math.max(0, p - 1))}
             disabled={page === 0}
@@ -364,7 +397,9 @@ export function AuditTrailPanel() {
             {t('next')}
           </Button>
         </div>
+        </HudPanel>
       )}
     </div>
+    </Page>
   )
 }
