@@ -161,6 +161,16 @@ export default function Home() {
     }
   }, [initSteps, bootComplete, setBootComplete])
 
+  useEffect(() => {
+    if (bootComplete) return
+    const t = setTimeout(() => {
+      // Do not trap the operator on the splash screen if a non-critical preload stalls.
+      setStepStatuses(Object.fromEntries(STEP_KEYS.map(key => [key, 'done'])) as Record<string, 'done'>)
+      setBootComplete()
+    }, 10_000)
+    return () => clearTimeout(t)
+  }, [bootComplete, setBootComplete])
+
   // Security console warning (anti-self-XSS)
   useEffect(() => {
     if (!bootComplete) return
