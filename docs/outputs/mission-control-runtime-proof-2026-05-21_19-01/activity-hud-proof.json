@@ -1,0 +1,13 @@
+{
+  "capturedAt": "2026-05-21T22:51:57.361Z",
+  "hasActivityStream": true,
+  "hasEventBoundary": true,
+  "hasFeed": true,
+  "hasLocalDbStream": true,
+  "hasStats": true,
+  "hasTimelineControls": true,
+  "logoLoaded": true,
+  "route": "/activity",
+  "sample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/activity\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n15/100\nEVENTS\nLive\nMODE GATEWAY\n18:51\nACTIVITY / LOCAL EVENT STREAM\nACTIVITY\n\nMission Control activity stream for local tasks, agents, comments, mentions, assignments, and session context. This is an operator timeline, not final proof of completed work.\n\nLIVE POLLING\nEVENT IS NOT RECEIPT\nLOCAL DB STREAM\nLive\nRefresh\n0\nVISI",
+  "url": "http://127.0.0.1:3110/activity"
+}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
@@ -324,18 +325,23 @@ export function ActivityFeedPanel() {
   const selectedAgentData = agents.find((a) => a.name === selectedAgent)
   const totalPages = Math.ceil(total / limit)
   const groupedByDay = isAgentView ? groupByDay(activities) : {}
+  const uniqueActors = new Set(activities.map((activity) => activity.actor)).size
+  const recentActivityCount = activities.filter((activity) => Date.now() - activity.created_at * 1000 < 60 * 60 * 1000).length
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
-          <div
-            className={`w-2.5 h-2.5 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30'}`}
-          />
-        </div>
-        <div className="flex gap-2">
+    <Page
+      kicker="ACTIVITY / LOCAL EVENT STREAM"
+      title={t('title')}
+      subtitle="Mission Control activity stream for local tasks, agents, comments, mentions, assignments, and session context. This is an operator timeline, not final proof of completed work."
+      badges={(
+        <>
+          <Chip tone={autoRefresh ? 'teal' : 'dim'} pulse={autoRefresh}>{autoRefresh ? 'Live Polling' : 'Paused'}</Chip>
+          <Chip tone="amber">Event Is Not Receipt</Chip>
+          <Chip tone="teal">Local DB Stream</Chip>
+        </>
+      )}
+      actions={(
+        <>
           <Button
             onClick={() => setAutoRefresh(!autoRefresh)}
             variant={autoRefresh ? 'success' : 'secondary'}
@@ -346,15 +352,24 @@ export function ActivityFeedPanel() {
           <Button onClick={() => fetchActivities()} size="sm">
             {t('refresh')}
           </Button>
+        </>
+      )}
+    >
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Stat label="Visible Rows" value={activities.length} sub={filter.type ? `filtered: ${filter.type}` : 'current page'} accent="teal" glow />
+          <Stat label="Total Rows" value={total} sub="server count" accent="purple" />
+          <Stat label="Actors" value={uniqueActors} sub="visible feed actors" accent="teal" />
+          <Stat label="Last Hour" value={recentActivityCount} sub="recent visible events" accent="amber" glow={recentActivityCount > 0} />
+          <Stat label="Sessions" value={sessions.length} sub="session rows loaded" accent="dim" />
         </div>
-      </div>
 
       {/* Filters + Agent Selector */}
-      <div className="p-4 border-b border-border bg-surface-1 flex-shrink-0">
+      <HudPanel kicker="FILTERS / ROUTING" title="Timeline Controls">
         <div className="flex gap-4 flex-wrap items-end">
           {/* Agent filter */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t('filterAgent')}</label>
+            <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--mc-ink-2)] mb-1">{t('filterAgent')}</label>
             <div className="flex gap-1 flex-wrap">
               <Button
                 onClick={() => {
@@ -396,11 +411,11 @@ export function ActivityFeedPanel() {
 
           {/* Type filter */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t('filterType')}</label>
+            <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--mc-ink-2)] mb-1">{t('filterType')}</label>
             <select
               value={filter.type}
               onChange={(e) => setFilter((prev) => ({ ...prev, type: e.target.value }))}
-              className="bg-surface-2 text-foreground text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50 border border-border"
+              className="border border-[color:var(--mc-hairline-2)] bg-black/30 px-3 py-1.5 font-mono text-sm text-[color:var(--mc-ink-0)] focus:outline-none focus:ring-2 focus:ring-[color:var(--mc-teal)]/40"
             >
               <option value="">{t('allTypes')}</option>
               {activityTypes.map((type) => (
@@ -413,11 +428,11 @@ export function ActivityFeedPanel() {
 
           {/* Limit */}
           <div>
-            <label className="block text-xs text-muted-foreground mb-1">{t('filterLimit')}</label>
+            <label className="block font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--mc-ink-2)] mb-1">{t('filterLimit')}</label>
             <select
               value={filter.limit}
               onChange={(e) => setFilter((prev) => ({ ...prev, limit: parseInt(e.target.value) }))}
-              className="bg-surface-2 text-foreground text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50 border border-border"
+              className="border border-[color:var(--mc-hairline-2)] bg-black/30 px-3 py-1.5 font-mono text-sm text-[color:var(--mc-ink-0)] focus:outline-none focus:ring-2 focus:ring-[color:var(--mc-teal)]/40"
             >
               <option value={25}>25</option>
               <option value={50}>50</option>
@@ -426,25 +441,33 @@ export function ActivityFeedPanel() {
             </select>
           </div>
         </div>
-      </div>
+      </HudPanel>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 m-4 rounded-lg text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <Button
-            onClick={() => setError(null)}
-            variant="ghost"
-            size="icon-sm"
-            className="text-red-400/60 hover:text-red-400 ml-2"
-          >
-            x
-          </Button>
-        </div>
+        <BoundaryBanner tone="rose" title="Activity Runtime Warning">
+          <div className="flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <Button
+              onClick={() => setError(null)}
+              variant="ghost"
+              size="icon-sm"
+              className="text-red-400/60 hover:text-red-400"
+            >
+              x
+            </Button>
+          </div>
+        </BoundaryBanner>
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <HudPanel
+        kicker={isAgentView ? 'AGENT TIMELINE' : 'ALL ACTIVITY'}
+        title={isAgentView ? `${selectedAgent} Activity` : 'Local Activity Feed'}
+        right={<Chip tone={loading ? 'amber' : 'teal'}>{loading ? 'Loading' : `${activities.length} rows`}</Chip>}
+        glow
+      >
+      <div className="min-h-[520px] overflow-y-auto">
         {loading && activities.length === 0 ? (
           <div className="flex items-center justify-center h-32">
             <Loader variant="inline" label={t('loadingActivities')} />
@@ -621,10 +644,11 @@ export function ActivityFeedPanel() {
           </div>
         )}
       </div>
+      </HudPanel>
 
       {/* Footer */}
-      <div className="border-t border-border p-3 bg-surface-1 text-xs text-muted-foreground flex-shrink-0">
-        <div className="flex justify-between items-center">
+      <HudPanel padded={false}>
+        <div className="flex justify-between items-center p-3 text-xs text-[color:var(--mc-ink-2)]">
           <span>
             {isAgentView
               ? t('footerAgentEvents', { total, agent: selectedAgent })
@@ -632,7 +656,8 @@ export function ActivityFeedPanel() {
           </span>
           <span>{t('lastUpdated', { time: new Date(lastRefresh).toLocaleTimeString() })}</span>
         </div>
+      </HudPanel>
       </div>
-    </div>
+    </Page>
   )
 }
