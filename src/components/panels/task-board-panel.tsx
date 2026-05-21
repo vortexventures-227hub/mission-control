@@ -10,6 +10,7 @@ import { createClientLogger } from '@/lib/client-logger'
 
 import { useFocusTrap } from '@/lib/use-focus-trap'
 
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { AgentAvatar } from '@/components/ui/agent-avatar'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { Button } from '@/components/ui/button'
@@ -741,87 +742,49 @@ export function TaskBoardPanel() {
 
   if (loading) {
     return (
-      <div className="h-full flex flex-col" role="status" aria-live="polite">
-        <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-7 w-28 bg-surface-1 rounded-md animate-pulse" />
-            <div className="h-9 w-36 bg-surface-1 rounded-md animate-pulse" />
-          </div>
-          <div className="flex gap-2">
-            <div className="h-9 w-20 bg-surface-1 rounded-md animate-pulse" />
-            <div className="h-9 w-24 bg-surface-1 rounded-md animate-pulse" />
-          </div>
-        </div>
-        <div className="flex-1 flex gap-4 p-4 overflow-x-auto">
-          {Array.from({ length: 4 }).map((_, colIdx) => (
-            <div key={colIdx} className="flex-1 min-w-80 bg-card border border-border rounded-lg flex flex-col">
-              <div className="p-3 rounded-t-lg bg-surface-1 animate-pulse">
-                <div className="h-5 w-24 bg-surface-2 rounded" />
-              </div>
-              <div className="flex-1 p-3 space-y-3">
-                {Array.from({ length: 3 - colIdx }).map((_, cardIdx) => (
-                  <div key={cardIdx} className="bg-surface-1 rounded-lg p-3 border-l-4 border-border space-y-2 animate-pulse">
-                    <div className="h-4 w-3/4 bg-surface-2 rounded" />
-                    <div className="h-3 w-full bg-surface-2/60 rounded" />
-                    <div className="h-3 w-1/2 bg-surface-2/40 rounded" />
-                    <div className="flex justify-between items-center pt-1">
-                      <div className="h-3 w-20 bg-surface-2/50 rounded" />
-                      <div className="h-3 w-16 bg-surface-2/50 rounded" />
+      <Page
+        kicker="TASKS / LOAD"
+        title={t('title')}
+        subtitle="Hydrating local task, agent, project, and Aegis approval state for the operator board."
+        badges={<Chip tone="teal" pulse>LOCAL BOARD</Chip>}
+      >
+        <HudPanel title={t('loadingTasks')} glow>
+          <div className="grid gap-4 xl:grid-cols-4" role="status" aria-live="polite">
+            {Array.from({ length: 4 }).map((_, colIdx) => (
+              <div key={colIdx} className="mc-bevel min-h-80 p-3">
+                <div className="mb-4 h-5 w-24 animate-pulse rounded bg-white/10" />
+                <div className="space-y-3">
+                  {Array.from({ length: 3 - colIdx }).map((_, cardIdx) => (
+                    <div key={cardIdx} className="space-y-2 border-l-2 border-[color:var(--mc-hairline-2)] bg-black/20 p-3">
+                      <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
+                      <div className="h-3 w-full animate-pulse rounded bg-white/5" />
+                      <div className="h-3 w-1/2 animate-pulse rounded bg-white/5" />
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </HudPanel>
         <span className="sr-only">{t('loadingTasks')}</span>
-      </div>
+      </Page>
     )
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
-          {gnapStatus?.enabled && (
-            <button
-              onClick={handleGnapSync}
-              disabled={gnapSyncing}
-              className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
-              title={gnapStatus.lastSync ? `Last sync: ${gnapStatus.lastSync}` : 'Click to sync'}
-            >
-              GNAP
-              {gnapStatus.taskCount != null && (
-                <span className="text-emerald-400/70">{gnapStatus.taskCount}</span>
-              )}
-              {gnapSyncing && (
-                <svg className="w-3 h-3 animate-spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M8 1.5a6.5 6.5 0 1 1-4.5 2" />
-                </svg>
-              )}
-            </button>
-          )}
-          <div className="relative">
-            <select
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              className="h-9 px-3 pr-8 bg-surface-1 text-foreground border border-border rounded-md text-sm appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <option value="all">{t('allProjects')}</option>
-              {projects.map((project) => (
-                <option key={project.id} value={String(project.id)}>
-                  {project.name} ({project.ticket_prefix})
-                </option>
-              ))}
-            </select>
-            <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 6l4 4 4-4" />
-            </svg>
-          </div>
-        </div>
-        <div className="flex gap-2">
+    <Page
+      kicker="TASKS / OPERATOR BOARD"
+      title={t('title')}
+      subtitle="Evidence-gated task board for assignments, owner blockers, Aegis Done gates, project filters, local board proof, and daily operator triage."
+      badges={(
+        <>
+          <Chip tone="teal" pulse>LOCAL BOARD</Chip>
+          <Chip tone="amber">DONE REQUIRES AEGIS</Chip>
+          <Chip tone="rose">NO FAKE GREEN</Chip>
+        </>
+      )}
+      actions={(
+        <>
           <Button variant="outline" onClick={() => setShowProjectManager(true)}>
             {t('projects')}
           </Button>
@@ -839,25 +802,69 @@ export function TaskBoardPanel() {
               <path d="M13.5 2v3h-3M2.5 14v-3h3" />
             </svg>
           </Button>
-        </div>
-      </div>
-
-      {/* Operator triage strip */}
-      <div className="grid flex-shrink-0 gap-3 border-b border-border bg-surface-0/70 px-4 py-3 sm:grid-cols-2 xl:grid-cols-5">
-        {[
-          { label: 'Awaiting owner', value: taskTriage.awaitingOwner, tone: 'text-orange-300', detail: 'human or owner action' },
-          { label: 'Overdue', value: taskTriage.overdue, tone: 'text-red-300', detail: 'past due and not done' },
-          { label: 'Critical / urgent', value: taskTriage.critical, tone: 'text-amber-300', detail: 'highest risk active work' },
-          { label: 'Unassigned', value: taskTriage.unassigned, tone: 'text-cyan-300', detail: 'needs an owner before progress' },
-          { label: 'Done gate', value: taskTriage.awaitingAegis, tone: 'text-emerald-300', detail: 'Aegis approval required before Done' },
-        ].map((item) => (
-          <div key={item.label} className="rounded-xl border border-border/70 bg-background/70 px-3 py-2 shadow-sm">
-            <div className={`text-lg font-black ${item.tone}`}>{item.value}</div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">{item.label}</div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground">{item.detail}</div>
+        </>
+      )}
+    >
+      <div className="space-y-4">
+        <HudPanel
+          kicker="PROJECT FILTER"
+          title="Board Controls"
+          right={gnapStatus?.enabled && (
+            <button
+              onClick={handleGnapSync}
+              disabled={gnapSyncing}
+              className="inline-flex items-center gap-1.5 border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+              title={gnapStatus.lastSync ? `Last sync: ${gnapStatus.lastSync}` : 'Click to sync'}
+            >
+              GNAP
+              {gnapStatus.taskCount != null && (
+                <span className="text-emerald-300/70">{gnapStatus.taskCount}</span>
+              )}
+              {gnapSyncing && (
+                <svg className="w-3 h-3 animate-spin" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M8 1.5a6.5 6.5 0 1 1-4.5 2" />
+                </svg>
+              )}
+            </button>
+          )}
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--mc-ink-2)]">
+              Project scope
+            </label>
+            <div className="relative">
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="h-9 min-w-72 appearance-none border border-[color:var(--mc-hairline-2)] bg-black/30 px-3 pr-8 font-mono text-xs text-[color:var(--mc-ink-0)] focus:outline-none focus:ring-2 focus:ring-[color:var(--mc-teal)]/40"
+            >
+              <option value="all">{t('allProjects')}</option>
+              {projects.map((project) => (
+                <option key={project.id} value={String(project.id)}>
+                  {project.name} ({project.ticket_prefix})
+                </option>
+              ))}
+            </select>
+            <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 6l4 4 4-4" />
+            </svg>
+            </div>
+            <Chip tone={isLocal ? 'teal' : 'amber'}>
+              {isLocal ? 'Local mode' : 'Remote spawn available'}
+            </Chip>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--mc-ink-3)]">
+              Drag to Done is blocked until Aegis approval is present.
+            </span>
           </div>
-        ))}
-      </div>
+        </HudPanel>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Stat label="Awaiting Owner" value={taskTriage.awaitingOwner} sub="human or owner action" accent="amber" glow={taskTriage.awaitingOwner > 0} />
+          <Stat label="Overdue" value={taskTriage.overdue} sub="past due and not done" accent="rose" glow={taskTriage.overdue > 0} />
+          <Stat label="Critical / Urgent" value={taskTriage.critical} sub="highest risk active work" accent="amber" glow={taskTriage.critical > 0} />
+          <Stat label="Unassigned" value={taskTriage.unassigned} sub="needs an owner" accent="teal" />
+          <Stat label="Done Gate" value={taskTriage.awaitingAegis} sub="Aegis approval required" accent="purple" />
+        </div>
 
       {/* Spawn Form (collapsible) */}
       {showSpawnForm && (
@@ -938,22 +945,31 @@ export function TaskBoardPanel() {
 
       {/* Error Display */}
       {error && (
-        <div role="alert" className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 m-4 rounded-lg text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            onClick={() => setError(null)}
-            className="text-red-400/60 hover:text-red-400 ml-2"
-            aria-label={t('dismissError')}
-          >
-            ×
-          </Button>
-        </div>
+        <BoundaryBanner tone="rose" title="Board Runtime Warning">
+          <div className="flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => setError(null)}
+              className="text-red-400/60 hover:text-red-400"
+              aria-label={t('dismissError')}
+            >
+              ×
+            </Button>
+          </div>
+        </BoundaryBanner>
       )}
 
       {/* Kanban Board */}
-      <div className="flex-1 min-h-0 flex flex-wrap content-start gap-4 p-4 overflow-y-auto" role="region" aria-label={t('taskBoard')}>
+      <HudPanel
+        kicker="KANBAN / ASSIGNMENT EVIDENCE"
+        title="Operator Lanes"
+        right={<Chip tone="dim">{tasks.length} tasks loaded</Chip>}
+        padded={false}
+        glow
+      >
+      <div className="flex min-h-[520px] flex-wrap content-start gap-4 overflow-y-auto p-4" role="region" aria-label={t('taskBoard')}>
         {statusColumns.map(column => (
           <div
             key={column.key}
@@ -1151,6 +1167,7 @@ export function TaskBoardPanel() {
           </div>
         ))}
       </div>
+      </HudPanel>
 
       {/* Claude Code Tasks */}
       <ClaudeCodeTasksSection />
@@ -1205,7 +1222,8 @@ export function TaskBoardPanel() {
           onChanged={fetchData}
         />
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 

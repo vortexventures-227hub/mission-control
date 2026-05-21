@@ -1,0 +1,13 @@
+{
+  "capturedAt": "2026-05-21T21:54:17.364Z",
+  "hasDoneGate": true,
+  "hasLocalBoard": true,
+  "hasNoFakeGreen": true,
+  "hasOperatorLanes": true,
+  "hasProjectControls": true,
+  "hasTaskBoard": true,
+  "hasTriage": true,
+  "logoLoaded": true,
+  "route": "/tasks",
+  "url": "http://127.0.0.1:3110/tasks"
+}
