@@ -130,6 +130,16 @@ function extractApiKeyFromRequest(request: NextRequest): string {
   return ''
 }
 
+function isPublicInstallAsset(pathname: string): boolean {
+  return pathname === '/sw.js'
+    || pathname === '/manifest.json'
+    || pathname === '/icon-192.png'
+    || pathname === '/icon-512.png'
+    || pathname === '/mc-logo.png'
+    || pathname === '/mc.png'
+    || pathname.startsWith('/office-sprites/')
+}
+
 export function proxy(request: NextRequest) {
   // Network access control.
   // In production: default-deny unless explicitly allowed.
@@ -171,9 +181,9 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // Allow login, setup, auth API, docs, and container health probe without session
+  // Allow login, setup, auth API, static install assets, docs, and container health probe without session
   const isPublicHealthProbe = pathname === '/api/status' && request.nextUrl.searchParams.get('action') === 'health'
-  if (pathname === '/login' || pathname === '/setup' || pathname.startsWith('/api/auth/') || pathname === '/api/setup' || pathname === '/api/docs' || pathname === '/docs' || isPublicHealthProbe) {
+  if (pathname === '/login' || pathname === '/setup' || pathname.startsWith('/api/auth/') || pathname === '/api/setup' || pathname === '/api/docs' || pathname === '/docs' || isPublicHealthProbe || isPublicInstallAsset(pathname)) {
     const { response, nonce } = nextResponseWithNonce(request)
     return addSecurityHeaders(response, request, nonce)
   }
@@ -212,5 +222,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|brand/).*)']
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|brand/|office-sprites/|sw\\.js|manifest\\.json|icon-192\\.png|icon-512\\.png|mc-logo\\.png|mc\\.png).*)']
 }

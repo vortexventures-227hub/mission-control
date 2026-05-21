@@ -108,4 +108,34 @@ describe('proxy host matching', () => {
     const response = proxy(request)
     expect(response.status).toBe(401)
   })
+
+  it('allows unauthenticated static install assets so service worker registration is not redirected', async () => {
+    vi.resetModules()
+    vi.doMock('node:os', () => ({
+      default: { hostname: () => 'hetzner-jarv' },
+      hostname: () => 'hetzner-jarv',
+    }))
+
+    const { proxy } = await import('./proxy')
+    const request = {
+      headers: new Headers({ host: 'localhost:3000' }),
+      nextUrl: {
+        host: 'localhost:3000',
+        hostname: 'localhost',
+        pathname: '/sw.js',
+        searchParams: new URLSearchParams(),
+        clone: () => ({ pathname: '/sw.js' }),
+      },
+      method: 'GET',
+      cookies: { get: () => undefined },
+    } as any
+
+    setNodeEnv('production')
+    process.env.MC_ALLOWED_HOSTS = 'localhost,127.0.0.1'
+    delete process.env.MC_ALLOW_ANY_HOST
+
+    const response = proxy(request)
+    expect(response.status).not.toBe(307)
+    expect(response.headers.get('location')).toBeNull()
+  })
 })
