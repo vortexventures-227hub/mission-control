@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
 
@@ -36,10 +37,11 @@ interface AccessRequest {
   approved_user_id?: number | null
 }
 
-const roleColors: Record<string, string> = {
-  admin: 'bg-red-500/20 text-red-400',
-  operator: 'bg-blue-500/20 text-blue-400',
-  viewer: 'bg-gray-500/20 text-gray-400',
+function roleTone(role: string): 'teal' | 'purple' | 'amber' | 'rose' | 'neutral' | 'dim' {
+  if (role === 'admin') return 'rose'
+  if (role === 'operator') return 'teal'
+  if (role === 'viewer') return 'dim'
+  return 'neutral'
 }
 
 export function UserManagementPanel() {
@@ -206,68 +208,92 @@ export function UserManagementPanel() {
 
   if (currentUser?.role !== 'admin') {
     return (
-      <div className="p-8 text-center">
-        <div className="text-lg font-semibold text-foreground mb-2">{t('accessDenied')}</div>
-        <p className="text-sm text-muted-foreground">{t('adminRequired')}</p>
-      </div>
+      <Page title={t('usersTitle')} kicker="Blackwire Ops / Access Control" subtitle={t('adminRequired')}>
+        <BoundaryBanner tone="rose" title={t('accessDenied')}>
+          {t('adminRequired')}
+        </BoundaryBanner>
+      </Page>
     )
   }
 
   if (loading) {
     return (
-      <div className="p-8 text-center">
-        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse mx-auto mb-2" />
-        <span className="text-sm text-muted-foreground">{t('loadingUsers')}</span>
-      </div>
+      <Page title={t('usersTitle')} kicker="Blackwire Ops / Access Control" subtitle={t('loadingUsers')}>
+        <HudPanel>
+          <div className="flex min-h-48 items-center justify-center gap-3">
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--mc-teal)]" />
+            <span className="font-mono text-xs uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">{t('loadingUsers')}</span>
+          </div>
+        </HudPanel>
+      </Page>
     )
   }
 
   if (error) {
-    return <div className="p-8 text-center"><div className="text-sm text-red-400">{error}</div></div>
+    return (
+      <Page title={t('usersTitle')} kicker="Blackwire Ops / Access Control" subtitle={t('usersSummary', { count: users.length, pending: pendingRequests.length })}>
+        <BoundaryBanner tone="rose" title="User directory failed to load">
+          {error}
+        </BoundaryBanner>
+      </Page>
+    )
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{t('usersTitle')}</h2>
-          <p className="text-sm text-muted-foreground">{t('usersSummary', { count: users.length, pending: pendingRequests.length })}</p>
-        </div>
+    <Page
+      kicker="Blackwire Ops / Access Control"
+      title={t('usersTitle')}
+      subtitle={t('usersSummary', { count: users.length, pending: pendingRequests.length })}
+      badges={
+        <>
+          <Chip tone="amber">admin only</Chip>
+          <Chip tone="dim">local user directory</Chip>
+          {pendingRequests.length > 0 && <Chip tone="amber" pulse>{pendingRequests.length} pending</Chip>}
+        </>
+      }
+      actions={
         <Button
           onClick={() => setShowCreate(!showCreate)}
           size="sm"
+          className="border-[color:var(--mc-hairline-2)] font-mono text-[10px] uppercase tracking-[0.12em]"
         >
           {showCreate ? t('cancel') : t('addLocalUser')}
         </Button>
-      </div>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Access mutation boundary">
+          User creation, role changes, password resets, request approvals, and deletes are admin-only controls. Treat every action here as audit-sensitive.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label="Users" value={users.length} sub="approved directory" />
+          <Stat label="Pending" value={pendingRequests.length} sub="access requests" accent={pendingRequests.length > 0 ? 'amber' : 'teal'} glow={pendingRequests.length > 0} />
+          <Stat label="Admins" value={users.filter((u) => u.role === 'admin').length} sub="privileged" accent="rose" />
+          <Stat label="Google" value={users.filter((u) => u.provider === 'google').length} sub="oauth identities" accent="purple" />
+        </section>
 
       {feedback && (
-        <div className={`px-3 py-2 rounded-md text-sm border ${feedback.ok ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+        <div className={`border px-3 py-2 text-sm ${feedback.ok ? 'border-[color:var(--mc-teal)]/40 bg-[rgba(46,230,214,0.10)] text-[color:var(--mc-teal-soft)]' : 'border-[color:var(--mc-rose)]/40 bg-[rgba(255,85,119,0.10)] text-[color:var(--mc-rose)]'}`}>
           {feedback.text}
         </div>
       )}
 
       {pendingRequests.length > 0 && (
-        <div className="border border-amber-500/30 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span className="text-sm font-medium text-amber-200">
-              {t('pendingRequests', { count: pendingRequests.length })}
-            </span>
-          </div>
+        <HudPanel kicker="access gate" title={t('pendingRequests', { count: pendingRequests.length })} right={<Chip tone="amber" pulse>{pendingRequests.length} pending</Chip>} padded={false}>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full font-mono text-[11px]">
               <thead>
-                <tr className="bg-secondary/40 border-b border-border">
-                  <th className="text-left px-3 py-2 text-xs text-muted-foreground">{t('identity')}</th>
-                  <th className="text-left px-3 py-2 text-xs text-muted-foreground">{t('attempts')}</th>
-                  <th className="text-left px-3 py-2 text-xs text-muted-foreground">{t('lastAttempt')}</th>
-                  <th className="text-right px-3 py-2 text-xs text-muted-foreground">{t('action')}</th>
+                <tr className="border-b border-[color:var(--mc-hairline)] text-[color:var(--mc-ink-2)]">
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.14em]">{t('identity')}</th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.14em]">{t('attempts')}</th>
+                  <th className="px-3 py-2 text-left text-[10px] uppercase tracking-[0.14em]">{t('lastAttempt')}</th>
+                  <th className="px-3 py-2 text-right text-[10px] uppercase tracking-[0.14em]">{t('action')}</th>
                 </tr>
               </thead>
               <tbody>
                 {pendingRequests.map((req) => (
-                  <tr key={req.id} className="border-b border-border/40 last:border-0">
+                  <tr key={req.id} className="border-b border-[color:var(--mc-hairline)]/70 last:border-0">
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2.5">
                         {req.avatar_url ? (
@@ -286,13 +312,13 @@ export function UserManagementPanel() {
                           </div>
                         )}
                         <div>
-                          <div className="font-medium text-foreground">{req.display_name || req.email}</div>
-                          <div className="text-xs text-muted-foreground">{req.email}</div>
+                          <div className="font-medium text-[color:var(--mc-ink-0)]">{req.display_name || req.email}</div>
+                          <div className="text-xs text-[color:var(--mc-ink-2)]">{req.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{req.attempt_count}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{formatDate(req.last_attempt_at)}</td>
+                    <td className="px-3 py-2 text-xs text-[color:var(--mc-ink-2)]">{req.attempt_count}</td>
+                    <td className="px-3 py-2 text-xs text-[color:var(--mc-ink-2)]">{formatDate(req.last_attempt_at)}</td>
                     <td className="px-3 py-2 text-right">
                       {reviewingRequestId === req.id ? (
                         <div className="flex items-center gap-2 justify-end">
@@ -361,12 +387,12 @@ export function UserManagementPanel() {
               </tbody>
             </table>
           </div>
-        </div>
+        </HudPanel>
       )}
 
       {showCreate && (
-        <div className="p-4 rounded-lg bg-secondary/50 border border-border space-y-3">
-          <h3 className="text-sm font-medium text-foreground">{t('newLocalUser')}</h3>
+        <HudPanel kicker="local identity" title={t('newLocalUser')} glow>
+          <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <input value={createForm.username} onChange={(e) => setCreateForm((f) => ({ ...f, username: e.target.value }))} placeholder={t('username')} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground" />
             <input type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} placeholder={t('password')} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground" />
@@ -382,23 +408,24 @@ export function UserManagementPanel() {
               {creating ? t('creating') : t('createUser')}
             </Button>
           </div>
-        </div>
+          </div>
+        </HudPanel>
       )}
 
-      <div className="border border-border rounded-lg overflow-hidden">
-        <table className="w-full">
+      <HudPanel kicker="directory" title="Approved users" right={<Chip tone="dim">{users.length} records</Chip>} padded={false}>
+        <table className="w-full font-mono text-[11px]">
           <thead>
-            <tr className="bg-secondary/50 border-b border-border">
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{t('colUser')}</th>
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{t('colProvider')}</th>
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">{t('colRole')}</th>
-              <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">{t('colLastLogin')}</th>
-              <th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">{t('colActions')}</th>
+            <tr className="border-b border-[color:var(--mc-hairline)] text-[color:var(--mc-ink-2)]">
+              <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.14em]">{t('colUser')}</th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.14em]">{t('colProvider')}</th>
+              <th className="px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.14em]">{t('colRole')}</th>
+              <th className="hidden px-4 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.14em] md:table-cell">{t('colLastLogin')}</th>
+              <th className="px-4 py-2.5 text-right text-[10px] font-black uppercase tracking-[0.14em]">{t('colActions')}</th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-smooth">
+              <tr key={u.id} className="border-b border-[color:var(--mc-hairline)]/70 last:border-0 transition-colors hover:bg-[rgba(46,230,214,0.045)]">
                 {editingId === u.id ? (
                   <>
                     <td className="px-4 py-2.5">
@@ -437,18 +464,18 @@ export function UserManagementPanel() {
                           ) : u.display_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
                         </div>
                         <div>
-                          <div className="text-sm font-medium text-foreground">{u.display_name}</div>
-                          <div className="text-xs text-muted-foreground">{u.email || u.username}</div>
+                          <div className="text-sm font-medium text-[color:var(--mc-ink-0)]">{u.display_name}</div>
+                          <div className="text-xs text-[color:var(--mc-ink-2)]">{u.email || u.username}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-xs">
-                      <span className={`px-2 py-0.5 rounded-full ${u.provider === 'google' ? 'bg-blue-500/20 text-blue-300' : 'bg-gray-500/20 text-gray-300'}`}>{u.provider || 'local'}</span>
+                      <Chip tone={u.provider === 'google' ? 'purple' : 'dim'}>{u.provider || 'local'}</Chip>
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${roleColors[u.role] || ''}`}>{u.role}</span>
+                      <Chip tone={roleTone(u.role)}>{u.role}</Chip>
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground hidden md:table-cell">{formatDate(u.last_login_at)}</td>
+                    <td className="hidden px-4 py-2.5 text-xs text-[color:var(--mc-ink-2)] md:table-cell">{formatDate(u.last_login_at)}</td>
                     <td className="px-4 py-2.5 text-right space-x-2">
                       <Button onClick={() => startEdit(u)} variant="outline" size="xs">{t('edit')}</Button>
                       {u.id !== currentUser?.id && (
@@ -461,7 +488,8 @@ export function UserManagementPanel() {
             ))}
           </tbody>
         </table>
+      </HudPanel>
       </div>
-    </div>
+    </Page>
   )
 }
