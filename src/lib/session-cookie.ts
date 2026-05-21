@@ -37,7 +37,7 @@ function isPlainLocalRequest(requestUrl?: string): boolean {
   if (!requestUrl) return false
   try {
     const url = new URL(requestUrl)
-    return url.protocol === 'http:' && ['127.0.0.1', 'localhost', '::1'].includes(url.hostname)
+    return url.protocol === 'http:' && ['127.0.0.1', 'localhost', '::1', '0.0.0.0'].includes(url.hostname)
   } catch {
     return false
   }

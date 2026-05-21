@@ -400,21 +400,17 @@ export default function Home() {
       </a>
 
       {/* Left: Icon rail navigation (hidden on mobile, shown as bottom bar instead) */}
-      {!showOnboarding && <NavRail />}
+      <NavRail />
 
       {/* Center: Header + Content */}
       <div className="flex-1 flex flex-col min-w-0 bg-black/20">
-        {!showOnboarding && (
+        <HeaderBar />
+        {!showOnboarding && !commercialCapture && (
           <>
-            <HeaderBar />
-            {!commercialCapture && (
-              <>
-                <LocalModeBanner />
-                <UpdateBanner />
-                <OpenClawUpdateBanner />
-                <OpenClawDoctorBanner />
-              </>
-            )}
+            <LocalModeBanner />
+            <UpdateBanner />
+            <OpenClawUpdateBanner />
+            <OpenClawDoctorBanner />
           </>
         )}
         <main
@@ -476,7 +472,7 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'command-truth', 'agents', 'tasks', 'group-chat', 'knowledge-intake', 'exec-approvals', 'brain-memory', 'research-command', 'asset-library', 'chat', 'activity', 'logs', 'settings',
+  'overview', 'mission-control', 'command-truth', 'agents', 'tasks', 'group-chat', 'rooms/blackwire-ops', 'tracker', 'knowledge-intake', 'exec-approvals', 'expenses', 'ledger', 'brain-memory', 'research-command', 'asset-library', 'security-command', 'chat', 'activity', 'logs', 'settings',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {

@@ -49,4 +49,16 @@ describe('getMcSessionCookieOptions', () => {
     })
     expect(options.secure).toBe(false)
   })
+
+  it('keeps plain 0.0.0.0 bind cookies usable for local next start proof', () => {
+    env.NODE_ENV = 'production'
+    env.MC_COOKIE_SECURE = '1'
+
+    const options = getMcSessionCookieOptions({
+      maxAgeSeconds: 60,
+      isSecureRequest: false,
+      requestUrl: 'http://0.0.0.0:3110/api/auth/login',
+    })
+    expect(options.secure).toBe(false)
+  })
 })
