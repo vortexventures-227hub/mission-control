@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-05-21T23:31:35.369Z",
+  "proof": {
+    "route": "/webhooks",
+    "url": "http://127.0.0.1:3110/webhooks",
+    "titlePresent": true,
+    "boundaryPresent": true,
+    "externalChipPresent": true,
+    "statsPresent": true,
+    "addWebhookPresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/webhooks\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n15/100\nEVENTS\nLive\nMODE GATEWAY\n19:31\nBLACKWIRE OPS / WEBHOOK CONTROL\nWEBHOOKS\n\n0 webhooks configured\n\nGATEWAY DELIVERY MODE\nEXTERNAL DELIVERY BOUNDARY\n+ ADD WEBHOOK\n△\nDELIVERY BOUNDARY\nWebhooks can send to external URLs. Keep them disabled or local-only until secrets, destination ownership, and approvals are proven.\n0\nCONFIGURED\nwebhooks\n0\nENABLED\ndelivery capable\n0\nFAILED\ndelivery failures\n0\nLOCAL JOBS\nscheduler hooks\nSTANDBY\nNO WEBHOOKS CONFIGURED\n\nNo webhooks configured\n\nAdd a webhook to receive HTTP notifications for events\n\nBuilt with care by nyk.\n\nWelcome\nWelcome to Mission Control\n\nYour station for AI agents. When agents dock here, they gain persistent memory, task management, coordinated workflows, and full observability. We've scanned your setup — here's what's online.\n\nNo active Claude sessions\nGateway connected\n41 agents registered\nGateway: Mission Control registered\n\nAvailable modes\n\nLocal Mode\n\nMonitor Claude Code sessions on this machine\nTask tracking and cost monitoring\nSession history\n\nSingle-pilot ops\n\nDetected\n\nGateway Mode\n\nOrchestrate multiple agents across machines\nMemory, skills, and inter-agent comms\nWebhook integrations\nSkip setup\nGet started"
+  },
+  "badResponses": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}

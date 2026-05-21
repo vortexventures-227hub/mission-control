@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { useSmartPoll } from '@/lib/use-smart-poll'
 import { useMissionControl } from '@/store'
@@ -210,33 +211,53 @@ export function WebhookPanel() {
     })
   }
 
+  const enabledCount = webhooks.filter((wh) => wh.enabled).length
+  const failedDeliveries = webhooks.reduce((sum, wh) => sum + wh.failed_deliveries, 0)
+
   return (
-    <div className="p-5 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t('configured', { count: webhooks.length })}
-          </p>
-        </div>
+    <Page
+      kicker="Blackwire Ops / Webhook Control"
+      title={t('title')}
+      subtitle={t('configured', { count: webhooks.length })}
+      badges={
+        <>
+          <Chip tone={isLocalMode ? 'teal' : 'amber'}>{isLocalMode ? 'local automation mode' : 'gateway delivery mode'}</Chip>
+          <Chip tone="amber">external delivery boundary</Chip>
+          {failedDeliveries > 0 && <Chip tone="rose" pulse>{failedDeliveries} failed</Chip>}
+        </>
+      }
+      actions={
         <Button
           onClick={() => setShowCreate(true)}
           size="sm"
+          className="border-[color:var(--mc-hairline-2)] font-mono text-[10px] uppercase tracking-[0.12em]"
         >
           {t('addWebhook')}
         </Button>
-      </div>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Delivery boundary">
+          Webhooks can send to external URLs. Keep them disabled or local-only until secrets, destination ownership, and approvals are proven.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label="Configured" value={webhooks.length} sub="webhooks" />
+          <Stat label="Enabled" value={enabledCount} sub="delivery capable" accent={enabledCount > 0 ? 'amber' : 'dim'} glow={enabledCount > 0} />
+          <Stat label="Failed" value={failedDeliveries} sub="delivery failures" accent={failedDeliveries > 0 ? 'rose' : 'teal'} glow={failedDeliveries > 0} />
+          <Stat label="Local Jobs" value={webhookAutomations.length} sub="scheduler hooks" accent={webhookAutomations.length > 0 ? 'teal' : 'dim'} />
+        </section>
 
       {error && (
-        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2">
+        <div className="border border-[color:var(--mc-rose)]/40 bg-[rgba(255,85,119,0.10)] px-3 py-2 text-xs text-[color:var(--mc-rose)]">
           {error}
         </div>
       )}
 
       {/* Secret reveal (after creation) */}
       {newSecret && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-2">
+        <HudPanel kicker="secret generated" title={t('secretLabel')} glow>
+          <div className="space-y-2">
           <p className="text-xs font-semibold text-amber-400">{t('secretLabel')}</p>
           <code className="block text-xs font-mono bg-secondary rounded px-2 py-1.5 text-foreground break-all select-all">
             {newSecret}
@@ -248,14 +269,13 @@ export function WebhookPanel() {
           >
             {t('dismiss')}
           </Button>
-        </div>
+          </div>
+        </HudPanel>
       )}
 
       {/* Test result */}
       {testResult && (
-        <div className={`rounded-lg border p-3 space-y-1 ${
-          testResult.success ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'
-        }`}>
+        <HudPanel kicker="delivery test" title={testResult.success ? t('testSuccessful') : t('testFailed')}>
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold">
               {testResult.success ? (
@@ -273,7 +293,7 @@ export function WebhookPanel() {
             {testResult.duration_ms && <p>{t('testDuration')} <span className="font-mono">{testResult.duration_ms}ms</span></p>}
             {testResult.error && <p className="text-red-400">{t('testError')} {testResult.error}</p>}
           </div>
-        </div>
+        </HudPanel>
       )}
 
       {/* Create form */}
@@ -287,8 +307,7 @@ export function WebhookPanel() {
       {/* Webhook list */}
       <div className="space-y-2">
         {isLocalMode && webhookAutomations.length > 0 && (
-          <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3">
-            <h3 className="text-sm font-semibold text-cyan-200">{t('localAutomations')}</h3>
+          <HudPanel kicker="local scheduler" title={t('localAutomations')} right={<Chip tone="teal">{webhookAutomations.length} jobs</Chip>}>
             <p className="text-2xs text-cyan-300/80 mt-0.5 mb-2">
               {t('localAutomationsDesc')}
             </p>
@@ -320,7 +339,7 @@ export function WebhookPanel() {
                 </div>
               ))}
             </div>
-          </div>
+          </HudPanel>
         )}
 
         {loading && webhooks.length === 0 ? (
@@ -328,19 +347,19 @@ export function WebhookPanel() {
             {[...Array(3)].map((_, i) => <div key={i} className="h-16 rounded-lg shimmer" />)}
           </div>
         ) : webhooks.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className="text-xs text-muted-foreground">{t('noWebhooks')}</p>
-            <p className="text-2xs text-muted-foreground/60 mt-1">
+          <HudPanel kicker="standby" title={t('noWebhooks')}>
+            <div className="py-10 text-center">
+            <p className="text-xs text-[color:var(--mc-ink-2)]">{t('noWebhooks')}</p>
+            <p className="mt-1 text-2xs text-[color:var(--mc-ink-3)]">
               {t('noWebhooksDesc')}
             </p>
-          </div>
+            </div>
+          </HudPanel>
         ) : (
           webhooks.map((wh) => (
-            <div
+            <HudPanel
               key={wh.id}
-              className={`rounded-lg border p-3 transition-smooth ${
-                selectedWebhook === wh.id ? 'border-primary/40 bg-primary/5' : 'border-border'
-              }`}
+              className={selectedWebhook === wh.id ? 'mc-bevel-glow' : ''}
             >
               <div className="flex items-start justify-between gap-3">
                 <div
@@ -349,9 +368,10 @@ export function WebhookPanel() {
                 >
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${wh.enabled ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
-                    <span className="text-sm font-medium text-foreground">{wh.name}</span>
+                    <span className="font-mono text-sm font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{wh.name}</span>
+                    <Chip tone={wh.enabled ? 'amber' : 'dim'}>{wh.enabled ? 'enabled' : 'disabled'}</Chip>
                     {wh.last_status !== null && (
-                      <span className={`text-2xs font-mono px-1.5 py-0.5 rounded ${
+                      <span className={`text-2xs font-mono px-1.5 py-0.5 ${
                         wh.last_status >= 200 && wh.last_status < 300
                           ? 'bg-green-500/10 text-green-400'
                           : 'bg-red-500/10 text-red-400'
@@ -447,11 +467,12 @@ export function WebhookPanel() {
                   )}
                 </div>
               )}
-            </div>
+            </HudPanel>
           ))
         )}
       </div>
-    </div>
+      </div>
+    </Page>
   )
 }
 
@@ -480,8 +501,8 @@ function CreateWebhookForm({
   }
 
   return (
-    <div className="rounded-lg border border-border p-4 space-y-3">
-      <h3 className="text-sm font-semibold text-foreground">{t('newWebhook')}</h3>
+    <HudPanel kicker="external destination" title={t('newWebhook')} glow>
+      <div className="space-y-3">
 
       <div>
         <label className="block text-xs text-muted-foreground mb-1">{t('formName')}</label>
@@ -540,6 +561,7 @@ function CreateWebhookForm({
           {t('createWebhook')}
         </Button>
       </div>
-    </div>
+      </div>
+    </HudPanel>
   )
 }
