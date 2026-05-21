@@ -538,7 +538,6 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'command-truth':
       return <CommandTruthPanel />
     case 'mission-control':
-    case 'security-command':
     case 'research-command':
     case 'automation-command':
     case 'trading':
@@ -637,6 +636,7 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'nodes':
       if (isLocal) return <LocalModeUnavailable panel={tab} />
       return <NodesPanel />
+    case 'security-command':
     case 'security':
       return <SecurityCommandCenterPanel />
     case 'debug':

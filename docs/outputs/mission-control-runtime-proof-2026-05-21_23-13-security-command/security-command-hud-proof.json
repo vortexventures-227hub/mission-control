@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-05-21T23:13:43.554Z",
+  "proof": {
+    "route": "/security-command",
+    "url": "http://127.0.0.1:3110/security-command",
+    "titlePresent": true,
+    "proofGatePresent": true,
+    "localBoundaryPresent": true,
+    "findingsPresent": true,
+    "hooksPresent": true,
+    "commandTruthLinkPresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/security-command\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n15/100\nEVENTS\nLive\nMODE GATEWAY\n19:13\nBLACKWIRE OPS / PROOF GATES\nSECURITY CENTER\n\nLocal security posture, unresolved findings, missing instrumentation, accountable owners, and evidence paths. No system is promoted to green without receipts.\n\nWATCH\nLOCAL ONLY\nWRITES REQUIRE AUDIT\nREFRESH\nCOMMAND TRUTH\n△\nNO FAKE GREEN\nMissing hooks stay Not Instrumented Yet, unresolved findings stay open, and resolved status is rejected unless an evidence path exists.\n4\nSYSTEMS\ntracked surfaces\n3\nOPEN FINDINGS\nneeds owner proof\n6\nAUDIT HOOKS\ndaily + periodic\n3\nNOT INSTRUMENTED\ncannot be green\n0\nCRITICAL\nseverity gate\n1\nHIGH\nlaunch blocker\nPOSTURE MATRIX\nSYSTEM ACCOUNTABILITY\n4 ROWS\nBLACKWIRE OPS COORDINATION\n\n@HERM ACCOUNTABLE\n\nWATCH\n\nAudit: May 2, 10:43 AM\n\nDeps: Not Instrumented Yet\n\nSecrets: Not Instrumented Yet\n\nAuth: Not Instrumented Yet\n\nPath drift: May 2, 10:43 AM\n\nKeep tracker/receipts evidence-gated; no green without proof.\n\n/Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/HANDOFF.md\n\nDaily audit gate: Last audit receipt timestamp is present; evidence path: /Users/vortexventures/Desktop/Vortex Ventures/VVKodaOps/HANDOFF.md.\nSecret/dependency scan gate: Evidence Missing: secret/dependency scan receip"
+  },
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}
