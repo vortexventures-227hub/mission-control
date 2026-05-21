@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { useMissionControl, type ExecApprovalRequest } from '@/store'
 import { useWebSocket } from '@/lib/websocket'
@@ -106,63 +107,68 @@ export function ExecApprovalPanel() {
   }
 
   return (
-    <div className="m-4">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-          {pendingCount > 0 && (
-            <span className="inline-flex items-center rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-medium text-red-400 animate-pulse">
-              {t('pendingBadge', { count: pendingCount })}
-            </span>
-          )}
+    <Page
+      kicker="APPROVALS / EXECUTION GATE"
+      title={t('title')}
+      subtitle="Approval and receipt truth for commands that may cross a boundary. Local rows remain proof/read-only unless the execution gateway is reachable and the operator approves."
+      badges={(
+        <>
+          <Chip tone={approvalSource === 'local-read-only' ? 'amber' : 'teal'}>{approvalSource === 'local-read-only' ? 'LOCAL READ-ONLY' : t('realtimeLabel')}</Chip>
+          <Chip tone={pendingCount > 0 ? 'rose' : 'teal'} pulse={pendingCount > 0}>{t('pendingBadge', { count: pendingCount })}</Chip>
+          <Chip tone="rose">NO SILENT EXECUTION</Chip>
+        </>
+      )}
+    >
+      <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Pending" value={pendingCount} accent={pendingCount ? 'rose' : 'teal'} glow={pendingCount > 0} />
+        <Stat label="Visible Rows" value={displayApprovals.length} accent="purple" />
+        <Stat label="Source" value={approvalSource === 'local-read-only' ? 'LOCAL' : approvalSource.toUpperCase()} accent={approvalSource === 'local-read-only' ? 'amber' : 'teal'} />
+        <Stat label="View" value={view.toUpperCase()} accent="teal" />
+      </div>
+
+      <BoundaryBanner tone={loadError ? 'rose' : 'amber'} title="Local MVP boundary">
+        This panel is visible in local mode for approval/receipt truth. Gateway approvals can be resolved only when the execution gateway is reachable; local rows are proof/read-only and do not trigger external execution.
+        {loadError ? ` Load warning: ${loadError}` : ''}
+      </BoundaryBanner>
+
+      <HudPanel kicker="CONTROL" title="Approval view">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setView('approvals')}
+            className={`mc-btn-glitch inline-flex border px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${
+              view === 'approvals'
+                ? 'border-[color:var(--mc-teal)]/60 bg-[rgba(46,230,214,0.13)] text-[color:var(--mc-teal-soft)]'
+                : 'border-[color:var(--mc-hairline-2)] bg-white/[0.035] text-[color:var(--mc-ink-2)] hover:border-[color:var(--mc-teal)]/45 hover:text-[color:var(--mc-teal-soft)]'
+            }`}
+          >
+            {t('viewApprovals')}
+          </button>
+          <button
+            onClick={() => setView('allowlist')}
+            className={`mc-btn-glitch inline-flex border px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${
+              view === 'allowlist'
+                ? 'border-[color:var(--mc-teal)]/60 bg-[rgba(46,230,214,0.13)] text-[color:var(--mc-teal-soft)]'
+                : 'border-[color:var(--mc-hairline-2)] bg-white/[0.035] text-[color:var(--mc-ink-2)] hover:border-[color:var(--mc-teal)]/45 hover:text-[color:var(--mc-teal-soft)]'
+            }`}
+          >
+            {t('viewAllowlist')}
+          </button>
         </div>
-        <span className="text-xs text-muted-foreground">
-          {approvalSource === 'local-read-only' ? 'Local read-only receipts' : t('realtimeLabel')}
-        </span>
-      </div>
-
-      <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">
-        <strong>Local MVP boundary:</strong> this panel is visible in local mode for approval/receipt truth. Gateway approvals can be resolved only when the execution gateway is reachable; local rows are proof/read-only and do not trigger external execution.
-        {loadError ? <span className="ml-2 text-red-200">Load warning: {loadError}</span> : null}
-      </div>
-
-      {/* View toggle */}
-      <div className="flex gap-1 mb-4 border-b border-border">
-        <button
-          onClick={() => setView('approvals')}
-          className={`px-3 py-1.5 text-sm transition-colors ${
-            view === 'approvals'
-              ? 'text-foreground border-b-2 border-foreground'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {t('viewApprovals')}
-        </button>
-        <button
-          onClick={() => setView('allowlist')}
-          className={`px-3 py-1.5 text-sm transition-colors ${
-            view === 'allowlist'
-              ? 'text-foreground border-b-2 border-foreground'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          {t('viewAllowlist')}
-        </button>
-      </div>
+      </HudPanel>
 
       {view === 'approvals' ? (
         <>
           {/* Filter tabs */}
-          <div className="flex gap-1 mb-4">
+          <div className="flex flex-wrap gap-2">
             {(['all', 'pending', 'resolved'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setFilter(tab)}
-                className={`px-2.5 py-1 text-xs rounded capitalize transition-colors ${
+                className={`border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] transition-colors ${
                   filter === tab
-                    ? 'bg-secondary text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? 'border-[color:var(--mc-teal)]/55 bg-[rgba(46,230,214,0.11)] text-[color:var(--mc-teal-soft)]'
+                    : 'border-[color:var(--mc-hairline-2)] bg-white/[0.035] text-[color:var(--mc-ink-2)] hover:text-[color:var(--mc-ink-0)]'
                 }`}
               >
                 {t(`filter${tab.charAt(0).toUpperCase() + tab.slice(1)}` as 'filterAll' | 'filterPending' | 'filterResolved')}
@@ -193,7 +199,8 @@ export function ExecApprovalPanel() {
       ) : (
         <AllowlistEditor execApprovals={execApprovals} />
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 
