@@ -44,7 +44,7 @@ const QUICK_NAV_COMMANDS: Array<{ panel: string; titleKey: string; title: string
 ]
 
 export function HeaderBar() {
-  const { connection, sessions, unreadNotificationCount, activeTenant, activeProject, dashboardMode } = useMissionControl()
+  const { activeTab, connection, sessions, unreadNotificationCount, activeTenant, activeProject, dashboardMode } = useMissionControl()
   const { isConnected, reconnect } = useWebSocket()
   const navigateToPanel = useNavigateToPanel()
   const prefetchPanel = usePrefetchPanel()
@@ -295,11 +295,29 @@ export function HeaderBar() {
     pipeline: 'bg-indigo-500/20 text-indigo-400',
   }
 
+  const routeLabel = activeTab === 'overview' ? '/' : `/${activeTab}`
+
   return (
-    <header role="banner" aria-label="Application header" className="relative z-50 h-14 bg-card/80 backdrop-blur-sm border-b border-border px-3 md:px-4 shrink-0">
+    <header
+      role="banner"
+      aria-label="Application header"
+      className="relative z-50 h-[66px] shrink-0 border-b border-[color:var(--mc-hairline)] bg-[rgba(5,8,10,0.92)] px-3 font-mono text-[color:var(--mc-ink-1)] backdrop-blur-xl md:px-4"
+    >
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[color:var(--mc-teal)]/45 to-transparent" />
       <div className="h-full flex items-center gap-2 md:gap-3">
         {/* Left: Page title + context */}
         <div className="flex min-w-0 items-center gap-2.5 shrink-0">
+          <div className="hidden lg:flex items-center gap-2 border border-[color:var(--mc-hairline)] bg-black/20 px-2.5 py-2">
+            <span className="mc-led h-2 w-2 rounded-full bg-[color:var(--mc-teal)] shadow-[0_0_14px_var(--mc-teal)]" />
+            <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--mc-ink-0)]">
+              GW
+            </span>
+            <span className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
+              {dashboardMode === 'local' ? 'LOCAL' : 'GATEWAY'}
+            </span>
+            <span className="text-[color:var(--mc-ink-3)]">·</span>
+            <span className="max-w-[150px] truncate text-[11px] text-[color:var(--mc-ink-1)]">{routeLabel}</span>
+          </div>
           {activeProject ? (
             <Button
               variant="outline"
@@ -331,15 +349,15 @@ export function HeaderBar() {
             variant="outline"
             size="sm"
             onClick={openCommandPalette}
-            className="h-10 w-full justify-between bg-secondary/35 hover:border-primary/40 hover:bg-secondary/50 px-3"
+            className="h-10 w-full justify-between rounded-none border-[color:var(--mc-hairline)] bg-black/35 px-3 font-mono hover:border-[color:var(--mc-teal)]/50 hover:bg-[rgba(46,230,214,0.055)]"
           >
             <span className="flex items-center gap-2 min-w-0">
               <SearchIcon />
-              <span className="truncate text-sm text-muted-foreground">{th('jumpToSearch')}</span>
+              <span className="truncate text-xs uppercase tracking-[0.08em] text-[color:var(--mc-ink-2)]">{th('jumpToSearch')}</span>
             </span>
             <span className="hidden xl:flex items-center gap-1 ml-2 shrink-0">
-              <kbd className="text-2xs px-1.5 py-0.5 rounded bg-muted border border-border font-mono">&#8984;K</kbd>
-              <kbd className="text-2xs px-1.5 py-0.5 rounded bg-muted border border-border font-mono">/</kbd>
+              <kbd className="border border-[color:var(--mc-hairline-2)] bg-black/50 px-1.5 py-0.5 text-2xs font-mono text-[color:var(--mc-ink-1)]">&#8984;K</kbd>
+              <kbd className="border border-[color:var(--mc-hairline-2)] bg-black/50 px-1.5 py-0.5 text-2xs font-mono text-[color:var(--mc-ink-1)]">/</kbd>
             </span>
           </Button>
         </div>
@@ -350,6 +368,9 @@ export function HeaderBar() {
             <Stat label={th('sessions')} value={`${activeSessions}/${sessions.length}`} />
             <NavigationLatencyStat />
             <SseBadge connected={connection.sseConnected ?? false} />
+            <span className="border border-[color:var(--mc-amber)]/40 bg-[rgba(245,165,36,0.08)] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--mc-amber)]">
+              Mode {dashboardMode === 'local' ? 'Local-only' : 'Gateway'}
+            </span>
             <DigitalClock />
           </div>
 
@@ -471,9 +492,9 @@ function ModeBadge({
 
   if (isLocal) {
     return (
-      <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-2xs bg-void-cyan/10 border border-void-cyan/25">
-        <span className="w-1.5 h-1.5 rounded-full bg-void-cyan" />
-        <span className="font-medium text-void-cyan">{th('local')}</span>
+      <div className="flex items-center gap-1.5 border border-[color:var(--mc-teal)]/30 bg-[rgba(46,230,214,0.08)] px-2 py-1 text-2xs">
+        <span className="mc-led h-1.5 w-1.5 rounded-full bg-[color:var(--mc-teal)] shadow-[0_0_10px_var(--mc-teal)]" />
+        <span className="font-mono font-bold uppercase tracking-[0.12em] text-[color:var(--mc-teal-soft)]">{th('local')}</span>
       </div>
     )
   }
@@ -573,12 +594,12 @@ function ModeBadge({
 }
 
 function Stat({ label, value, status }: { label: string; value: string; status?: 'success' | 'error' | 'warning' }) {
-  const statusColor = status === 'success' ? 'text-green-400' : status === 'error' ? 'text-red-400' : status === 'warning' ? 'text-amber-400' : 'text-foreground'
+  const statusColor = status === 'success' ? 'text-[color:var(--mc-teal-soft)]' : status === 'error' ? 'text-[color:var(--mc-rose)]' : status === 'warning' ? 'text-[color:var(--mc-amber)]' : 'text-[color:var(--mc-ink-0)]'
 
   return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`font-medium font-mono-tight ${statusColor}`}>{value}</span>
+    <div className="flex items-center gap-1.5 border-l border-[color:var(--mc-hairline)] pl-3 text-xs">
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">{label}</span>
+      <span className={`font-mono text-[11px] font-bold ${statusColor}`}>{value}</span>
     </div>
   )
 }
@@ -611,10 +632,10 @@ function NavigationLatencyStat() {
 function SseBadge({ connected }: { connected: boolean }) {
   const th = useTranslations('header')
   return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <span className="text-muted-foreground">{th('events')}</span>
-      <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-blue-500' : 'bg-muted-foreground/30'}`} />
-      <span className={`font-medium font-mono-tight ${connected ? 'text-blue-400' : 'text-muted-foreground'}`}>
+    <div className="flex items-center gap-1.5 border-l border-[color:var(--mc-hairline)] pl-3 text-xs">
+      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">{th('events')}</span>
+      <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'mc-led bg-[color:var(--mc-teal)] shadow-[0_0_10px_var(--mc-teal)]' : 'bg-[color:var(--mc-ink-3)]'}`} />
+      <span className={`font-mono text-[11px] font-bold ${connected ? 'text-[color:var(--mc-teal-soft)]' : 'text-[color:var(--mc-ink-3)]'}`}>
         {connected ? th('live') : th('off')}
       </span>
     </div>

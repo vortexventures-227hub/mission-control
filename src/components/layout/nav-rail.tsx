@@ -394,16 +394,16 @@ export function NavRail() {
                               onClick={() => { navigateToPanel(item.id); if (!isParentExpanded) toggleParent(item.id) }}
                               onMouseEnter={() => { prefetchPanel(item.id); item.children?.forEach(child => prefetchPanel(child.id)) }}
                               onFocus={() => item.children?.forEach(child => prefetchPanel(child.id))}
-                              className={`flex-1 flex items-center gap-2 px-2 py-1.5 h-auto rounded-lg rounded-r-none text-left justify-start relative ${
+                              className={`flex-1 flex items-center gap-2 px-2 py-1.5 h-auto rounded-none text-left justify-start relative font-mono ${
                                 activeTab === item.id
-                                  ? 'bg-primary/15 text-primary hover:bg-primary/20'
+                                  ? 'bg-[rgba(46,230,214,0.12)] text-[color:var(--mc-teal-soft)] hover:bg-[rgba(46,230,214,0.16)]'
                                   : childActive && !isParentExpanded
-                                    ? 'bg-primary/10 text-primary/80 hover:bg-primary/15'
+                                    ? 'bg-[rgba(46,230,214,0.08)] text-[color:var(--mc-teal-soft)] hover:bg-[rgba(46,230,214,0.12)]'
                                     : ''
                               }`}
                             >
                               {activeTab === item.id && (
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-primary rounded-r-full" />
+                                <div className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 bg-[color:var(--mc-teal)] shadow-[0_0_12px_var(--mc-teal)]" />
                               )}
                               <div className="w-5 h-5 shrink-0">{item.icon}</div>
                               <span className="text-sm truncate flex-1">{item.label}</span>
@@ -542,19 +542,19 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
         onMouseEnter={onPrefetch}
         onFocus={onPrefetch}
         aria-current={active ? 'page' : undefined}
-        className={`w-full flex items-center gap-2 px-2 h-auto rounded-lg text-left justify-start relative ${
+        className={`w-full flex items-center gap-2 px-2 h-auto rounded-none text-left justify-start relative font-mono ${
           nested ? 'py-1' : 'py-1.5'
         } ${
           active
-            ? 'bg-primary/15 text-primary hover:bg-primary/20'
+            ? 'bg-[rgba(46,230,214,0.12)] text-[color:var(--mc-teal-soft)] hover:bg-[rgba(46,230,214,0.16)]'
             : ''
         }`}
       >
         {active && (
-          <span className="absolute left-0 w-0.5 h-5 bg-void-cyan rounded-r glow-cyan" />
+          <span className="absolute left-0 h-5 w-0.5 bg-[color:var(--mc-teal)] shadow-[0_0_12px_var(--mc-teal)]" />
         )}
         <div className={`shrink-0 ${nested ? 'w-4 h-4' : 'w-5 h-5'}`}>{item.icon}</div>
-        <span className={`truncate ${nested ? 'text-xs' : 'text-sm'}`}>{item.label}</span>
+        <span className={`truncate uppercase tracking-[0.04em] ${nested ? 'text-xs' : 'text-sm'}`}>{item.label}</span>
       </Button>
     )
   }
@@ -568,9 +568,9 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
       onFocus={onPrefetch}
       title={item.label}
       aria-current={active ? 'page' : undefined}
-      className={`rounded-lg group relative ${
+      className={`group relative rounded-none ${
         active
-          ? 'bg-primary/15 text-primary hover:bg-primary/20'
+          ? 'bg-[rgba(46,230,214,0.12)] text-[color:var(--mc-teal-soft)] hover:bg-[rgba(46,230,214,0.16)]'
           : ''
       }`}
     >
@@ -581,7 +581,7 @@ function NavButton({ item, active, expanded, onClick, onPrefetch, nested }: {
       </span>
       {/* Active indicator */}
       {active && (
-        <span className="absolute left-0 w-0.5 h-5 bg-primary rounded-r" />
+        <span className="absolute left-0 h-5 w-0.5 bg-[color:var(--mc-teal)] shadow-[0_0_12px_var(--mc-teal)]" />
       )}
     </Button>
   )

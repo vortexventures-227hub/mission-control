@@ -394,7 +394,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="mc-surface flex h-screen overflow-hidden">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:top-2 focus:left-2 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md focus:text-sm focus:font-medium">
         {tc('skipToMainContent')}
       </a>
@@ -403,7 +403,7 @@ export default function Home() {
       {!showOnboarding && <NavRail />}
 
       {/* Center: Header + Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-black/20">
         {!showOnboarding && (
           <>
             <HeaderBar />
