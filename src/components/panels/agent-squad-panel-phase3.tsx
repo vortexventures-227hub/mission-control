@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useSmartPoll } from '@/lib/use-smart-poll'
@@ -336,38 +337,40 @@ export function AgentSquadPanelPhase3() {
     acc[agent.status] = (acc[agent.status] || 0) + 1
     return acc
   }, {} as Record<string, number>)
+  const activeHeartbeatCount = agents.filter(hasRecentHeartbeat).length
+  const activeAgentCount = agents.filter(isAgentActive).length
+  const hiddenAgentCount = agents.filter((agent) => agent.hidden).length
+  const errorAgentCount = statusCounts.error || 0
 
   if (loading && agents.length === 0) {
-    return <Loader variant="panel" label="Loading agents" />
+    return (
+      <Page
+        kicker="AGENTS / LOAD"
+        title={t('title')}
+        subtitle="Hydrating the local fleet roster, heartbeat proof, task counts, and agent command links."
+        badges={<Chip tone="teal" pulse>LOCAL ROSTER</Chip>}
+      >
+        <HudPanel title="Loading agents" glow>
+          <Loader variant="panel" label="Loading agents" />
+        </HudPanel>
+      </Page>
+    )
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
-          
-          {/* Status Summary */}
-          <div className="flex gap-2 text-sm">
-            {Object.entries(statusCounts).map(([status, count]) => (
-              <div key={status} className="flex items-center gap-1">
-                <div className={`w-2 h-2 rounded-full ${statusColors[status]}`}></div>
-                <span className="text-muted-foreground">{count}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Active Heartbeats Indicator */}
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
-            <span className="text-sm text-muted-foreground">
-              {t('activeHeartbeats', { count: agents.filter(hasRecentHeartbeat).length })}
-            </span>
-          </div>
-        </div>
-        
-        <div className="flex gap-2">
+    <Page
+      kicker="AGENTS / FLEET ROSTER"
+      title={t('title')}
+      subtitle="Local agent registry, heartbeat proof, task pressure, and command links for the Blackwire operator floor. Status is local truth until backed by receipts."
+      badges={(
+        <>
+          <Chip tone="teal" pulse>LOCAL ROSTER</Chip>
+          <Chip tone="amber">HEARTBEAT IS NOT DELIVERY</Chip>
+          <Chip tone="rose">DONE NEEDS RECEIPTS</Chip>
+        </>
+      )}
+      actions={(
+        <>
           <Button
             onClick={() => setAutoRefresh(!autoRefresh)}
             variant={autoRefresh ? 'success' : 'secondary'}
@@ -411,48 +414,62 @@ export function AgentSquadPanelPhase3() {
           >
             {t('refresh')}
           </Button>
+        </>
+      )}
+    >
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Stat label="Registered" value={agents.length} sub="local agent rows" accent="teal" glow />
+          <Stat label="Active" value={activeAgentCount} sub="idle or working" accent="teal" />
+          <Stat label="Heartbeats" value={activeHeartbeatCount} sub={t('activeHeartbeats', { count: activeHeartbeatCount })} accent="purple" />
+          <Stat label="Errors" value={errorAgentCount} sub="requires operator look" accent="rose" glow={errorAgentCount > 0} />
+          <Stat label="Hidden" value={hiddenAgentCount} sub="suppressed from default roster" accent="dim" />
         </div>
-      </div>
 
       {/* Sync Toast */}
       {syncToast && (
-        <div className={`p-3 m-4 rounded-lg text-sm ${syncToast.includes('failed') ? 'bg-red-500/10 border border-red-500/20 text-red-400' : 'bg-green-500/10 border border-green-500/20 text-green-400'}`}>
+        <BoundaryBanner tone={syncToast.includes('failed') ? 'rose' : 'teal'} title={syncToast.includes('failed') ? 'Sync Failed' : 'Sync Complete'}>
           {syncToast}
-        </div>
+        </BoundaryBanner>
       )}
 
-      <div className="mx-4 mt-4 grid gap-3 rounded-xl border border-border/70 bg-surface-0/70 p-3 text-xs text-muted-foreground sm:grid-cols-3">
-        <div>
-          <div className="font-semibold uppercase tracking-[0.14em] text-foreground">Roster truth</div>
-          <p className="mt-1">Status is Mission Control local DB plus recent heartbeat proof; it is not external delivery proof.</p>
-        </div>
-        <div>
-          <div className="font-semibold uppercase tracking-[0.14em] text-foreground">Current work</div>
-          <p className="mt-1">Cards show task counts and last activity so idle/active agents are not just colored dots.</p>
-        </div>
-        <div>
-          <div className="font-semibold uppercase tracking-[0.14em] text-foreground">Proof boundary</div>
-          <p className="mt-1">Use Group Chat, receipts, and task evidence before treating work as Done.</p>
-        </div>
-      </div>
+        <HudPanel kicker="TRUTH BOUNDARY" title="Roster Read Rules">
+          <div className="grid gap-3 text-xs leading-5 text-[color:var(--mc-ink-1)] sm:grid-cols-3">
+            <div>
+              <div className="font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">Roster truth</div>
+              <p className="mt-1">Status is Mission Control local DB plus recent heartbeat proof; it is not external delivery proof.</p>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">Current work</div>
+              <p className="mt-1">Cards show task counts and last activity so idle/active agents are not just colored dots.</p>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">Proof boundary</div>
+              <p className="mt-1">Use Group Chat, receipts, and task evidence before treating work as Done.</p>
+            </div>
+          </div>
+        </HudPanel>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 m-4 rounded-lg text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <Button
-            onClick={() => setError(null)}
-            variant="ghost"
-            size="icon-sm"
-            className="text-red-400/60 hover:text-red-400 ml-2"
-          >
-            ×
-          </Button>
-        </div>
+        <BoundaryBanner tone="rose" title="Agent Runtime Warning">
+          <div className="flex items-center justify-between gap-3">
+            <span>{error}</span>
+            <Button
+              onClick={() => setError(null)}
+              variant="ghost"
+              size="icon-sm"
+              className="text-red-400/60 hover:text-red-400"
+            >
+              ×
+            </Button>
+          </div>
+        </BoundaryBanner>
       )}
 
       {/* Agent Org Chart */}
-      <div className="flex-1 p-4 overflow-y-auto">
+      <HudPanel kicker="FLEET / COMMAND LINKS" title="Agent Org Chart" padded={false} glow>
+      <div className="min-h-[540px] overflow-y-auto p-4">
         {agents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground/50">
             <div className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center mb-3">
@@ -715,6 +732,7 @@ export function AgentSquadPanelPhase3() {
           )
         })()}
       </div>
+      </HudPanel>
 
       {/* Agent Detail Modal */}
       {selectedAgent && (
@@ -747,7 +765,8 @@ export function AgentSquadPanelPhase3() {
           onSpawned={fetchAgents}
         />
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 

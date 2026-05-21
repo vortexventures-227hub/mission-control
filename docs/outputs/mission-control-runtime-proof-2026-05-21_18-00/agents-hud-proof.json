@@ -1,0 +1,14 @@
+{
+  "capturedAt": "2026-05-21T21:59:00.986Z",
+  "hasAgentOrgChart": true,
+  "hasFleetRoster": true,
+  "hasHeartbeatBoundary": true,
+  "hasLocalRoster": true,
+  "hasReceiptBoundary": true,
+  "hasRosterReadRules": true,
+  "hasStats": true,
+  "logoLoaded": true,
+  "route": "/agents",
+  "sample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/agents\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n14/100\nEVENTS\nLive\nMODE GATEWAY\n17:58\nCommand\nWorkflows\nPipelines\nFleet\n5/41\nSelect agent...\nyuanbao (offline) — no session\ndogfood (offline) — no session\nAxis (offline) — no session\nforger (offline) — no session\nDavid (offline) — no session\nRook (offline) — no session\noompa-loompas (offline) — no session\nstark (idle) — no s",
+  "url": "http://127.0.0.1:3110/agents"
+}
