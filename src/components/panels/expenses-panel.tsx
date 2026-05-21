@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 
@@ -314,43 +315,55 @@ export function ExpensesPanel() {
     .slice(0, 5)
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-        <div>
-          <h2 className="font-semibold text-sm text-foreground">Expense Ledger</h2>
-          <p className="text-xs text-muted-foreground">
-            Canonical Mission Control ledger: subscriptions and one-off expenses stay in the app database, not scattered files.
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {loading ? 'Loading...' : `${fmt(subTotals.monthly)}/mo active subscriptions · ${fmt(summary?.oneOffTotal || 0)} one-off expenses (30d)`}
-          </p>
-          {!loading && (
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {urgentRenewals.length} renewal gate(s) need review · {missingBillingDates} missing billing date(s) · DB/API ledger only
-            </p>
-          )}
-        </div>
+    <Page
+      kicker="LEDGER / LOCAL SPEND"
+      title="Expense Ledger"
+      subtitle="Canonical Mission Control ledger for subscriptions and one-off expenses. Spend data stays in the local app database, with renewal gates visible before anything is treated clean."
+      badges={(
+        <>
+          <Chip tone="teal">LOCAL DB</Chip>
+          <Chip tone="amber">RENEWAL GATED</Chip>
+          <Chip tone="rose">NO EXTERNAL BILLING MUTATION</Chip>
+        </>
+      )}
+      actions={(
         <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading} className="h-8 text-xs">
           {loading ? <Loader variant="inline" /> : 'Refresh'}
         </Button>
-      </div>
+      )}
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Monthly Subscriptions" value={loading ? '...' : fmt(subTotals.monthly)} glow />
+          <Stat label="One-off 30d" value={loading ? '...' : fmt(summary?.oneOffTotal || 0)} accent="purple" />
+          <Stat label="Renewal Gates" value={loading ? '...' : urgentRenewals.length} accent={urgentRenewals.length ? 'amber' : 'teal'} />
+          <Stat label="Missing Billing Dates" value={loading ? '...' : missingBillingDates} accent={missingBillingDates ? 'rose' : 'teal'} />
+        </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-border shrink-0">
-        {(['overview', 'subscriptions', 'one_off'] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-xs font-medium transition-colors ${tab === t ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-            {t === 'one_off' ? 'One-off Expenses' : t === 'subscriptions' ? 'Subscriptions' : 'Overview'}
-            {t === 'subscriptions' && activeSubs.length > 0 && (
-              <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground text-[10px]">{activeSubs.length}</span>
-            )}
-          </button>
-        ))}
-      </div>
+        <HudPanel
+          kicker="LEDGER VIEW"
+          title="Spend command tabs"
+          right={<Chip tone="dim">{activeSubs.length} active subs</Chip>}
+        >
+          <div className="flex flex-wrap gap-2">
+            {(['overview', 'subscriptions', 'one_off'] as const).map(t => (
+              <button key={t} onClick={() => setTab(t)}
+                className={`mc-btn-glitch inline-flex border px-3 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${tab === t ? 'border-[color:var(--mc-teal)]/60 bg-[rgba(46,230,214,0.13)] text-[color:var(--mc-teal-soft)]' : 'border-[color:var(--mc-hairline-2)] bg-white/[0.035] text-[color:var(--mc-ink-2)] hover:border-[color:var(--mc-teal)]/45 hover:text-[color:var(--mc-teal-soft)]'}`}>
+                {t === 'one_off' ? 'One-off Expenses' : t === 'subscriptions' ? 'Subscriptions' : 'Overview'}
+                {t === 'subscriptions' && activeSubs.length > 0 && <span className="ml-2 text-[color:var(--mc-amber)]">{activeSubs.length}</span>}
+              </button>
+            ))}
+          </div>
+          {!loading && (
+            <div className="mt-3">
+              <BoundaryBanner tone={urgentRenewals.length || missingBillingDates ? 'amber' : 'teal'} title="Ledger boundary">
+                {urgentRenewals.length} renewal gate(s) need review; {missingBillingDates} missing billing date(s). This surface tracks local ledger state only and performs no external billing mutation.
+              </BoundaryBanner>
+            </div>
+          )}
+        </HudPanel>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="space-y-4">
         {loading ? (
           <div className="flex items-center justify-center h-32"><Loader variant="inline" /></div>
         ) : (
@@ -559,7 +572,8 @@ export function ExpensesPanel() {
             )}
           </>
         )}
+        </div>
       </div>
-    </div>
+    </Page>
   )
 }
