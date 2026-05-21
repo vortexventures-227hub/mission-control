@@ -1,0 +1,7 @@
+{
+  "checkedAt": "2026-05-21T20:37:00Z",
+  "url": "http://127.0.0.1:3110/",
+  "stillBooting": false,
+  "logoLoaded": true,
+  "note": "Follow-up Playwright check after commit 080a483 verified the authenticated root route exits the boot splash and the Vortex Ventures logo image loads."
+}
