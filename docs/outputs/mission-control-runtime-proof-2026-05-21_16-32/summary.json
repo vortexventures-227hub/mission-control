@@ -1,0 +1,197 @@
+{
+  "proofDir": "/Users/vortexventures/Desktop/Vortex Ventures/VVMissionControlOps/mission-control/docs/outputs/mission-control-runtime-proof-2026-05-21_16-32",
+  "routes": [
+    {
+      "route": "/",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/",
+      "logoLoaded": false,
+      "hasShell": false,
+      "hasBoundary": false,
+      "stillBooting": true,
+      "bodySample": "CLAUDE\nOPENCLAW\nCODEX\nHERMES\nMISSION CONTROL\n\nAgent Orchestration\n\nLoading active sessions\nv2.0.1"
+    },
+    {
+      "route": "/mission-control",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/mission-control",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/command-truth",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/command-truth",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/group-chat",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/group-chat",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/rooms/blackwire-ops",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/rooms/blackwire-ops",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/tracker?agent=koda",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/tracker?agent=koda",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/expenses",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/expenses",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/knowledge-intake",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/knowledge-intake",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/brain-memory",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/brain-memory",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/research-command",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/research-command",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/asset-library",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/asset-library",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    },
+    {
+      "route": "/security-command",
+      "title": "Mission Control",
+      "url": "http://127.0.0.1:3110/security-command",
+      "logoLoaded": true,
+      "hasShell": true,
+      "hasBoundary": true,
+      "stillBooting": false,
+      "bodySample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChanne"
+    }
+  ],
+  "sw": {
+    "status": 200,
+    "url": "http://127.0.0.1:3110/sw.js",
+    "redirectedToLogin": false,
+    "sample": "// Mission Control Service Worker v1.1\nconst CACHE_NAME = 'mission-control-static-v1'\nconst STATIC_ASSETS = [\n  '/manife"
+  },
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    }
+  ]
+}
