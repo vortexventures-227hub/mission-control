@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 
 interface PresenceEntry {
   id: string
@@ -53,6 +54,15 @@ interface PairedDevice {
 }
 
 type Tab = 'instances' | 'devices'
+
+function NodeBoundaryLink({ href, title, copy }: { href: string; title: string; copy: string }) {
+  return (
+    <a href={href} className="block border border-[color:var(--mc-hairline)] bg-black/20 p-3 transition-colors hover:border-[color:var(--mc-teal)]/60 hover:bg-[rgba(46,230,214,0.06)]">
+      <div className="font-mono text-xs font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">{title}</div>
+      <div className="mt-1 text-xs leading-5 text-[color:var(--mc-ink-2)]">{copy}</div>
+    </a>
+  )
+}
 
 function relativeTime(ts: number): string {
   if (!ts) return '--'
@@ -105,6 +115,52 @@ export function NodesPanel() {
   const [connected, setConnected] = useState(true)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  return (
+    <Page
+      kicker="Blackwire Ops / Local Mesh"
+      title={t('title')}
+      subtitle="Node pairing and remote device management are unavailable in local-only Mission Control. Runtime visibility lives in Monitor and Logs until the mesh has audited enablement."
+      badges={
+        <>
+          <Chip tone="amber" pulse>unavailable</Chip>
+          <Chip tone="rose">pairing blocked</Chip>
+          <Chip tone="dim">local boundary</Chip>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Nodes unavailable in LOCAL mode">
+          This route does not show empty success states for remote nodes. Pairing, trust changes, and device-token actions stay blocked until there is explicit operator approval and audit coverage.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label="Mesh State" value="LOCAL" sub="no remote pairing" accent="amber" glow />
+          <Stat label="Trust Writes" value="OFF" sub="tokens untouched" accent="rose" />
+          <Stat label="Runtime View" value="/monitor" sub="host telemetry source" accent="teal" />
+          <Stat label="Evidence" value="/logs" sub="gateway/runtime trace" accent="purple" />
+        </section>
+
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <HudPanel kicker="boundary page" title="What is intentionally absent" glow>
+            <div className="space-y-3 text-sm leading-6 text-[color:var(--mc-ink-1)]">
+              <p>Remote node presence can be misleading when the gateway is local, offline, or unaudited. Mission Control therefore classifies this surface as unavailable rather than showing a green device list without proof.</p>
+              <p className="font-mono text-xs uppercase tracking-[0.12em] text-[color:var(--mc-amber)]">No pairing requests, trust flips, or token rotations are exposed on this local boundary page.</p>
+            </div>
+          </HudPanel>
+
+          <HudPanel kicker="safe detours" title="Where to inspect instead">
+            <div className="grid gap-2">
+              <NodeBoundaryLink href="/monitor" title="System Monitor" copy="Inspect CPU, memory, disk, network, and local process pressure." />
+              <NodeBoundaryLink href="/logs" title="Logs" copy="Read runtime traces for gateway and local agent behavior." />
+              <NodeBoundaryLink href="/gateway-config" title="Gateway Config" copy="Review provider routing and local gateway policy." />
+              <NodeBoundaryLink href="/security-command" title="Security Center" copy="Track trust boundaries and proof gates." />
+            </div>
+          </HudPanel>
+        </div>
+      </div>
+    </Page>
+  )
 
   const fetchNodes = useCallback(async () => {
     try {

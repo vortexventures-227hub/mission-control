@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { useMissionControl } from '@/store'
 
 // ---------------------------------------------------------------------------
@@ -636,6 +637,15 @@ interface PlatformCardProps {
   actionBusy: boolean
 }
 
+function BoundaryLink({ href, title, copy }: { href: string; title: string; copy: string }) {
+  return (
+    <a href={href} className="block border border-[color:var(--mc-hairline)] bg-black/20 p-3 transition-colors hover:border-[color:var(--mc-teal)]/60 hover:bg-[rgba(46,230,214,0.06)]">
+      <div className="font-mono text-xs font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">{title}</div>
+      <div className="mt-1 text-xs leading-5 text-[color:var(--mc-ink-2)]">{copy}</div>
+    </a>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -648,6 +658,52 @@ export function ChannelsPanel() {
   const [error, setError] = useState<string | null>(null)
   const [probing, setProbing] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
+
+  return (
+    <Page
+      kicker="Blackwire Ops / External Comms"
+      title={t('title')}
+      subtitle="Channel sends and provider bridges are intentionally unavailable in local Mission Control. Use this page as the policy boundary, not as a fake-green messaging console."
+      badges={
+        <>
+          <Chip tone="amber" pulse>unavailable</Chip>
+          <Chip tone="rose">no live sends</Chip>
+          <Chip tone={connection.isConnected ? 'teal' : 'amber'}>{connection.isConnected ? 'gateway visible' : 'gateway unreachable'}</Chip>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Channels unavailable in LOCAL mode">
+          Messaging providers, outbound channels, and account probes are blocked here until an operator explicitly moves this surface out of local-only mode with audit coverage.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label="Policy" value="LOCAL" sub="external sends blocked" accent="amber" glow />
+          <Stat label="Mutation Gate" value="OFF" sub="no provider writes" accent="rose" />
+          <Stat label="Gateway" value={connection.isConnected ? 'SEEN' : 'UNKNOWN'} sub={connection.isConnected ? 'local status bus' : 'check logs'} accent={connection.isConnected ? 'teal' : 'amber'} />
+          <Stat label="Operator Path" value="4" sub="safe routes linked" accent="purple" />
+        </section>
+
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <HudPanel kicker="boundary page" title="Why this is blocked" glow>
+            <div className="space-y-3 text-sm leading-6 text-[color:var(--mc-ink-1)]">
+              <p>Mission Control is running as a local HQ. Channel actions can touch third-party accounts, create outbound messages, or probe external provider state, so this route is deliberately parked as unavailable.</p>
+              <p className="font-mono text-xs uppercase tracking-[0.12em] text-[color:var(--mc-amber)]">No fake green: a disconnected or unapproved channel is not shown as ready.</p>
+            </div>
+          </HudPanel>
+
+          <HudPanel kicker="safe detours" title="Where to work instead">
+            <div className="grid gap-2">
+              <BoundaryLink href="/group-chat" title="Group Chat" copy="Coordinate inside the local operator room with receipts and assignment context." />
+              <BoundaryLink href="/integrations" title="Integrations" copy="Inspect connection posture without sending external messages." />
+              <BoundaryLink href="/gateway-config" title="Gateway Config" copy="Review routing policy and local gateway settings." />
+              <BoundaryLink href="/logs" title="Logs" copy="Tail runtime evidence for channel/gateway failures." />
+            </div>
+          </HudPanel>
+        </div>
+      </div>
+    </Page>
+  )
 
   const fetchChannels = useCallback(async () => {
     try {

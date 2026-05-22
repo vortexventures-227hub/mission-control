@@ -1,0 +1,51 @@
+{
+  "capturedAt": "2026-05-22T01:48:19.370Z",
+  "proofs": [
+    {
+      "route": "/channels",
+      "url": "http://127.0.0.1:3110/channels",
+      "titlePresent": true,
+      "unavailablePresent": true,
+      "boundaryPresent": true,
+      "blockedPresent": true,
+      "linksPresent": true,
+      "logoLoaded": true,
+      "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/channels\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n17/100\nEVENTS\nLive\nMODE GATEWAY\n21:48\nBLACKWIRE OPS / EXTERNAL COMMS\nCHANNELS\n\nChannel sends and provider bridges are intentionally unavailable in local Mission Control. Use this page as the policy boundary, not as a fake-green messaging console.\n\nUNAVAILABLE\nNO LIVE SENDS\nGATEWAY VISIBLE\n△\nCHANNELS UNAVAILABLE IN LOCAL MODE\nMessaging providers, outbound channels, and account probes are blocked here until an operator explicitly moves this surface out of local-only mode with audit coverage.\nLOCAL\nPOLICY\nexternal sends blocked\nOFF\nMUTATION GATE\nno provider writes\nSEEN\nGATEWAY\nlocal status bus\n4\nOPERATOR PATH\nsafe routes linked\nBOUNDARY PAGE\nWHY THIS IS BLOCKED\n\nMission Control is running as a local HQ. Channel actions can touch third-party accounts, create outbound messages, or probe external provider state, so this route is deliberately parked as unavailable.\n\nNO FAKE GREEN: A DISCONNECTED OR UNAPPROVED CHANNEL IS NOT SHOWN AS READY.\n\nSAFE DETOURS\nWHERE TO WORK INSTEAD\nGROUP CHAT\nCoordinate inside the local op"
+    },
+    {
+      "route": "/nodes",
+      "url": "http://127.0.0.1:3110/nodes",
+      "titlePresent": true,
+      "unavailablePresent": true,
+      "boundaryPresent": true,
+      "blockedPresent": true,
+      "linksPresent": true,
+      "logoLoaded": true,
+      "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/nodes\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n17/100\nEVENTS\nLive\nMODE GATEWAY\n21:48\nBLACKWIRE OPS / LOCAL MESH\nNODES / INSTANCES\n\nNode pairing and remote device management are unavailable in local-only Mission Control. Runtime visibility lives in Monitor and Logs until the mesh has audited enablement.\n\nUNAVAILABLE\nPAIRING BLOCKED\nLOCAL BOUNDARY\n△\nNODES UNAVAILABLE IN LOCAL MODE\nThis route does not show empty success states for remote nodes. Pairing, trust changes, and device-token actions stay blocked until there is explicit operator approval and audit coverage.\nLOCAL\nMESH STATE\nno remote pairing\nOFF\nTRUST WRITES\ntokens untouched\n/monitor\nRUNTIME VIEW\nhost telemetry source\n/logs\nEVIDENCE\ngateway/runtime trace\nBOUNDARY PAGE\nWHAT IS INTENTIONALLY ABSENT\n\nRemote node presence can be misleading when the gateway is local, offline, or unaudited. Mission Control therefore classifies this surface as unavailable rather than showing a green device list without proof.\n\nNO PAIRING REQUESTS, TRUST FLIPS, OR TOKEN ROTATIONS ARE EXPOSED ON THIS LOCAL BOUNDARY PAGE.\n\nSAFE "
+    }
+  ],
+  "badResponses": [],
+  "warningMessages": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    },
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    }
+  ]
+}
