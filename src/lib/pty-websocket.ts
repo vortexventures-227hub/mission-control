@@ -22,6 +22,10 @@ type UpgradeValidationResult =
   | { ok: true; sessionId: string; kind: string; mode: 'readonly' | 'interactive' }
   | { ok: false; status: 400; message: string }
 
+function isUpgradeValidationError(result: UpgradeValidationResult): result is Extract<UpgradeValidationResult, { ok: false }> {
+  return result.ok === false
+}
+
 function validateUpgradeRequest(url: URL): UpgradeValidationResult {
   const sessionId = (url.searchParams.get('session') || '').trim()
   const kind = (url.searchParams.get('kind') || '').trim()
@@ -97,7 +101,7 @@ export function initPtyWebSocket(): WebSocketServer {
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`)
     const parsed = validateUpgradeRequest(url)
-    if (!parsed.ok) {
+    if (isUpgradeValidationError(parsed)) {
       log.warn({ reason: parsed.message }, 'Invalid PTY connection params; closing socket')
       ws.send(JSON.stringify({ type: 'error', message: parsed.message }))
       ws.close()
@@ -197,7 +201,7 @@ export function handlePtyUpgrade(req: IncomingMessage, socket: any, head: Buffer
   if (url.pathname !== '/ws/pty') return false
 
   const parsed = validateUpgradeRequest(url)
-  if (!parsed.ok) {
+  if (isUpgradeValidationError(parsed)) {
     log.warn({ reason: parsed.message, remote: req.socket?.remoteAddress }, 'Rejected PTY upgrade: invalid query params')
     writeWsHttpError(socket, parsed.status, parsed.message)
     return true
