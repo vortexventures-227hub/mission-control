@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 
 // =============================================================================
 // Types
@@ -452,82 +453,97 @@ export function AIToolkitPanel() {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading AI Toolkit...</p>
-        </div>
-      </div>
+      <Page
+        kicker="Blackwire Ops / AI Toolkit"
+        title="AI Toolkit"
+        subtitle="Loading local tool catalog and stack template data."
+        badges={<Chip tone="amber" pulse>loading</Chip>}
+      >
+        <HudPanel title="Loading AI Toolkit" glow>
+          <div className="h-40 animate-pulse border border-[color:var(--mc-hairline)] bg-black/20" />
+        </HudPanel>
+      </Page>
     )
   }
 
   if (error) {
     return (
-      <div className="h-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-center p-6">
-          <div className="text-4xl">⚠️</div>
-          <p className="text-sm text-red-400">{error}</p>
+      <Page
+        kicker="Blackwire Ops / AI Toolkit"
+        title="AI Toolkit"
+        subtitle="The local tool catalog could not be loaded."
+        badges={<Chip tone="rose">blocked</Chip>}
+      >
+        <HudPanel title="Toolkit load failed" glow>
+          <p className="text-sm text-[color:var(--mc-rose)]">{error}</p>
           <Button onClick={loadDatabase} variant="outline" size="sm">
             Retry
           </Button>
-        </div>
-      </div>
+        </HudPanel>
+      </Page>
     )
   }
 
   if (!database) return null
 
-  const tabs: { id: TabId; label: string; icon: string }[] = [
-    { id: 'dashboard', label: 'Overview', icon: '📊' },
-    { id: 'ops-matrix', label: 'Ops Matrix', icon: '🧩' },
-    { id: 'tools', label: 'Browse Tools', icon: '🔧' },
-    { id: 'templates', label: 'Templates', icon: '📋' },
-    { id: 'stack-builder', label: 'Stack Builder', icon: '🏗️' },
-    { id: 'compare', label: 'Compare', icon: '⚖️' },
+  const tabs: { id: TabId; label: string }[] = [
+    { id: 'dashboard', label: 'Overview' },
+    { id: 'ops-matrix', label: 'Ops Matrix' },
+    { id: 'tools', label: 'Browse Tools' },
+    { id: 'templates', label: 'Templates' },
+    { id: 'stack-builder', label: 'Stack Builder' },
+    { id: 'compare', label: 'Compare' },
   ]
 
   return (
-    <div className="h-full flex flex-col bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center text-xl">
-            🛠️
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">AI Toolkit V2</h2>
-            <p className="text-sm text-muted-foreground">
-              {database.metadata.total_tools} tools • {database.stack_templates?.length || 0} templates
-            </p>
-          </div>
-        </div>
-      </div>
+    <Page
+      kicker="Blackwire Ops / AI Toolkit"
+      title="AI Toolkit"
+      subtitle="Local tool catalog, operator capability matrix, stack templates, and comparison workspace. This page helps plan stacks; it does not buy, install, deploy, send, or spend by itself."
+      badges={
+        <>
+          <Chip tone="teal">local catalog</Chip>
+          <Chip tone="purple">stack planning</Chip>
+          <Chip tone="amber">verify before spend</Chip>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="AI Toolkit boundary">
+          Tool listings, stack templates, and comparisons are planning aids. Cost, deployment, install, marketing, or customer-facing actions still require explicit approval and separate receipts.
+        </BoundaryBanner>
 
-      {/* Tab Navigation */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-border overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap flex items-center gap-2 ${
-              activeTab === tab.id
-                ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:text-foreground hover:bg-surface-1'
-            }`}
-          >
-            <span>{tab.icon}</span>
-            {tab.label}
-            {tab.id === 'templates' && database.stack_templates && database.stack_templates.length > 0 && (
-              <span className="px-1.5 py-0.5 text-xs rounded-full bg-violet-500/20 text-violet-400">
-                {database.stack_templates.length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <Stat label="tools" value={database.metadata.total_tools} sub={`v${database.metadata.version || 'local'}`} glow />
+          <Stat label="templates" value={database.stack_templates?.length || 0} sub="stack plans" accent="purple" />
+          <Stat label="categories" value={database.metadata.categories?.length || 0} sub="catalog scope" accent="neutral" />
+          <Stat label="selected tools" value={stackBuilderTools.size} sub="builder staging" accent={stackBuilderTools.size > 0 ? 'amber' : 'dim'} />
+          <Stat label="active view" value={<span className="text-base">{tabs.find(tab => tab.id === activeTab)?.label || activeTab}</span>} sub="operator tab" accent="teal" />
+        </section>
 
-      {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto">
+        <HudPanel kicker="views" title="Toolkit Navigation">
+          <div className="flex flex-wrap items-center gap-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`border px-3 py-2 font-mono text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-[color:var(--mc-teal)]/60 bg-[rgba(46,230,214,0.12)] text-[color:var(--mc-teal-soft)]'
+                    : 'border-[color:var(--mc-hairline)] bg-black/20 text-[color:var(--mc-ink-3)] hover:border-[color:var(--mc-hairline-2)] hover:text-[color:var(--mc-ink-1)]'
+                }`}
+              >
+                {tab.label}
+                {tab.id === 'templates' && database.stack_templates && database.stack_templates.length > 0 && (
+                  <span className="ml-2 text-[color:var(--mc-purple-soft)]">{database.stack_templates.length}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </HudPanel>
+
+        <div className="min-h-[520px] overflow-hidden">
         {activeTab === 'dashboard' && <DashboardView database={database} onNavigate={setActiveTab} />}
         {activeTab === 'ops-matrix' && <OpsMatrixView />}
         {activeTab === 'tools' && <ToolsBrowserView database={database} />}
@@ -542,8 +558,9 @@ export function AIToolkitPanel() {
         )}
         {activeTab === 'stack-builder' && <StackBuilderView database={database} initialTools={stackBuilderTools} />}
         {activeTab === 'compare' && <CompareView database={database} />}
+        </div>
       </div>
-    </div>
+    </Page>
   )
 }
 
