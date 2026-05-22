@@ -61,6 +61,7 @@ import { LocalModeBanner } from '@/components/layout/local-mode-banner'
 import { UpdateBanner } from '@/components/layout/update-banner'
 import { OpenClawUpdateBanner } from '@/components/layout/openclaw-update-banner'
 import { OpenClawDoctorBanner } from '@/components/layout/openclaw-doctor-banner'
+import { BoundaryBanner, Btn, Chip, HudPanel, Page } from '@/components/mc/hud'
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard'
 import { Loader } from '@/components/ui/loader'
 import { ProjectManagerModal } from '@/components/modals/project-manager-modal'
@@ -512,6 +513,10 @@ function ContentRouter({ tab }: { tab: string }) {
   const isLocal = dashboardMode === 'local'
   const panelName = tab.replace(/-/g, ' ')
 
+  if (isLocal && (tab === 'channels' || tab === 'nodes')) {
+    return <LocalModeUnavailable panel={tab} />
+  }
+
   // Guard: show nudge for non-essential panels in essential mode
   if (interfaceMode === 'essential' && !ESSENTIAL_PANELS.has(tab)) {
     return (
@@ -673,14 +678,65 @@ function ContentRouter({ tab }: { tab: string }) {
 
 function LocalModeUnavailable({ panel }: { panel: string }) {
   const tp = useTranslations('page')
+  const routeTitle = panel === 'channels'
+    ? 'Channels unavailable'
+    : panel === 'nodes'
+      ? 'Nodes unavailable'
+      : `${panel} unavailable`
+  const routeCopy = panel === 'channels'
+    ? 'External channel delivery is intentionally blocked in local mode. Use Group Chat and Command Truth for internal coordination proof.'
+    : panel === 'nodes'
+      ? 'Runtime node controls require a gateway-backed environment. Local Mission Control shows monitor and debug evidence instead of fake node state.'
+      : tp('configureGateway')
+  const primaryHref = panel === 'nodes' ? panelHref('monitor') : panelHref('group-chat')
+  const primaryLabel = panel === 'nodes' ? 'Open monitor' : 'Open group chat'
+  const secondaryHref = panel === 'nodes' ? panelHref('debug') : panelHref('integrations')
+  const secondaryLabel = panel === 'nodes' ? 'Open debug' : 'Review integrations'
+
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <p className="text-sm text-muted-foreground">
-        {tp('requiresGateway', { panel })}
-      </p>
-      <p className="text-xs text-muted-foreground mt-1">
-        {tp('configureGateway')}
-      </p>
-    </div>
+    <Page
+      kicker="Blackwire Ops / Local Boundary"
+      title={routeTitle}
+      subtitle={routeCopy}
+      badges={(
+        <>
+          <Chip tone="teal" pulse>LOCAL</Chip>
+          <Chip tone="amber">UNAVAILABLE</Chip>
+          <Chip tone="dim">NO FAKE GREEN</Chip>
+        </>
+      )}
+      actions={(
+        <>
+          <a href={primaryHref}><Btn as="span" variant="primary" small>{primaryLabel}</Btn></a>
+          <a href={secondaryHref}><Btn as="span" small>{secondaryLabel}</Btn></a>
+          <a href={panelHref('command-truth')}><Btn as="span" small>Command Truth</Btn></a>
+        </>
+      )}
+    >
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <BoundaryBanner title="Gateway-only surface">
+          {tp('requiresGateway', { panel })} {tp('configureGateway')}
+        </BoundaryBanner>
+        <HudPanel
+          kicker="Operator Substitute"
+          title={panel === 'nodes' ? 'Use monitor evidence' : 'Use internal rooms'}
+          right={<Chip tone="purple">DRAFT-SAFE</Chip>}
+        >
+          <div className="space-y-2 text-sm leading-6 text-[color:var(--mc-ink-1)]">
+            {panel === 'nodes' ? (
+              <>
+                <p>System Monitor carries local process, route, and runtime proof without pretending gateway nodes are online.</p>
+                <p>Debug keeps the audit trail visible for failures that must be solved before full-mode operations.</p>
+              </>
+            ) : (
+              <>
+                <p>Group Chat carries internal coordination and room history while external channel sends stay blocked.</p>
+                <p>Integrations remain visible for configuration review, but local mode does not deliver outbound messages.</p>
+              </>
+            )}
+          </div>
+        </HudPanel>
+      </div>
+    </Page>
   )
 }

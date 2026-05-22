@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, HudPanel } from '@/components/mc/hud'
 import { useSmartPoll } from '@/lib/use-smart-poll'
 import { useMissionControl, type LogEntry, type Session } from '@/store'
 
@@ -360,17 +361,41 @@ export function AgentCommsPanel() {
 
   if (loading && !commsData && logs.length === 0) {
     return (
-      <div className="p-6 flex items-center justify-center">
+      <HudPanel
+        kicker="Blackwire Ops / Group Comms"
+        title="# agent-feed"
+        className="h-full"
+        right={<Chip tone="amber" pulse>Connecting</Chip>}
+      >
+        <div className="p-6 flex items-center justify-center">
         <div className="flex items-center gap-2 text-muted-foreground">
           <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           <span className="text-sm">{t('connecting')}</span>
         </div>
-      </div>
+        </div>
+      </HudPanel>
     )
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <HudPanel
+      kicker="Blackwire Ops / Group Comms"
+      title="# agent-feed"
+      padded={false}
+      className="h-full"
+      right={(
+        <div className="flex flex-wrap justify-end gap-2">
+          <Chip tone={connection.isConnected || connection.sseConnected ? 'teal' : 'amber'} pulse={connection.isConnected || connection.sseConnected}>
+            {connection.isConnected ? 'Gateway' : connection.sseConnected ? 'SSE' : 'Polling'}
+          </Chip>
+          <Chip tone={sourceMode === 'live' ? 'teal' : sourceMode === 'mixed' ? 'amber' : 'neutral'}>
+            {sourceMode}
+          </Chip>
+          <Chip tone="purple">{filteredFeed.length} Events</Chip>
+        </div>
+      )}
+    >
+      <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50 flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -407,6 +432,12 @@ export function AgentCommsPanel() {
             </span>
           )}
         </div>
+      </div>
+
+      <div className="px-4 py-2 border-b border-border/30">
+        <BoundaryBanner tone="amber" title="Local delivery legend">
+          Live gateway, SSE, and polling states describe the transport Mission Control can prove right now. Sends require operator access; external channel delivery remains blocked unless the runtime returns a real delivery receipt.
+        </BoundaryBanner>
       </div>
 
       {/* Filter bar — matches TUI FeedFilter */}
@@ -574,7 +605,8 @@ export function AgentCommsPanel() {
           <div className="mt-2 text-[11px] text-red-400">{sendError}</div>
         )}
       </div>
-    </div>
+      </div>
+    </HudPanel>
   )
 }
 

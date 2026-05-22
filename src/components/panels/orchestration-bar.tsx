@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, HudPanel } from '@/components/mc/hud'
 import { PipelineTab } from './pipeline-tab'
 
 interface Agent {
@@ -226,7 +227,25 @@ export function OrchestrationBar() {
   const errorCount = agents.filter(a => a.status === 'error').length
 
   return (
-    <div className="border-b border-border bg-card/50">
+    <HudPanel
+      kicker="Blackwire Ops / Agent Orchestration"
+      title="Command deck"
+      padded={false}
+      className="mx-4 mb-4"
+      right={(
+        <div className="flex flex-wrap justify-end gap-2">
+          <Chip tone="teal" pulse>{onlineCount}/{agents.length} Online</Chip>
+          <Chip tone={errorCount > 0 ? 'rose' : 'neutral'}>{errorCount} Errors</Chip>
+          <Chip tone="amber">Local safe</Chip>
+        </div>
+      )}
+    >
+      <div className="border-b border-border/60 bg-card/50">
+        <div className="px-4 pt-3">
+          <BoundaryBanner tone="amber" title="Operator actions are local-audited">
+            Commands, workflow templates, and spawn requests stay inside Mission Control runtime boundaries. External delivery remains blocked unless a gateway-backed route proves it is available.
+          </BoundaryBanner>
+        </div>
       {/* Tab bar */}
       <div className="flex items-center gap-1 px-4 pt-2">
         {(['command', 'templates', 'pipelines', 'fleet'] as const).map(tab => (
@@ -563,7 +582,8 @@ export function OrchestrationBar() {
           )}
         </div>
       )}
-    </div>
+      </div>
+    </HudPanel>
   )
 }
 
