@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 
 interface DocsTreeNode {
   path: string
@@ -208,50 +209,74 @@ export function DocumentsPanel() {
   }
 
   return (
-    <div className="h-full p-4 md:p-6">
-      <div className="h-full min-h-[600px] rounded-xl border border-border bg-card overflow-hidden grid grid-cols-1 lg:grid-cols-[340px_1fr]">
-        <aside className="border-r border-border p-4 space-y-3 overflow-y-auto">
+    <Page
+      kicker="Blackwire Ops / Receipts & Docs"
+      title={t('title')}
+      subtitle="Read-only document library for receipts, handoffs, specs, and operator reference material. Search and preview preserve source paths instead of inventing status."
+      badges={
+        <>
+          <Chip tone="teal">read only</Chip>
+          <Chip tone="dim">{filePaths.length} files</Chip>
+          <Chip tone={treeError || docError ? 'rose' : 'amber'}>{treeError || docError ? 'load warning' : 'provenance visible'}</Chip>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="teal" title="Document boundary">
+          This surface reads local document roots and renders selected files for review. It does not edit source files, mark receipts verified, or write Memory/Graphify records.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label="Files Indexed" value={filePaths.length} sub={`${roots.length} roots`} />
+          <Stat label="Search Hits" value={searchResults.length} sub={isShowingSearch ? searchQuery.trim() : 'idle'} accent={isShowingSearch ? 'teal' : 'dim'} />
+          <Stat label="Selected" value={selectedPath ? 'YES' : 'NONE'} sub={selectedPath ? selectedPath.split('/').pop() : t('selectFile')} accent={selectedPath ? 'purple' : 'dim'} />
+          <Stat label="Mode" value="READ" sub="no file writes" accent="teal" glow />
+        </section>
+
+        <div className="grid min-h-[600px] grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
+          <HudPanel kicker="document index" title="Library" className="min-h-[600px]" padded={false}>
+            <aside className="h-full space-y-3 overflow-y-auto p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">{t('title')}</h2>
+            <h2 className="font-mono text-xs font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">Source Tree</h2>
             <button
               onClick={() => void loadTree()}
-              className="text-xs px-2 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+              className="border border-[color:var(--mc-hairline)] bg-black/20 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[color:var(--mc-ink-2)] hover:border-[color:var(--mc-teal)]/60 hover:text-[color:var(--mc-teal)]"
             >
               {t('refresh')}
             </button>
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="docs-search" className="text-xs text-muted-foreground">{t('searchLabel')}</label>
+            <label htmlFor="docs-search" className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">{t('searchLabel')}</label>
             <input
               id="docs-search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={t('searchPlaceholder')}
-              className="w-full h-9 px-3 rounded-md bg-background border border-border text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+              className="h-9 w-full border border-[color:var(--mc-hairline)] bg-black/25 px-3 font-mono text-xs text-[color:var(--mc-ink-0)] placeholder:text-[color:var(--mc-ink-3)] outline-none focus:border-[color:var(--mc-teal)]/70"
             />
           </div>
 
           {roots.length > 0 && (
-            <div className="text-xs text-muted-foreground">
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-[color:var(--mc-ink-2)]">
               Roots: {roots.join(', ')}
             </div>
           )}
 
           {loadingTree && (
-            <div className="text-sm text-muted-foreground">{t('loading')}</div>
+            <div className="text-sm text-[color:var(--mc-ink-2)]">{t('loading')}</div>
           )}
 
           {treeError && (
-            <div className="text-sm text-red-400">{treeError}</div>
+            <BoundaryBanner tone="rose" title="Document tree failed">{treeError}</BoundaryBanner>
           )}
 
           {!loadingTree && !treeError && isShowingSearch && (
             <div className="space-y-1">
-              {searching && <div className="text-sm text-muted-foreground">{t('searching')}</div>}
-              {searchError && <div className="text-sm text-red-400">{searchError}</div>}
+              {searching && <div className="text-sm text-[color:var(--mc-ink-2)]">{t('searching')}</div>}
+              {searchError && <BoundaryBanner tone="rose" title="Search failed">{searchError}</BoundaryBanner>}
               {!searching && !searchError && searchResults.length === 0 && (
-                <div className="text-sm text-muted-foreground">{t('noMatches')}</div>
+                <div className="text-sm text-[color:var(--mc-ink-2)]">{t('noMatches')}</div>
               )}
               {!searching && !searchError && searchResults.map((result) => (
                 <button
@@ -274,50 +299,49 @@ export function DocumentsPanel() {
           {!loadingTree && !treeError && !isShowingSearch && (
             <div className="space-y-1">
               {tree.length === 0 && (
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-[color:var(--mc-ink-2)]">
                   {t('noRootsFound')}
                 </div>
               )}
               {tree.map((node) => renderNode(node))}
             </div>
           )}
-        </aside>
+            </aside>
+          </HudPanel>
 
-        <section className="p-4 md:p-6 overflow-y-auto">
-          <div className="mb-4">
-            <h3 className="text-base md:text-lg font-semibold text-foreground">{t('viewerTitle')}</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('viewerDescription')}
-            </p>
-          </div>
+          <HudPanel kicker="read-only preview" title={t('viewerTitle')} className="min-h-[600px]" padded={false} glow>
+            <section className="h-full overflow-y-auto p-4 md:p-6">
+              <p className="mb-4 text-xs leading-5 text-[color:var(--mc-ink-2)]">{t('viewerDescription')}</p>
 
           {!selectedPath && (
-            <div className="text-sm text-muted-foreground">{t('selectFile')}</div>
+            <div className="text-sm text-[color:var(--mc-ink-2)]">{t('selectFile')}</div>
           )}
 
           {selectedPath && (
             <div className="space-y-3">
-              <div className="rounded-md border border-border bg-secondary/30 px-3 py-2">
-                <div className="text-sm text-foreground font-medium break-all">{selectedPath}</div>
+              <div className="border border-[color:var(--mc-hairline)] bg-black/25 px-3 py-2">
+                <div className="break-all font-mono text-sm font-medium text-[color:var(--mc-ink-0)]">{selectedPath}</div>
                 {docMeta && (
-                  <div className="mt-1 text-xs text-muted-foreground">
+                  <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[color:var(--mc-ink-2)]">
                     {formatBytes(docMeta.size)} • {t('updated')} {formatTime(docMeta.modified)}
                   </div>
                 )}
               </div>
 
-              {loadingDoc && <div className="text-sm text-muted-foreground">{t('loadingDocument')}</div>}
-              {docError && <div className="text-sm text-red-400">{docError}</div>}
+              {loadingDoc && <div className="text-sm text-[color:var(--mc-ink-2)]">{t('loadingDocument')}</div>}
+              {docError && <BoundaryBanner tone="rose" title="Document failed">{docError}</BoundaryBanner>}
 
               {!loadingDoc && !docError && (
-                <div className="rounded-md border border-border bg-background p-4">
+                <div className="border border-[color:var(--mc-hairline)] bg-black/25 p-4">
                   <MarkdownRenderer content={docContent} />
                 </div>
               )}
             </div>
           )}
-        </section>
+            </section>
+          </HudPanel>
+        </div>
       </div>
-    </div>
+    </Page>
   )
 }

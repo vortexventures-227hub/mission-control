@@ -1,0 +1,34 @@
+{
+  "capturedAt": "2026-05-22T01:55:33.643Z",
+  "proof": {
+    "route": "/documents",
+    "url": "http://127.0.0.1:3110/documents",
+    "titlePresent": true,
+    "boundaryPresent": true,
+    "readOnlyPresent": true,
+    "libraryPresent": true,
+    "previewPresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/documents\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n17/100\nEVENTS\nLive\nMODE GATEWAY\n21:55\nBLACKWIRE OPS / RECEIPTS & DOCS\nDOCUMENTS\n\nRead-only document library for receipts, handoffs, specs, and operator reference material. Search and preview preserve source paths instead of inventing status.\n\nREAD ONLY\n120 FILES\nPROVENANCE VISIBLE\n△\nDOCUMENT BOUNDARY\nThis surface reads local document roots and renders selected files for review. It does not edit source files, mark receipts verified, or write Memory/Graphify records.\n120\nFILES INDEXED\n2 roots\n0\nSEARCH HITS\nidle\nYES\nSELECTED\napp-factory-full-list.md\nREAD\nMODE\nno file writes\nDOCUMENT INDEX\nLIBRARY\nSOURCE TREE\nREFRESH\nSEARCH DOCUMENTS\nROOTS: DOCS, MEMORY\n▾\ndocs\napp-factory-full-list.mdbill_questionnaire_for_david.docxMaterialSolutions_Forklifts.mdMaterialSolutions_Handoff.mdmushroom_ideas.mdphase6_smoke_tests.mdscout_post.txt\n▾\nmemory\n▸\n.dreams\n▸\n2026-03-31\n▸\narchive\n▸\nprojects\n▸\nsecurity-audits\n2026-04-04.md2026-04-05.md2026-04-06.md2026-04-08.md2026-04-09.md2026-04-10.md2026-04-11.md2026-04-12.md2026-04-13-boot"
+  },
+  "badResponses": [],
+  "warningMessages": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}
