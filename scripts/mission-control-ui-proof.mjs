@@ -25,7 +25,10 @@ const routes = [
   '/notifications',
   '/expenses',
   '/knowledge-intake',
+  '/research',
+  '/content-research',
   '/ai-toolkit',
+  '/skills',
   '/think-tank?commercial=1',
   '/brain-memory',
   '/security-command',
@@ -78,6 +81,13 @@ try {
 
   for (const route of routes) {
     const response = await page.goto(`${baseUrl}${route}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+    if (route !== '/login') {
+      await page.waitForFunction(() => {
+        const text = document.body?.innerText || ''
+        const stillBooting = /Agent Orchestration\s+(Loading active sessions|Detecting station mode|Loading capabilities|Loading configuration)/i.test(text)
+        return !stillBooting && text.trim().length > 250
+      }, { timeout: 15000 }).catch(() => {})
+    }
     await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {})
     await page.waitForTimeout(750)
     const details = await page.evaluate(() => {
@@ -123,7 +133,9 @@ const summarizeConsole = (messages) => {
         ? 'React hydration attribute mismatch warning'
         : message.includes('SSE: Reconnecting')
           ? 'SSE reconnect warning'
-          : message.slice(0, 160)
+          : message.includes('width(-1) and height(-1) of chart')
+            ? 'Recharts transient zero-size container warning'
+            : message.slice(0, 160)
     buckets.set(key, (buckets.get(key) || 0) + 1)
   }
   return Array.from(buckets.entries()).map(([message, count]) => ({ message, count }))
@@ -137,6 +149,7 @@ const proof = {
   sessionCleanupCount: remaining,
   routes: results,
   consoleFindings: summarizeConsole(consoleMessages),
+  consoleFindingPolicy: 'Console findings are recorded as caveats. Route pass/fail is based on HTTP status, content presence, application-error text, and session cleanup; do not treat consoleFindings as empty unless the array is empty.',
   passed: results.every(r => r.ok) && remaining === 0,
 }
 fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(proof, null, 2))
