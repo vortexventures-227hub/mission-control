@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import type { ReactNode } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { useSmartPoll } from '@/lib/use-smart-poll'
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 
 interface CpuData {
   usagePercent: number
@@ -73,6 +75,38 @@ interface TimePoint {
 }
 
 const MAX_POINTS = 60
+const CHART_HEIGHT = 160
+
+interface ChartFrameProps {
+  children: (size: { width: number; height: number }) => ReactNode
+}
+
+function ChartFrame({ children }: ChartFrameProps) {
+  const frameRef = useRef<HTMLDivElement | null>(null)
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+
+    const updateWidth = () => setWidth(Math.max(0, Math.floor(frame.getBoundingClientRect().width)))
+    updateWidth()
+
+    const observer = new ResizeObserver(updateWidth)
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={frameRef} className="h-40 min-w-0">
+      {width > 0 ? (
+        children({ width, height: CHART_HEIGHT })
+      ) : (
+        <div className="flex h-full items-center justify-center font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--mc-ink-3)]">Measuring chart frame</div>
+      )}
+    </div>
+  )
+}
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
@@ -90,6 +124,12 @@ function formatRate(bps: number): string {
 function formatTime(ts: number): string {
   const d = new Date(ts)
   return `${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`
+}
+
+function healthTone(value: number, warn = 75, critical = 90): 'teal' | 'amber' | 'rose' {
+  if (value >= critical) return 'rose'
+  if (value >= warn) return 'amber'
+  return 'teal'
 }
 
 export function SystemMonitorPanel() {
@@ -162,32 +202,57 @@ export function SystemMonitorPanel() {
 
   if (!latest) {
     return (
-      <div className="p-5 flex items-center justify-center h-64 text-muted-foreground">
-        {error ? `Error: ${error}` : 'Loading system metrics...'}
-      </div>
+      <Page title="System Monitor" kicker="Blackwire Ops / Runtime Telemetry" subtitle="Loading local host metrics.">
+        {error ? (
+          <BoundaryBanner tone="rose" title="System metrics unavailable">{error}</BoundaryBanner>
+        ) : (
+          <HudPanel>
+            <div className="flex h-64 items-center justify-center font-mono text-xs uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">Loading system metrics...</div>
+          </HudPanel>
+        )}
+      </Page>
     )
   }
 
   return (
-    <div className="p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">System Monitor</h2>
-        {error && <span className="text-xs text-red-500">{error}</span>}
-      </div>
+    <Page
+      kicker="Blackwire Ops / Runtime Telemetry"
+      title="System Monitor"
+      subtitle={`Local host telemetry captured at ${new Date(latest.timestamp).toLocaleString()}. Read-only visibility for runtime pressure, process drift, and resource bottlenecks.`}
+      badges={
+        <>
+          <Chip tone="teal" pulse>live polling</Chip>
+          <Chip tone="dim">read only</Chip>
+          {error && <Chip tone="rose">poll error</Chip>}
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {error && <BoundaryBanner tone="rose" title="System monitor poll failed">{error}</BoundaryBanner>}
+        <BoundaryBanner tone="amber" title="Runtime boundary">
+          This page observes local host resources only. It does not kill processes, change scheduler state, or mutate infrastructure.
+        </BoundaryBanner>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <Stat label="CPU" value={`${latest.cpu.usagePercent}%`} sub={`${latest.cpu.cores} cores`} accent={healthTone(latest.cpu.usagePercent)} glow={latest.cpu.usagePercent >= 75} />
+          <Stat label="Memory" value={`${latest.memory.usagePercent}%`} sub={`${formatBytes(latest.memory.usedBytes)} used`} accent={healthTone(latest.memory.usagePercent)} glow={latest.memory.usagePercent >= 75} />
+          <Stat label="Disk Mounts" value={latest.disk.length} sub={`${Math.max(0, ...latest.disk.map((d) => d.usagePercent))}% max`} accent={healthTone(Math.max(0, ...latest.disk.map((d) => d.usagePercent)))} />
+          <Stat label="GPU" value={latest.gpu?.[0] ? `${latest.gpu[0].usagePercent}%` : 'none'} sub={latest.gpu?.[0]?.name || 'not detected'} accent={latest.gpu?.[0] ? healthTone(latest.gpu[0].usagePercent) : 'dim'} />
+          <Stat label="Processes" value={latest.processes.length} sub="top sampled" />
+        </section>
+
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
         {/* CPU */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <HudPanel kicker="host telemetry" title="CPU" className="min-w-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">CPU</h3>
             <span className="text-2xl font-mono font-bold tabular-nums">{latest.cpu.usagePercent}%</span>
           </div>
           <div className="text-xs text-muted-foreground mb-2">
             {latest.cpu.cores} cores &middot; Load: {latest.cpu.loadAvg.map(l => l.toFixed(2)).join(', ')}
           </div>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+          <ChartFrame>
+            {({ width, height }) => (
+              <AreaChart width={width} height={height} data={history} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                 <XAxis dataKey="time" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={30} tickFormatter={v => `${v}%`} />
@@ -205,14 +270,13 @@ export function SystemMonitorPanel() {
                   isAnimationActive={false}
                 />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+            )}
+          </ChartFrame>
+        </HudPanel>
 
         {/* Memory */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <HudPanel kicker="host telemetry" title="Memory" className="min-w-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">Memory</h3>
             <span className="text-2xl font-mono font-bold tabular-nums">{latest.memory.usagePercent}%</span>
           </div>
           <div className="text-xs text-muted-foreground mb-2">
@@ -221,9 +285,9 @@ export function SystemMonitorPanel() {
               <> &middot; Swap: {formatBytes(latest.memory.swapUsedBytes)} / {formatBytes(latest.memory.swapTotalBytes)}</>
             )}
           </div>
-          <div className="h-40">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+          <ChartFrame>
+            {({ width, height }) => (
+              <AreaChart width={width} height={height} data={history} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                 <XAxis dataKey="time" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                 <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={30} tickFormatter={v => `${v}%`} />
@@ -241,14 +305,14 @@ export function SystemMonitorPanel() {
                   isAnimationActive={false}
                 />
               </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </section>
+            )}
+          </ChartFrame>
+        </HudPanel>
 
         {/* Disk */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <HudPanel kicker="storage" title="Disk" className="min-w-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">Disk</h3>
+            <Chip tone="dim">{latest.disk.length} mounts</Chip>
           </div>
           {latest.disk.length === 0 ? (
             <div className="text-xs text-muted-foreground">No disk data available</div>
@@ -272,12 +336,11 @@ export function SystemMonitorPanel() {
               ))}
             </div>
           )}
-        </section>
+        </HudPanel>
 
         {/* GPU */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <HudPanel kicker="accelerator" title="GPU" className="min-w-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">GPU</h3>
             {latest.gpu && latest.gpu[0] && (
               <span className="text-2xl font-mono font-bold tabular-nums">{latest.gpu[0].usagePercent}%</span>
             )}
@@ -295,9 +358,9 @@ export function SystemMonitorPanel() {
                 )}
               </div>
               {latest.gpu[0].memoryTotalMB > 0 && latest.gpu[0].memoryUsedMB > 0 ? (
-                <div className="h-40">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={history} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <ChartFrame>
+                  {({ width, height }) => (
+                    <AreaChart width={width} height={height} data={history} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                       <XAxis dataKey="time" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                       <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={30} tickFormatter={v => `${v}%`} />
@@ -315,8 +378,8 @@ export function SystemMonitorPanel() {
                         isAnimationActive={false}
                       />
                     </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                  )}
+                </ChartFrame>
               ) : (
                 <div className="flex items-center justify-center h-40 text-xs text-muted-foreground">
                   GPU detected but live memory usage unavailable
@@ -324,11 +387,10 @@ export function SystemMonitorPanel() {
               )}
             </>
           )}
-        </section>
+        </HudPanel>
         {/* Processes */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <HudPanel kicker="process sample" title="Top Processes" className="min-w-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">Top Processes</h3>
             <span className="text-xs text-muted-foreground">{latest.processes.length} shown</span>
           </div>
           {latest.processes.length === 0 ? (
@@ -362,12 +424,11 @@ export function SystemMonitorPanel() {
               ))}
             </div>
           )}
-        </section>
+        </HudPanel>
 
         {/* Network I/O */}
-        <section className="rounded-xl border border-border bg-card p-4">
+        <HudPanel kicker="network" title="Network I/O" className="min-w-0">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">Network I/O</h3>
             {history.length > 0 && (
               <div className="text-right">
                 <span className="text-xs text-muted-foreground">
@@ -385,9 +446,9 @@ export function SystemMonitorPanel() {
               <div className="text-xs text-muted-foreground mb-2">
                 {latest.network.map(n => n.interface).join(', ')}
               </div>
-              <div className="h-40">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={history} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <ChartFrame>
+                {({ width, height }) => (
+                  <AreaChart width={width} height={height} data={history} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" className="opacity-20" />
                     <XAxis dataKey="time" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                     <YAxis tick={{ fontSize: 10 }} width={50} tickFormatter={v => formatRate(v)} />
@@ -417,12 +478,13 @@ export function SystemMonitorPanel() {
                       isAnimationActive={false}
                     />
                   </AreaChart>
-                </ResponsiveContainer>
-              </div>
+                )}
+              </ChartFrame>
             </>
           )}
-        </section>
+        </HudPanel>
       </div>
-    </div>
+      </div>
+    </Page>
   )
 }

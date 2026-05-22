@@ -1,0 +1,34 @@
+{
+  "capturedAt": "2026-05-22T01:38:23.372Z",
+  "proof": {
+    "route": "/monitor",
+    "url": "http://127.0.0.1:3110/monitor",
+    "titlePresent": true,
+    "boundaryPresent": true,
+    "livePollingPresent": true,
+    "statsPresent": true,
+    "chartsPresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/monitor\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n16/100\nEVENTS\nLive\nMODE GATEWAY\n21:38\nBLACKWIRE OPS / RUNTIME TELEMETRY\nSYSTEM MONITOR\n\nLocal host telemetry captured at 5/21/2026, 9:38:21 PM. Read-only visibility for runtime pressure, process drift, and resource bottlenecks.\n\nLIVE POLLING\nREAD ONLY\n△\nRUNTIME BOUNDARY\nThis page observes local host resources only. It does not kill processes, change scheduler state, or mutate infrastructure.\n55%\nCPU\n10 cores\n68%\nMEMORY\n16.4 GB used\n2\nDISK MOUNTS\n97% max\nnone\nGPU\nnot detected\n8\nPROCESSES\ntop sampled\nHOST TELEMETRY\nCPU\n55%\n10 cores · Load: 7.30, 4.80, 3.55\n38:19\n38:21\n0%\n25%\n50%\n75%\n100%\nHOST TELEMETRY\nMEMORY\n68%\n16.4 GB / 24.0 GB · Swap: 16.1 GB / 17.0 GB\n38:19\n38:21\n0%\n25%\n50%\n75%\n100%\nSTORAGE\nDISK\n2 MOUNTS\n/\n2% · 10.5 GB / 460.4 GB\n/Library/Developer/CoreSimulator/Volumes/iOS_23D8133\n97% · 16.1 GB / 16.5 GB\nACCELERATOR\nGPU\nNo GPU detected\nPROCESS SAMPLE\nTOP PROCESSES\n8 shown\nPROCESS\nCPU\nMEM\nRSS\nchrome-headless-shell\n9.9%\n0.4%\n102 MB\ncloudd\n1.5%\n0.1%\n23 MB\nWindowServer\n1.3%\n0.2%\n52 MB\nbird\n0.9%\n0.1%\n22 MB\nfileproviderd\n0.8%\n0.1%\n19 MB\nnsurlsessiond\n0.6%\n0.1%\n15 MB\nsecd\n0.5%\n0.1%\n13 MB\nCloudTelemetryService\n0.4%\n0.0%\n8 MB\nNETWORK\nNETWORK I/O\nRX 16.9 KB/s / TX 5.5 KB/s\ngif0*, stf0*, anpi0, anpi1, anpi3, en0,"
+  },
+  "badResponses": [],
+  "warningMessages": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}
