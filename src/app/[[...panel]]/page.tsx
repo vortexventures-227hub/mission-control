@@ -9,6 +9,7 @@ import { Dashboard } from '@/components/dashboard/dashboard'
 import { LogViewerPanel } from '@/components/panels/log-viewer-panel'
 import { CronManagementPanel } from '@/components/panels/cron-management-panel'
 import { MemoryBrowserPanel } from '@/components/panels/memory-browser-panel'
+import { VisualMemoryGalaxy } from '@/components/panels/visual-memory-galaxy'
 import { ResearchIntakePanel } from '@/components/panels/research-intake-panel'
 import { ContentResearchPanel } from '@/components/panels/content-research-panel'
 import { KnowledgeIntakePanel } from '@/components/panels/knowledge-intake-panel'
@@ -402,6 +403,23 @@ export default function Home() {
 
   if (!isClient || !bootComplete) {
     return <Loader variant="page" steps={isClient ? initSteps : undefined} />
+  }
+
+  const demoParam = searchParams.get('demo')
+  const presentationParam = searchParams.get('presentation')
+  const isGalaxyDemoMode = normalizedPanel === 'memory' && (
+    demoParam === '1' ||
+    demoParam === 'true' ||
+    demoParam === 'galaxy' ||
+    presentationParam === 'galaxy'
+  )
+
+  if (isGalaxyDemoMode) {
+    return (
+      <main id="main-content" className="fixed inset-0 overflow-hidden bg-[#03020a]" role="main" aria-label="Visual Memory Galaxy presentation mode">
+        <VisualMemoryGalaxy initialPresentationMode demoMode />
+      </main>
+    )
   }
 
   return (

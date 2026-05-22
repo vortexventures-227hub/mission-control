@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
-import { MemoryGraph } from './memory-graph'
+import { VisualMemoryGalaxy } from './visual-memory-galaxy'
 
 const log = createClientLogger('MemoryBrowser')
 
@@ -531,6 +531,7 @@ export function MemoryBrowserPanel() {
   }
 
   const viewTabs = ['files', ...(!isLocal ? ['graph'] : []), 'health', 'pipeline', ...(hermesInstalled ? ['hermes'] : [])] as const
+  const isGraphView = activeView === 'graph' && !isLocal
 
   return (
     <div className="h-[calc(100vh-3.5rem)] flex flex-col overflow-hidden">
@@ -553,15 +554,15 @@ export function MemoryBrowserPanel() {
         {healthReport && (
           <span className={`text-[10px] font-mono ${statusColor(healthReport.overall)} tabular-nums mr-1`}>{healthReport.overallScore}%</span>
         )}
-        <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums">{t('fileCountSize', { count: fileCount, size: formatFileSize(sizeTotal) })}</span>
-        {isHydratingTree && <span className="ml-2 text-[10px] text-muted-foreground/35 font-mono">{t('indexing')}</span>}
-        <div className="w-px h-4 bg-border mx-1" />
-        <button onClick={() => setShowCreateModal(true)} className="px-2 py-1 rounded text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--surface-2))] transition-colors">{t('newFile')}</button>
+        {!isGraphView && <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums">{t('fileCountSize', { count: fileCount, size: formatFileSize(sizeTotal) })}</span>}
+        {isHydratingTree && !isGraphView && <span className="ml-2 text-[10px] text-muted-foreground/35 font-mono">{t('indexing')}</span>}
+        {!isGraphView && <div className="w-px h-4 bg-border mx-1" />}
+        {!isGraphView && <button onClick={() => setShowCreateModal(true)} className="px-2 py-1 rounded text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--surface-2))] transition-colors">{t('newFile')}</button>}
       </div>
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
-        {sidebarOpen && (
+        {sidebarOpen && !isGraphView && (
           <div className="w-60 shrink-0 border-r border-border bg-[hsl(var(--surface-0))] flex flex-col min-h-0">
             <div className="p-2">
               <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && searchFiles()} placeholder={t('searchPlaceholder')} className="w-full px-2 py-1.5 text-xs font-mono bg-[hsl(var(--surface-1))] border border-border/50 rounded text-foreground placeholder-muted-foreground/40 focus:outline-none focus:border-primary/30" />
@@ -599,8 +600,8 @@ export function MemoryBrowserPanel() {
 
         {/* Main content */}
         <div className="flex-1 min-w-0 flex flex-col bg-[hsl(var(--surface-0))]">
-          {activeView === 'graph' && !isLocal ? (
-            <div className="flex-1 p-4 overflow-hidden flex flex-col"><MemoryGraph /></div>
+          {isGraphView ? (
+            <div className="flex-1 p-3 overflow-hidden flex flex-col"><VisualMemoryGalaxy /></div>
           ) : activeView === 'health' ? (
             <div className="flex-1 overflow-auto p-6"><HealthView report={healthReport} isLoading={isLoadingHealth} onRefresh={loadHealth} /></div>
           ) : activeView === 'pipeline' ? (
