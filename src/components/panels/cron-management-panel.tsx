@@ -9,6 +9,7 @@ import { createClientLogger } from '@/lib/client-logger'
 const log = createClientLogger('CronManagement')
 import { buildDayKey, getCronOccurrences } from '@/lib/cron-occurrences'
 import { describeCronFrequency } from '@/lib/cron-utils'
+import { BoundaryBanner, Chip, Page, Stat } from '@/components/mc/hud'
 
 interface DayJobSummary {
   job: CronJob
@@ -686,32 +687,53 @@ export function CronManagementPanel() {
         ? `${formatDateLabel(weekDays[0])} - ${formatDateLabel(weekDays[6])}`
         : calendarDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 
+  const enabledCount = cronJobs.filter(job => job.enabled).length
+  const disabledCount = cronJobs.length - enabledCount
+  const localAutomationCount = cronJobs.filter(job => job.delivery === 'local' && job.agentId === 'mission-control-local').length
+  const flaggedErrorCount = cronJobs.filter(job => job.lastStatus === 'error').length
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="border-b border-border pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
-            <p className="text-muted-foreground mt-2">
-              {t('subtitle')}
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <Button
-              onClick={loadCronJobs}
-              disabled={isLoading}
-              className="bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30"
-            >
-              {isLoading ? t('loading') : t('refresh')}
-            </Button>
-            <Button
-              onClick={() => setShowAddForm(true)}
-            >
-              {t('addJob')}
-            </Button>
-          </div>
+    <Page
+      kicker="Blackwire Ops / Cron"
+      title={t('title')}
+      subtitle={`${t('subtitle')} Scheduler changes remain approval-gated; local automations and manual runs require explicit operator action.`}
+      badges={
+        <>
+          <Chip tone="teal" pulse>{isLocalMode ? 'local scheduler' : 'gateway scheduler'}</Chip>
+          <Chip tone="amber">pause/resume gated</Chip>
+          <Chip tone={flaggedErrorCount > 0 ? 'rose' : 'neutral'}>{flaggedErrorCount} errors</Chip>
+        </>
+      }
+      actions={
+        <>
+          <Button
+            onClick={loadCronJobs}
+            disabled={isLoading}
+            className="font-mono text-[10px] uppercase tracking-[0.14em]"
+          >
+            {isLoading ? t('loading') : t('refresh')}
+          </Button>
+          <Button
+            onClick={() => setShowAddForm(true)}
+            className="font-mono text-[10px] uppercase tracking-[0.14em]"
+          >
+            {t('addJob')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-6">
+        <BoundaryBanner tone="amber" title="Cron Boundary">
+          Cron reads scheduled jobs and supports explicit operator actions only. Pause, resume, manual run, clone, add, and remove flows stay approval and receipt gated; a schedule is not verified without run evidence.
+        </BoundaryBanner>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <Stat label="scheduled jobs" value={cronJobs.length} sub={`${filteredJobs.length} visible`} glow />
+          <Stat label="enabled" value={enabledCount} sub="active schedules" accent="teal" />
+          <Stat label="disabled" value={disabledCount} sub="paused" accent="dim" />
+          <Stat label="local automations" value={localAutomationCount} sub="system-managed" accent="purple" />
+          <Stat label="errors" value={flaggedErrorCount} sub={flaggedErrorCount > 0 ? 'needs review' : 'clear'} accent={flaggedErrorCount > 0 ? 'rose' : 'dim'} />
         </div>
-      </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Calendar View - Phase A (read-only) */}
@@ -1561,7 +1583,8 @@ export function CronManagementPanel() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 

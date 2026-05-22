@@ -1,0 +1,39 @@
+{
+  "baseUrl": "http://127.0.0.1:3110",
+  "dbPath": ".data/mission-control.db",
+  "outDir": "docs/outputs/mission-control-runtime-proof-2026-05-22_08-16-cron-hud",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "sessionCleanupCount": 0,
+  "routes": [
+    {
+      "route": "/cron",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_08-16-cron-hud/cron-hud.png",
+      "title": "Mission Control",
+      "textLength": 9075,
+      "headings": [
+        "Cron Management",
+        "Calendar View",
+        "Scheduled Jobs",
+        "Claude Code Teams"
+      ],
+      "hasApplicationError": false,
+      "hasCronBoundary": true,
+      "hasPauseResumeGate": true,
+      "hasScheduledJobsStat": true,
+      "hasEnabledStat": true,
+      "hasDisabledStat": true,
+      "hasLocalAutomationsStat": true,
+      "hasSchedulerCopy": true,
+      "firstText": "Skip to main content Overview Group Chat Tasks Agents Approvals Command Truth Notifications Chat Memory Brain / Memory Documents Think Tank Knowledge Intake Research Command Research Intake Brainstorm Wall Content Office Asset Library Design Studio Marketing A"
+    }
+  ],
+  "consoleFindings": [],
+  "badResponses": [],
+  "passed": true
+}
