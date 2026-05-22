@@ -3,12 +3,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
+import { useMissionControl } from '@/store'
 
 type Tab = 'status' | 'health' | 'models' | 'apicall'
 
 export function DebugPanel() {
   const t = useTranslations('debug')
+  const { dashboardMode, currentUser } = useMissionControl()
   const [activeTab, setActiveTab] = useState<Tab>('status')
+  const isLocal = dashboardMode === 'local'
 
   const tabLabels: Record<Tab, string> = {
     status: t('tabStatus'),
@@ -18,25 +22,59 @@ export function DebugPanel() {
   }
 
   return (
-    <div className="m-4">
-      <div className="flex gap-1 mb-4 border-b border-border pb-2">
-        {(['status', 'health', 'models', 'apicall'] as const).map((tab) => (
-          <Button
-            key={tab}
-            variant={activeTab === tab ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setActiveTab(tab)}
-          >
-            {tabLabels[tab]}
-          </Button>
-        ))}
-      </div>
+    <Page
+      kicker="Blackwire Ops / Runtime"
+      title="Debug Console"
+      subtitle="Authenticated diagnostics for status checks, heartbeat probes, model visibility, and scoped internal API calls."
+      badges={(
+        <>
+          <Chip tone={isLocal ? 'amber' : 'purple'} pulse>{isLocal ? 'LOCAL-ONLY' : 'AUTHENTICATED'}</Chip>
+          <Chip tone="neutral">READ MOSTLY</Chip>
+          <Chip tone="amber">API PROBE GATED</Chip>
+          <Chip tone="teal">{currentUser?.role || 'viewer'}</Chip>
+        </>
+      )}
+    >
+      <div className="mx-auto max-w-7xl space-y-4">
+        <BoundaryBanner tone="amber" title="Diagnostic boundary">
+          Debug can inspect internal runtime state and route responses, but it does not create a new external-send path. Use the API probe for authenticated local diagnostics only; mutation behavior remains controlled by the target route.
+        </BoundaryBanner>
 
-      {activeTab === 'status' && <StatusTab />}
-      {activeTab === 'health' && <HealthTab />}
-      {activeTab === 'models' && <ModelsTab />}
-      {activeTab === 'apicall' && <ApiCallTab />}
-    </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <Stat label="Status Probe" value="gateway" sub="reachability is measured, not assumed" accent="teal" glow={activeTab === 'status'} />
+          <Stat label="Health Probe" value="heartbeat" sub="latency and health are live checks" accent="amber" glow={activeTab === 'health'} />
+          <Stat label="Model Probe" value="registry" sub="provider list from debug endpoint" accent="purple" glow={activeTab === 'models'} />
+          <Stat label="API Probe" value="scoped" sub="authenticated route call boundary" accent="rose" glow={activeTab === 'apicall'} />
+        </div>
+
+        <HudPanel
+          kicker="Route Probes"
+          title={tabLabels[activeTab]}
+          right={<Chip tone="dim">/api/debug</Chip>}
+          padded={false}
+        >
+          <div className="flex flex-wrap gap-2 border-b border-[color:var(--mc-hairline)] px-3 py-2">
+            {(['status', 'health', 'models', 'apicall'] as const).map((tab) => (
+              <Button
+                key={tab}
+                variant={activeTab === tab ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveTab(tab)}
+              >
+                {tabLabels[tab]}
+              </Button>
+            ))}
+          </div>
+
+          <div className="p-3">
+            {activeTab === 'status' && <StatusTab />}
+            {activeTab === 'health' && <HealthTab />}
+            {activeTab === 'models' && <ModelsTab />}
+            {activeTab === 'apicall' && <ApiCallTab />}
+          </div>
+        </HudPanel>
+      </div>
+    </Page>
   )
 }
 
