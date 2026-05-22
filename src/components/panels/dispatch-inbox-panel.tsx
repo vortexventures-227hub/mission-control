@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
@@ -41,6 +42,12 @@ const STATUS_CONFIG: Record<FileStatus, { label: string; dotColor: string; badge
     dotColor: 'bg-red-400',
     badgeClass: 'bg-red-500/20 text-red-400 border border-red-500/30',
   },
+}
+
+function statusTone(status: FileStatus): 'teal' | 'amber' | 'rose' | 'neutral' {
+  if (status === 'PROCESSED') return 'teal'
+  if (status === 'FLAGGED') return 'rose'
+  return 'amber'
 }
 
 function formatBytes(bytes: number): string {
@@ -168,33 +175,42 @@ export function DispatchInboxPanel() {
     PROCESSED: data?.processed.length ?? 0,
   }
 
+  if (loading && !data) {
+    return (
+      <Page
+        kicker="Blackwire Ops / Dispatch"
+        title="Dispatch Inbox"
+        subtitle="Loading the local mailbox control surface."
+        badges={<Chip tone="dim">local mailbox</Chip>}
+      >
+        <HudPanel kicker="boot" title="Loading Dispatch">
+          <Loader variant="panel" label="Loading Dispatch..." />
+        </HudPanel>
+      </Page>
+    )
+  }
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center text-muted-foreground">
-            <InboxIcon />
-          </div>
-          <div>
-            <h2 className="font-semibold text-foreground text-sm">Dispatch</h2>
-            <p className="text-xs text-muted-foreground">
-              {data
-                ? `${data.unprocessedCount} pending · ${data.total} total`
-                : 'Loading...'}
-            </p>
-          </div>
-        </div>
+    <Page
+      kicker="Blackwire Ops / Dispatch"
+      title="Dispatch Inbox"
+      subtitle={`${data?.unprocessedCount ?? 0} pending packet(s), ${data?.total ?? 0} total. Local triage for handoffs, receipts, and blocker packets without bulk-loading raw folders.`}
+      badges={
+        <>
+          <Chip tone="teal" pulse>local mailbox</Chip>
+          <Chip tone="amber">triage only</Chip>
+          <Chip tone={counts.FLAGGED > 0 ? 'rose' : 'neutral'}>{counts.FLAGGED} flagged</Chip>
+        </>
+      }
+      actions={
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground hidden sm:block">
-            Updated {formatDate(lastRefresh.getTime())}
-          </span>
+          <Chip tone="dim">updated {formatDate(lastRefresh.getTime())}</Chip>
           <Button
             variant="outline"
             size="sm"
             onClick={() => { setLoading(true); fetchData() }}
             disabled={loading}
-            className="h-8 text-xs"
+            className="h-8 font-mono text-[10px] uppercase tracking-[0.14em]"
           >
             {loading ? (
               <Loader variant="inline" />
@@ -206,35 +222,49 @@ export function DispatchInboxPanel() {
             <span className="ml-1.5">Refresh</span>
           </Button>
         </div>
-      </div>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Dispatch Boundary">
+          This surface reads and triages the local Dispatch inbox. It does not bulk-load raw mailbox folders,
+          send external messages, or claim packets done without matching receipts.
+        </BoundaryBanner>
 
-      {/* Filter tabs */}
-      <div className="flex items-center gap-1 px-4 py-2 border-b border-border shrink-0 overflow-x-auto">
-        {(['ALL', 'NEW', 'FLAGGED'] as const).map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors shrink-0 ${
-              filter === f
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-            }`}
-          >
-            <span>{f === 'ALL' ? 'All Inbox' : f}</span>
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-              filter === f ? 'bg-primary-foreground/20' : 'bg-secondary'
-            }`}>{counts[f]}</span>
-          </button>
-        ))}
-      </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Stat label="pending" value={data?.unprocessedCount ?? 0} sub="needs operator triage" glow accent="amber" />
+          <Stat label="new" value={counts.NEW} sub="fresh inbox" accent="amber" />
+          <Stat label="flagged" value={counts.FLAGGED} sub={counts.FLAGGED > 0 ? 'attention' : 'clear'} accent={counts.FLAGGED > 0 ? 'rose' : 'dim'} />
+          <Stat label="processed" value={counts.PROCESSED} sub="receipt trail" accent="teal" />
+        </div>
+
+        <HudPanel
+          kicker="filters"
+          title="Inbox Scope"
+          right={<Chip tone="neutral">total {data?.total ?? 0}</Chip>}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {(['ALL', 'NEW', 'FLAGGED'] as const).map(f => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={`inline-flex items-center gap-2 border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+                  filter === f
+                    ? 'border-[color:var(--mc-teal)]/70 bg-[rgba(46,230,214,0.14)] text-[color:var(--mc-teal-soft)]'
+                    : 'border-[color:var(--mc-hairline-2)] bg-white/[0.035] text-[color:var(--mc-ink-2)] hover:border-[color:var(--mc-teal)]/45 hover:text-[color:var(--mc-ink-0)]'
+                }`}
+              >
+                <span>{f === 'ALL' ? 'All Inbox' : f}</span>
+                <span>{counts[f]}</span>
+              </button>
+            ))}
+          </div>
+        </HudPanel>
 
       {/* Main content */}
-      <div className="flex-1 overflow-y-auto">
-        {loading && !data ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader variant="inline" />
-          </div>
-        ) : error ? (
+        <HudPanel kicker="packets" title="Dispatch Queue" padded={false}>
+      <div className="overflow-y-auto">
+        {error ? (
           <div className="flex flex-col items-center justify-center h-32 gap-2 text-destructive">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
@@ -246,14 +276,14 @@ export function DispatchInboxPanel() {
             {/* INBOX section */}
             <div>
               {filteredInbox.length === 0 && data?.inbox.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-3 text-muted-foreground">
-                  <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+                <div className="flex flex-col items-center justify-center gap-3 py-16 text-[color:var(--mc-ink-2)]">
+                  <div className="grid h-12 w-12 place-items-center border border-[color:var(--mc-hairline-2)] bg-white/[0.035]">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
                   </div>
                   <div className="text-center">
-                    <p className="font-medium text-foreground text-sm">Inbox is clear</p>
+                    <p className="font-mono text-sm font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">Inbox is clear</p>
                     <p className="text-xs mt-1">Axis is quiet. No pending files.</p>
                   </div>
                 </div>
@@ -262,7 +292,7 @@ export function DispatchInboxPanel() {
                   <p className="text-sm">No files with status {filter}</p>
                 </div>
               ) : (
-                <div className="divide-y divide-border">
+                <div className="divide-y divide-[color:var(--mc-hairline)]">
                   {filteredInbox.map(file => (
                     <FileRow
                       key={file.path}
@@ -281,19 +311,17 @@ export function DispatchInboxPanel() {
 
             {/* PROCESSED section */}
             {data && data.processed.length > 0 && (
-              <div className="border-t border-border">
+              <div className="border-t border-[color:var(--mc-hairline)]">
                 <button
                   onClick={() => setProcessedExpanded(v => !v)}
-                  className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors"
+                  className="flex w-full items-center justify-between px-4 py-3 transition-colors hover:bg-[rgba(46,230,214,0.045)]"
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-green-400" />
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <span className="font-mono text-xs font-bold uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
                       Processed
                     </span>
-                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground">
-                      {data.processed.length}
-                    </span>
+                    <Chip tone="teal">{data.processed.length}</Chip>
                   </div>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -308,7 +336,7 @@ export function DispatchInboxPanel() {
                 </button>
 
                 {processedExpanded && (
-                  <div className="divide-y divide-border opacity-70">
+                  <div className="divide-y divide-[color:var(--mc-hairline)] opacity-70">
                     {data.processed.map(file => (
                       <FileRow
                         key={file.path}
@@ -329,6 +357,7 @@ export function DispatchInboxPanel() {
           </>
         )}
       </div>
+        </HudPanel>
 
       {/* File detail modal */}
       {selectedFile && (
@@ -343,7 +372,8 @@ export function DispatchInboxPanel() {
           onUnprocess={() => updateFile(selectedFile.name, 'unprocess')}
         />
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 
@@ -365,7 +395,7 @@ function FileRow({ file, isProcessed, isUpdating, onOpen, onFlag, onUnflag, onPr
 
   return (
     <div
-      className={`flex items-start gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors cursor-pointer group ${isProcessed ? 'opacity-60 hover:opacity-80' : ''}`}
+      className={`group flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-[rgba(46,230,214,0.045)] ${isProcessed ? 'opacity-60 hover:opacity-80' : ''}`}
       onClick={onOpen}
     >
       {/* Status dot */}
@@ -374,11 +404,9 @@ function FileRow({ file, isProcessed, isUpdating, onOpen, onFlag, onUnflag, onPr
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-foreground text-sm truncate">{file.name}</span>
+          <span className="truncate font-mono text-sm font-black text-[color:var(--mc-ink-0)]">{file.name}</span>
           {file.projectTag && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground shrink-0">
-              {file.projectTag}
-            </span>
+            <Chip tone="purple">{file.projectTag}</Chip>
           )}
           {isProcessed && file.processedAt && (
             <span className="text-xs text-muted-foreground shrink-0">
@@ -386,20 +414,18 @@ function FileRow({ file, isProcessed, isUpdating, onOpen, onFlag, onUnflag, onPr
             </span>
           )}
           {!isProcessed && (
-            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${config.badgeClass}`}>
-              {config.label}
-            </span>
+            <Chip tone={statusTone(file.status)}>{config.label}</Chip>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5 truncate">{file.preview}</p>
-        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+        <p className="mt-0.5 truncate text-xs text-[color:var(--mc-ink-2)]">{file.preview}</p>
+        <div className="mt-1 flex items-center gap-3 text-xs text-[color:var(--mc-ink-2)]">
           <span>{formatBytes(file.size)}</span>
           <span>·</span>
           <span>{formatDate(file.modifiedMs)}</span>
           {!isProcessed && file.status === 'FLAGGED' && (
             <>
               <span>·</span>
-              <span className="text-red-400">Flagged</span>
+              <span className="text-[color:var(--mc-rose)]">Flagged</span>
             </>
           )}
         </div>
@@ -490,24 +516,22 @@ function FileModal({ file, content, loading, onClose, onFlag, onUnflag, onProces
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative z-10 flex flex-col w-full max-w-3xl max-h-[85vh] mx-4 bg-card border border-border rounded-xl shadow-2xl overflow-hidden"
+        className="mc-bevel relative z-10 flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden bg-[color:var(--mc-bg-2)] shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+        <div className="flex items-center justify-between border-b border-[color:var(--mc-hairline)] px-5 py-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className={`w-2 h-2 rounded-full mt-0.5 shrink-0 ${STATUS_CONFIG[file.status].dotColor}`} />
             <div className="min-w-0">
-              <h3 className="font-semibold text-foreground text-sm truncate">{file.name}</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="truncate font-mono text-sm font-black text-[color:var(--mc-ink-0)]">{file.name}</h3>
+              <p className="text-xs text-[color:var(--mc-ink-2)]">
                 {formatBytes(file.size)} · {formatDate(file.modifiedMs)}
                 {file.processedAt ? ` · Processed ${formatProcessedAt(file.processedAt)}` : ''}
               </p>
             </div>
             {file.projectTag && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground shrink-0">
-                {file.projectTag}
-              </span>
+              <Chip tone="purple">{file.projectTag}</Chip>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -576,6 +600,11 @@ function FileModal({ file, content, loading, onClose, onFlag, onUnflag, onProces
 
         {/* Modal content */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
+          <div className="mb-4">
+            <BoundaryBanner tone="amber" title="Packet Boundary">
+              File actions update local Dispatch triage state only. Done claims still need an external receipt in the matching workstream.
+            </BoundaryBanner>
+          </div>
           {loading ? (
             <div className="flex items-center justify-center h-48">
               <Loader variant="inline" />

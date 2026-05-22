@@ -1,0 +1,27 @@
+{
+  "route": "/dispatch",
+  "baseUrl": "http://127.0.0.1:3110",
+  "checkedAt": "2026-05-22T05:44:55.694Z",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "passed": true,
+  "checks": {
+    "statusOk": true,
+    "hasTitle": true,
+    "hasBoundary": true,
+    "hasLocalMailboxChip": true,
+    "hasTriageChip": true,
+    "hasStats": true,
+    "hasFilterPanel": true,
+    "hasQueuePanel": true,
+    "hasBoundaryCopy": true,
+    "noApplicationError": true
+  },
+  "consoleFindings": [],
+  "badResponses": [],
+  "sessionCleanupCount": 0,
+  "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_01-44-dispatch-hud/dispatch-hud.png"
+}
