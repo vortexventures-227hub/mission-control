@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import type Database from 'better-sqlite3'
@@ -499,17 +500,6 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_token_usage_session_id ON token_usage(session_id);
         CREATE INDEX IF NOT EXISTS idx_token_usage_created_at ON token_usage(created_at);
         CREATE INDEX IF NOT EXISTS idx_token_usage_model ON token_usage(model);
-      `)
-    }
-  },
-  {
-    id: '026_token_usage_session_unique_index',
-    up: (db) => {
-      // UNIQUE index on session_id enables ON CONFLICT DO UPDATE in forward-sync,
-      // preventing duplicate rows when the session scanner runs repeatedly.
-      db.exec(`
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_token_usage_session_unique
-        ON token_usage(session_id);
       `)
     }
   },
@@ -1281,7 +1271,166 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '043_expenses_subscriptions',
+    id: '043_hash_session_tokens',
+    up(db: Database.Database) {
+      // Migrate existing plaintext session tokens to SHA-256 hashes.
+      // After this migration, session tokens are stored as hashes — raw tokens
+      // are only returned to the client on creation. Existing sessions will be
+      // invalidated (users need to re-login).
+      const rows = db.prepare('SELECT id, token FROM user_sessions').all() as Array<{ id: number; token: string }>
+      const update = db.prepare('UPDATE user_sessions SET token = ? WHERE id = ?')
+      for (const row of rows) {
+        const hashed = createHash('sha256').update(row.token).digest('hex')
+        update.run(hashed, row.id)
+      }
+    }
+  },
+  {
+    id: '044_spawn_history',
+    up(db: Database.Database) {
+      db.exec([
+        `CREATE TABLE IF NOT EXISTS spawn_history (`,
+        `  id INTEGER PRIMARY KEY AUTOINCREMENT,`,
+        `  agent_id INTEGER,`,
+        `  agent_name TEXT NOT NULL,`,
+        `  spawn_type TEXT NOT NULL DEFAULT 'claude-code',`,
+        `  session_id TEXT,`,
+        `  trigger TEXT,`,
+        `  status TEXT NOT NULL DEFAULT 'started',`,
+        `  exit_code INTEGER,`,
+        `  error TEXT,`,
+        `  duration_ms INTEGER,`,
+        `  workspace_id INTEGER NOT NULL DEFAULT 1,`,
+        `  created_at INTEGER NOT NULL DEFAULT (unixepoch()),`,
+        `  finished_at INTEGER,`,
+        `  FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE SET NULL`,
+        `)`,
+      ].join('\n'))
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_spawn_history_agent ON spawn_history(agent_name)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_spawn_history_created ON spawn_history(created_at)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_spawn_history_status ON spawn_history(status)`)
+    }
+  },
+  {
+    id: '045_task_dispatch_attempts',
+    up(db: Database.Database) {
+      const cols = db.prepare(`PRAGMA table_info(tasks)`).all() as Array<{ name: string }>
+      if (!cols.some(c => c.name === 'dispatch_attempts')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN dispatch_attempts INTEGER NOT NULL DEFAULT 0`)
+      }
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_tasks_stale_inprogress ON tasks(status, updated_at) WHERE status = 'in_progress'`)
+    }
+  },
+  {
+    id: '046_agent_runs',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS runs (
+          id TEXT PRIMARY KEY,
+          agent_id TEXT NOT NULL,
+          agent_name TEXT,
+          model TEXT,
+          provider TEXT,
+          runtime TEXT DEFAULT 'mission-control',
+          runtime_version TEXT,
+          trigger_type TEXT,
+          parent_run_id TEXT,
+          task_id TEXT,
+          status TEXT NOT NULL DEFAULT 'pending',
+          outcome TEXT,
+          started_at TEXT NOT NULL,
+          ended_at TEXT,
+          duration_ms INTEGER,
+          steps TEXT DEFAULT '[]',
+          tools_available TEXT DEFAULT '[]',
+          cost_input_tokens INTEGER DEFAULT 0,
+          cost_output_tokens INTEGER DEFAULT 0,
+          cost_cache_read_tokens INTEGER,
+          cost_cache_write_tokens INTEGER,
+          cost_usd REAL,
+          cost_model TEXT,
+          run_hash TEXT,
+          parent_run_hash TEXT,
+          lineage TEXT DEFAULT '[]',
+          model_version TEXT,
+          config_hash TEXT,
+          provenance_runtime TEXT,
+          signed_by TEXT,
+          signature TEXT,
+          provenance_created_at TEXT,
+          eval_task_type TEXT,
+          eval_layer TEXT,
+          eval_pass INTEGER,
+          eval_score REAL,
+          eval_detail TEXT,
+          eval_metrics TEXT,
+          eval_benchmark_id TEXT,
+          error TEXT,
+          git_branch TEXT,
+          git_commit TEXT,
+          workspace_id INTEGER DEFAULT 1,
+          tags TEXT DEFAULT '[]',
+          metadata TEXT DEFAULT '{}',
+          spawn_history_id INTEGER,
+          created_at INTEGER DEFAULT (unixepoch())
+        )
+      `)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_agent_id ON runs(agent_id)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_created_at ON runs(created_at)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_workspace ON runs(workspace_id)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_run_hash ON runs(run_hash)`)
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_task_id ON runs(task_id)`)
+    }
+  },
+  {
+    id: '047_agent_working_memory',
+    up(db: Database.Database) {
+      const cols = db.prepare(`PRAGMA table_info(agents)`).all() as Array<{ name: string }>
+      if (!cols.some(c => c.name === 'working_memory')) {
+        db.exec(`ALTER TABLE agents ADD COLUMN working_memory TEXT DEFAULT ''`)
+      }
+    }
+  },
+  {
+    id: '048_memory_fts',
+    up(db: Database.Database) {
+      db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS memory_fts USING fts5(
+          path,
+          title,
+          content,
+          tokenize='porter unicode61'
+        )
+      `)
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS memory_fts_meta (
+          key TEXT PRIMARY KEY,
+          value TEXT
+        )
+      `)
+    }
+  },
+  {
+    id: '049_agent_runtime_type',
+    up(db: Database.Database) {
+      db.exec(`ALTER TABLE agents ADD COLUMN runtime_type TEXT DEFAULT NULL`)
+    }
+  },
+  {
+    id: '050_mcp_call_receipt_signing',
+    up(db: Database.Database) {
+      // Add Ed25519 receipt signing columns to the MCP audit log.
+      // payload_hash: SHA-256 of the canonical JSON payload at write time
+      // signature: Ed25519 signature (hex) over the canonical payload
+      // public_key: base64-encoded Ed25519 public key for offline verification
+      db.exec(`ALTER TABLE mcp_call_log ADD COLUMN payload_hash TEXT DEFAULT NULL`)
+      db.exec(`ALTER TABLE mcp_call_log ADD COLUMN signature TEXT DEFAULT NULL`)
+      db.exec(`ALTER TABLE mcp_call_log ADD COLUMN public_key TEXT DEFAULT NULL`)
+    }
+  },
+  {
+    id: '051_expenses_subscriptions',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS expenses (
@@ -1337,7 +1486,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '044_token_usage_unique_session',
+    id: '052_token_usage_unique_session',
     up(db: Database.Database) {
       // Add unique constraint on session_id to prevent duplicate rows from session scanner
       // Also add cost_usd and agent_name columns if missing (added in earlier migration patch)
@@ -1359,7 +1508,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '045_blackwire_group_chat_v0',
+    id: '053_blackwire_group_chat_v0',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS group_chat_rooms (
@@ -1560,7 +1709,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '046_mission_control_security_command_v0',
+    id: '054_mission_control_security_command_v0',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS mission_control_security_systems (
@@ -1739,7 +1888,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '047_mission_control_asset_library_v0',
+    id: '055_mission_control_asset_library_v0',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS mission_control_asset_library_items (
@@ -1842,7 +1991,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '048_mission_control_brainstorm_wall_v0',
+    id: '056_mission_control_brainstorm_wall_v0',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS mission_control_brainstorm_ideas (
@@ -1938,7 +2087,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '049_mission_control_brain_memory_v0',
+    id: '057_mission_control_brain_memory_v0',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS mission_control_brain_memory_layers (
@@ -2094,7 +2243,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '050_mission_control_research_command_v0',
+    id: '058_mission_control_research_command_v0',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS mission_control_research_briefs (
@@ -2181,7 +2330,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '051_mission_control_trading_operations_v0',
+    id: '059_mission_control_trading_operations_v0',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS mission_control_trading_watch_items (
@@ -2274,7 +2423,7 @@ const migrations: Migration[] = [
     }
   },
   {
-    id: '052_mission_control_design_studio_v0',
+    id: '060_mission_control_design_studio_v0',
     up(db: Database.Database) {
       db.exec(`
         CREATE TABLE IF NOT EXISTS mission_control_design_studio_items (
@@ -2365,7 +2514,7 @@ const migrations: Migration[] = [
         )
       }
     }
-  }
+  },
 ]
 
 export function runMigrations(db: Database.Database) {

@@ -31,6 +31,7 @@ import { GatewayConfigPanel } from '@/components/panels/gateway-config-panel'
 import { IntegrationsPanel } from '@/components/panels/integrations-panel'
 import { AlertRulesPanel } from '@/components/panels/alert-rules-panel'
 import { MultiGatewayPanel } from '@/components/panels/multi-gateway-panel'
+import { GatewayControlPanel } from '@/components/panels/gateway-control-panel'
 import { SuperAdminPanel } from '@/components/panels/super-admin-panel'
 import { OfficePanel } from '@/components/panels/office-panel'
 import { GitHubSyncPanel } from '@/components/panels/github-sync-panel'
@@ -53,6 +54,7 @@ import { MissionControlSurfacePanel } from '@/components/panels/mission-control-
 import { DocumentsPanel } from '@/components/panels/documents-panel'
 import { ChatPagePanel } from '@/components/panels/chat-page-panel'
 import { ChatPanel } from '@/components/chat/chat-panel'
+import { STORAGE_GATEWAY_URL } from '@/lib/device-identity'
 import { getPluginPanel } from '@/lib/plugins'
 import { shouldRedirectDashboardToHttps } from '@/lib/browser-security'
 import { useTranslations } from 'next-intl'
@@ -159,8 +161,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!bootComplete && initSteps.every(s => s.status === 'done')) {
-      const t = setTimeout(() => setBootComplete(), 400)
-      return () => clearTimeout(t)
+      setBootComplete()
     }
   }, [initSteps, bootComplete, setBootComplete])
 
@@ -210,8 +211,9 @@ export default function Home() {
       return
     }
 
-    const connectWithEnvFallback = () => {
-      const explicitWsUrl = process.env.NEXT_PUBLIC_GATEWAY_URL || ''
+    const connectWithEnvFallback = (localGatewayUrl: string | null) => {
+      // localStorage user choice takes priority over env vars
+      const explicitWsUrl = localGatewayUrl || process.env.NEXT_PUBLIC_GATEWAY_URL || ''
       const gatewayPort = process.env.NEXT_PUBLIC_GATEWAY_PORT || '18789'
       const gatewayHost = process.env.NEXT_PUBLIC_GATEWAY_HOST || window.location.hostname
       const gatewayProto =
@@ -299,6 +301,8 @@ export default function Home() {
     fetch('/api/status?action=capabilities')
       .then(res => res.ok ? res.json() : null)
       .then(async data => {
+        const localGatewayUrl = localStorage.getItem(STORAGE_GATEWAY_URL)
+
         if (data?.subscription) {
           setSubscription(data.subscription)
         }
@@ -308,6 +312,24 @@ export default function Home() {
         if (data?.interfaceMode === 'essential' || data?.interfaceMode === 'full') {
           setInterfaceMode(data.interfaceMode)
         }
+
+        // User's explicit gateway URL choice (localStorage) takes PRIORITY over server's gateway flag.
+        // If user chose a URL from login page, always connect to it.
+        if (localGatewayUrl) {
+          // User explicitly chose a gateway URL — always set full mode
+          setDashboardMode('full')
+          setGatewayAvailable(true)
+          if (data?.claudeHome) {
+            setLocalSessionsAvailable(true)
+          }
+          setCapabilitiesChecked(true)
+          markStep('capabilities')
+          connect(localGatewayUrl)
+          markStep('connect')
+          return
+        }
+
+        // No user-chosen URL — use server's gateway flag to decide
         if (data && data.gateway === false) {
           setDashboardMode('local')
           setGatewayAvailable(false)
@@ -327,9 +349,10 @@ export default function Home() {
         setCapabilitiesChecked(true)
         markStep('capabilities')
 
+        // No user choice + server gateway flag false → try primary gateway / env fallback
         const primaryConnect = await connectWithPrimaryGateway()
         if (!primaryConnect.connected && !primaryConnect.attempted) {
-          connectWithEnvFallback()
+          connectWithEnvFallback(null)
         }
         markStep('connect')
       })
@@ -338,7 +361,7 @@ export default function Home() {
         setCapabilitiesChecked(true)
         markStep('capabilities')
         markStep('connect')
-        connectWithEnvFallback()
+        connectWithEnvFallback(null)
       })
 
     // Check onboarding state
@@ -373,24 +396,30 @@ export default function Home() {
           if (agentsData?.agents) setAgents(agentsData.agents)
         })
         .finally(() => { markStep('agents') }),
-      fetch('/api/sessions')
-        .then(r => r.ok ? r.json() : null)
-        .then((sessionsData) => {
-          if (sessionsData?.sessions) setSessions(sessionsData.sessions)
-        })
-        .finally(() => { markStep('sessions') }),
+      // Sessions can be slow with many JSONL files — don't block boot
+      (() => {
+        markStep('sessions')
+        return fetch('/api/sessions')
+          .then(r => r.ok ? r.json() : null)
+          .then((sessionsData) => {
+            if (sessionsData?.sessions) setSessions(sessionsData.sessions)
+          })
+      })(),
       fetch('/api/projects')
         .then(r => r.ok ? r.json() : null)
         .then((projectsData) => {
           if (projectsData?.projects) setProjects(projectsData.projects)
         })
         .finally(() => { markStep('projects') }),
-      fetch('/api/memory/graph?agent=all')
-        .then(r => r.ok ? r.json() : null)
-        .then((graphData) => {
-          if (graphData?.agents) setMemoryGraphAgents(graphData.agents)
-        })
-        .finally(() => { markStep('memory') }),
+      // Memory graph can be slow — don't block boot
+      (() => {
+        markStep('memory')
+        return fetch('/api/memory/graph?agent=all')
+          .then(r => r.ok ? r.json() : null)
+          .then((graphData) => {
+            if (graphData?.agents) setMemoryGraphAgents(graphData.agents)
+          })
+      })(),
       fetch('/api/skills')
         .then(r => r.ok ? r.json() : null)
         .then((skillsData) => {
@@ -454,11 +483,7 @@ export default function Home() {
               <ContentRouter tab={activeTab} />
             </ErrorBoundary>
           </div>
-          <footer className="px-4 pb-4 pt-2">
-            <p className="text-2xs text-muted-foreground/50 text-center">
-              {tc('builtWithCareBy')} <a href="https://x.com/nyk_builderz" target="_blank" rel="noopener noreferrer" className="text-muted-foreground/70 hover:text-primary transition-colors duration-200">nyk</a>.
-            </p>
-          </footer>
+{/* Footer removed — attribution moved to nav sidebar */}
         </main>
       </div>
 
@@ -629,7 +654,7 @@ function ContentRouter({ tab }: { tab: string }) {
     case 'alerts':
       return <AlertRulesPanel />
     case 'gateways':
-      if (isLocal) return <LocalModeUnavailable panel={tab} />
+      if (isLocal) return <GatewayControlPanel />
       return <MultiGatewayPanel />
     case 'gateway-config':
       if (isLocal) return <LocalModeUnavailable panel={tab} />

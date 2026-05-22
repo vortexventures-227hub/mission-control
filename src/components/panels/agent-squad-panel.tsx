@@ -27,6 +27,7 @@ interface Agent {
     in_progress: number
     completed: number
   }
+  runtime_type?: string
 }
 
 const statusColors: Record<string, string> = {
@@ -339,7 +340,14 @@ export function AgentSquadPanel() {
                 {/* Agent Header */}
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-semibold text-white text-lg flex items-center gap-1.5">{profile.emoji && <span>{profile.emoji}</span>}{profile.displayName}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-white text-lg flex items-center gap-1.5">{profile.emoji && <span>{profile.emoji}</span>}{profile.displayName}</h3>
+                      {agent.runtime_type && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-1 text-muted-foreground border border-border/30">
+                          {agent.runtime_type}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-gray-400 text-sm">{profile.role}</p>
                   </div>
                   
@@ -651,6 +659,7 @@ function CreateAgentModal({
     role: '',
     session_key: '',
     soul_content: '',
+    runtime_type: '' as string,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -660,7 +669,10 @@ function CreateAgentModal({
       const response = await fetch('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          runtime_type: formData.runtime_type || undefined,
+        })
       })
 
       if (!response.ok) throw new Error(t('failedToCreate'))
@@ -700,6 +712,22 @@ function CreateAgentModal({
                 placeholder={t('rolePlaceholder')}
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">{t('runtimeType')}</label>
+              <select
+                value={formData.runtime_type}
+                onChange={(e) => setFormData(prev => ({ ...prev, runtime_type: e.target.value }))}
+                className="w-full bg-gray-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">{t('runtimeTypeAuto')}</option>
+                <option value="hermes">Hermes Agent</option>
+                <option value="openclaw">OpenClaw</option>
+                <option value="claude">Claude Code</option>
+                <option value="codex">Codex CLI</option>
+                <option value="custom">{t('runtimeTypeCustom')}</option>
+              </select>
             </div>
 
             <div>

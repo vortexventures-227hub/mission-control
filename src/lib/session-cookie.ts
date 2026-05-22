@@ -45,9 +45,10 @@ function isPlainLocalRequest(requestUrl?: string): boolean {
 
 export function getMcSessionCookieOptions(input: { maxAgeSeconds: number; isSecureRequest?: boolean; requestUrl?: string }): Partial<ResponseCookie> {
   const secureEnv = envFlag('MC_COOKIE_SECURE')
+  const isProduction = process.env.NODE_ENV === 'production'
   const secure = isPlainLocalRequest(input.requestUrl)
     ? false
-    : secureEnv ?? input.isSecureRequest ?? false
+    : secureEnv ?? input.isSecureRequest ?? isProduction
 
   return {
     httpOnly: true,

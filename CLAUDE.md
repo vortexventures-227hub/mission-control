@@ -62,7 +62,7 @@ Path alias: `@/*` maps to `./src/*`
 ## Data Directory
 
 Set `MISSION_CONTROL_DATA_DIR` env var to change the data location (defaults to `.data/`).
-Database path: `MISSION_CONTROL_DB_PATH` (defaults to `.data/mission-control.db`).
+Database path: defaults to `<MISSION_CONTROL_DATA_DIR>/mission-control.db`.
 
 ## Conventions
 
@@ -71,6 +71,31 @@ Database path: `MISSION_CONTROL_DB_PATH` (defaults to `.data/mission-control.db`
 - **Package manager**: pnpm only (no npm/yarn)
 - **Icons**: No icon libraries -- use raw text/emoji in components
 - **Standalone output**: `next.config.js` sets `output: 'standalone'`
+
+## Agent Control Interfaces
+
+Mission Control provides three interfaces for autonomous agents:
+
+### MCP Server (recommended for agents)
+```bash
+# Add to any Claude Code agent:
+claude mcp add mission-control -- node /path/to/mission-control/scripts/mc-mcp-server.cjs
+
+# Environment config:
+MC_URL=http://127.0.0.1:3000 MC_API_KEY=<key>
+```
+35 tools: agents, tasks, sessions, memory, soul, comments, tokens, skills, cron, status.
+See `docs/cli-agent-control.md` for full tool list.
+
+### CLI
+```bash
+pnpm mc agents list --json
+pnpm mc tasks queue --agent Aegis --max-capacity 2 --json
+pnpm mc events watch --types agent,task
+```
+
+### REST API
+OpenAPI spec: `openapi.json`. Interactive docs at `/docs` when running.
 
 ## Common Pitfalls
 

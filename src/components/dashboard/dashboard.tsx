@@ -7,6 +7,7 @@ import { useNavigateToPanel } from '@/lib/navigation'
 import { useSmartPoll } from '@/lib/use-smart-poll'
 import { SignalPill, getLocalOsStatus, getProviderHealth, getMcHealth } from './widget-primitives'
 import { OnboardingChecklistWidget } from './widgets/onboarding-checklist-widget'
+import { EmptyStateLaunchpad } from './empty-state-launchpad'
 import { WidgetGrid } from './widget-grid'
 import { BoundaryBanner, Btn, Chip, HudPanel, Stat } from '@/components/mc/hud'
 import type { DbStats, ClaudeStats, LogLike, DashboardData } from './widget-primitives'
@@ -266,6 +267,11 @@ export function Dashboard() {
     <div className="p-5 space-y-4">
       <OnboardingChecklistWidget />
       <BlackwireHqOverview />
+      <EmptyStateLaunchpad
+        agentCount={dbStats?.agents.total ?? agents.length}
+        taskCount={dbStats?.tasks.total ?? tasks.length}
+        onNavigate={navigateToPanel}
+      />
       <section className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div>

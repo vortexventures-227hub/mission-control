@@ -68,9 +68,11 @@ export const metadata: Metadata = {
     title: 'Mission Control',
     description: 'Blackwire Ops HQ for internal command truth, approvals, receipts, and evidence-gated agent operations.',
     images: [{ url: '/brand/mc-logo-512.png', width: 512, height: 512, alt: 'Mission Control logo' }],
+    type: 'website',
+    siteName: 'Mission Control',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: 'Mission Control',
     description: 'Blackwire Ops HQ for internal command truth, approvals, receipts, and evidence-gated agent operations.',
     images: ['/brand/mc-logo-512.png'],
