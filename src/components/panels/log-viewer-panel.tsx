@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { useMissionControl } from '@/store'
 import { useSmartPoll } from '@/lib/use-smart-poll'
 import { createClientLogger } from '@/lib/client-logger'
@@ -181,11 +182,20 @@ export function LogViewerPanel() {
 
   const getLogLevelBg = (level: string) => {
     switch (level.toLowerCase()) {
-      case 'error': return 'bg-red-500/10 border-red-500/20'
-      case 'warn': return 'bg-yellow-500/10 border-yellow-500/20'
-      case 'info': return 'bg-blue-500/10 border-blue-500/20'
-      case 'debug': return 'bg-gray-500/10 border-gray-500/20'
-      default: return 'bg-secondary border-border'
+      case 'error': return 'border-[color:var(--mc-rose)]/55 bg-[rgba(255,85,119,0.10)]'
+      case 'warn': return 'border-[color:var(--mc-amber)]/55 bg-[rgba(245,165,36,0.10)]'
+      case 'info': return 'border-[color:var(--mc-teal)]/35 bg-[rgba(46,230,214,0.06)]'
+      case 'debug': return 'border-[color:var(--mc-hairline)] bg-black/20'
+      default: return 'border-[color:var(--mc-hairline)] bg-black/20'
+    }
+  }
+
+  const getLogLevelTone = (level: string): 'teal' | 'amber' | 'rose' | 'dim' => {
+    switch (level.toLowerCase()) {
+      case 'error': return 'rose'
+      case 'warn': return 'amber'
+      case 'info': return 'teal'
+      default: return 'dim'
     }
   }
 
@@ -215,29 +225,46 @@ export function LogViewerPanel() {
   log.debug(`Store has ${logs.length} logs, filtered to ${filteredLogs.length}`)
 
   return (
-    <div className="flex flex-col h-full p-6 space-y-4">
-      <div className="border-b border-border pb-4">
-        <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
-        <p className="text-muted-foreground mt-2">
+    <Page
+      kicker="Blackwire Ops / Local Runtime"
+      title={t('title')}
+      subtitle={
+        <>
           {t('description')}
-          {logFilePath && (
-            <span className="ml-3 font-mono text-xs text-muted-foreground/70">{logFilePath}</span>
-          )}
-        </p>
-      </div>
+          {logFilePath && <span className="ml-3 font-mono text-xs text-[color:var(--mc-ink-2)]">{logFilePath}</span>}
+        </>
+      }
+      badges={
+        <>
+          <Chip tone={isAutoScroll ? 'teal' : 'amber'} pulse={isAutoScroll}>{isAutoScroll ? 'live tail' : 'manual tail'}</Chip>
+          <Chip tone={isBufferFull ? 'amber' : 'dim'}>{logs.length}/{MAX_LOG_BUFFER} buffer</Chip>
+          <Chip tone="dim">{availableSources.length} sources</Chip>
+        </>
+      }
+    >
+      <div className="flex min-h-[calc(100vh-12rem)] flex-col space-y-4">
+        <BoundaryBanner tone="amber" title="Log boundary">
+          This surface tails local Mission Control logs and clears the browser buffer only. It does not mutate log files, rotate infrastructure logs, or hide runtime failures.
+        </BoundaryBanner>
 
-      {/* Filters and Controls */}
-      <div className="bg-card border border-border rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          {/* Level Filter */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              {t('filterLevel')}
-            </label>
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <Stat label="Showing" value={filteredLogs.length} sub={`${logs.length} total`} />
+          <Stat label="Sources" value={availableSources.length} sub={logFilters.source || 'all sources'} accent="purple" />
+          <Stat label="Auto Scroll" value={isAutoScroll ? 'ON' : 'OFF'} sub="tail mode" accent={isAutoScroll ? 'teal' : 'amber'} glow={isAutoScroll} />
+          <Stat label="Buffer" value={`${Math.round((logs.length / MAX_LOG_BUFFER) * 100)}%`} sub={`${MAX_LOG_BUFFER} max`} accent={isBufferFull ? 'amber' : 'dim'} />
+          <Stat label="Updated" value={logs.length > 0 ? new Date(logs[0]?.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--'} sub={logs.length > 0 ? 'latest event' : t('never')} />
+        </section>
+
+        <HudPanel kicker="tail controls" title="Filters / Export" glow>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+            <div>
+              <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
+                {t('filterLevel')}
+              </label>
             <select
               value={logFilters.level || ''}
               onChange={(e) => handleFilterChange({ level: e.target.value || undefined })}
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full border border-[color:var(--mc-hairline)] bg-black/25 px-3 py-2 font-mono text-xs text-[color:var(--mc-ink-0)] outline-none focus:border-[color:var(--mc-teal)]/70"
             >
               <option value="">{t('allLevels')}</option>
               <option value="error">{t('levelError')}</option>
@@ -245,74 +272,72 @@ export function LogViewerPanel() {
               <option value="info">{t('levelInfo')}</option>
               <option value="debug">{t('levelDebug')}</option>
             </select>
-          </div>
+            </div>
 
-          {/* Source Filter */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              {t('filterSource')}
-            </label>
+            <div>
+              <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
+                {t('filterSource')}
+              </label>
             <select
               value={logFilters.source || ''}
               onChange={(e) => handleFilterChange({ source: e.target.value || undefined })}
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full border border-[color:var(--mc-hairline)] bg-black/25 px-3 py-2 font-mono text-xs text-[color:var(--mc-ink-0)] outline-none focus:border-[color:var(--mc-teal)]/70"
             >
               <option value="">{t('allSources')}</option>
               {availableSources.map((source) => (
                 <option key={source} value={source}>{source}</option>
               ))}
             </select>
-          </div>
+            </div>
 
-          {/* Session Filter */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              {t('filterSession')}
-            </label>
+            <div>
+              <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
+                {t('filterSession')}
+              </label>
             <input
               type="text"
               value={logFilters.session || ''}
               onChange={(e) => handleFilterChange({ session: e.target.value || undefined })}
               placeholder={t('sessionPlaceholder')}
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full border border-[color:var(--mc-hairline)] bg-black/25 px-3 py-2 font-mono text-xs text-[color:var(--mc-ink-0)] placeholder:text-[color:var(--mc-ink-3)] outline-none focus:border-[color:var(--mc-teal)]/70"
             />
-          </div>
+            </div>
 
-          {/* Search Filter */}
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              {t('filterSearch')}
-            </label>
+            <div>
+              <label className="mb-2 block font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
+                {t('filterSearch')}
+              </label>
             <input
               type="text"
               value={logFilters.search || ''}
               onChange={(e) => handleFilterChange({ search: e.target.value || undefined })}
               placeholder={t('searchPlaceholder')}
-              className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground placeholder-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="w-full border border-[color:var(--mc-hairline)] bg-black/25 px-3 py-2 font-mono text-xs text-[color:var(--mc-ink-0)] placeholder:text-[color:var(--mc-ink-3)] outline-none focus:border-[color:var(--mc-teal)]/70"
             />
-          </div>
+            </div>
 
-          {/* Controls */}
-          <div className="flex items-end space-x-2">
+            <div className="flex items-end gap-2">
             <Button
               onClick={() => setIsAutoScroll(!isAutoScroll)}
               variant={isAutoScroll ? 'success' : 'outline'}
+              size="sm"
             >
               {isAutoScroll ? t('auto') : t('manual')}
             </Button>
             <Button
               onClick={handleScrollToBottom}
+              size="sm"
               className="bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30"
             >
               {t('bottom')}
             </Button>
-          </div>
+            </div>
 
-          {/* Export & Clear */}
-          <div className="flex items-end space-x-2">
+            <div className="flex items-end gap-2">
             <Button
               onClick={handleExportText}
               disabled={filteredLogs.length === 0}
+              size="sm"
               className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 disabled:opacity-40"
             >
               {t('exportLog')}
@@ -320,6 +345,7 @@ export function LogViewerPanel() {
             <Button
               onClick={handleExportJson}
               disabled={filteredLogs.length === 0}
+              size="sm"
               className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 disabled:opacity-40"
             >
               {t('exportJson')}
@@ -327,74 +353,68 @@ export function LogViewerPanel() {
             <Button
               onClick={clearLogs}
               variant="destructive"
+              size="sm"
             >
               {t('clear')}
             </Button>
+            </div>
+          </div>
+        </HudPanel>
+
+        <div className="flex items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.12em] text-[color:var(--mc-ink-2)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip tone="neutral">{t('showing', { filtered: filteredLogs.length, total: logs.length })}</Chip>
+          {isBufferFull && (
+              <Chip tone="amber">{t('bufferFull', { max: MAX_LOG_BUFFER })}</Chip>
+          )}
+          </div>
+          <div className="text-right">
+            {t('autoScroll')}: {isAutoScroll ? t('on') : t('off')} / {t('lastUpdated')}: {logs.length > 0 ? new Date(logs[0]?.timestamp).toLocaleTimeString() : t('never')}
           </div>
         </div>
-      </div>
 
-      {/* Log Stats */}
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div className="flex items-center gap-3">
-          <span>{t('showing', { filtered: filteredLogs.length, total: logs.length })}</span>
-          {isBufferFull && (
-            <span className="px-2 py-0.5 rounded text-xs bg-yellow-500/15 text-yellow-400 border border-yellow-500/25">
-              {t('bufferFull', { max: MAX_LOG_BUFFER })}
-            </span>
-          )}
-        </div>
-        <div>
-          {t('autoScroll')}: {isAutoScroll ? t('on') : t('off')} •
-          {t('lastUpdated')}: {logs.length > 0 ? new Date(logs[0]?.timestamp).toLocaleTimeString() : t('never')}
-        </div>
-      </div>
-
-      {/* Log Display */}
-      <div className="flex-1 bg-card border border-border rounded-lg overflow-hidden">
+        <HudPanel kicker="local stream" title="Log Tail" className="flex-1" padded={false}>
         <div 
           ref={logContainerRef}
-          className="h-full overflow-auto p-4 space-y-2 font-mono text-sm"
+            className="max-h-[54vh] min-h-[420px] overflow-auto p-3 space-y-2 font-mono text-xs"
         >
           {isLoading ? (
             <Loader variant="panel" label="Loading logs" />
           ) : filteredLogs.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-muted-foreground">
+              <div className="flex h-32 items-center justify-center text-[color:var(--mc-ink-2)]">
               {t('noLogs')}
             </div>
           ) : (
             filteredLogs.map((log) => (
               <div 
                 key={log.id} 
-                className={`border-l-4 pl-4 py-2 rounded-r-md ${getLogLevelBg(log.level)}`}
+                  className={`border-l-2 px-3 py-2 ${getLogLevelBg(log.level)}`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 text-xs">
-                      <span className="text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.12em]">
+                        <span className="text-[color:var(--mc-ink-2)]">
                         {new Date(log.timestamp).toLocaleTimeString()}
                       </span>
-                      <span className={`font-medium uppercase ${getLogLevelColor(log.level)}`}>
-                        {log.level}
-                      </span>
-                      <span className="text-muted-foreground">
+                        <Chip tone={getLogLevelTone(log.level)}>{log.level}</Chip>
+                        <span className="text-[color:var(--mc-ink-2)]">
                         [{log.source}]
                       </span>
                       {log.session && (
-                        <span className="text-muted-foreground">
+                          <span className="text-[color:var(--mc-ink-2)]">
                           session:{log.session}
                         </span>
                       )}
                     </div>
-                    <div className="mt-1 text-foreground break-words">
+                      <div className={`mt-2 break-words leading-5 ${getLogLevelColor(log.level)}`}>
                       {log.message}
                     </div>
                     {log.data && (
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
+                          <summary className="cursor-pointer text-[10px] uppercase tracking-[0.12em] text-[color:var(--mc-ink-2)] hover:text-[color:var(--mc-ink-0)]">
                           {t('additionalData')}
                         </summary>
-                        <pre className="mt-1 text-xs text-muted-foreground overflow-auto">
+                          <pre className="mt-1 overflow-auto border border-[color:var(--mc-hairline)] bg-black/25 p-2 text-[10px] text-[color:var(--mc-ink-2)]">
                           {JSON.stringify(log.data, null, 2)}
                         </pre>
                       </details>
@@ -405,7 +425,8 @@ export function LogViewerPanel() {
             ))
           )}
         </div>
+        </HudPanel>
       </div>
-    </div>
+    </Page>
   )
 }
