@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-05-22T01:51:17.074Z",
+  "proof": {
+    "route": "/chat",
+    "url": "http://127.0.0.1:3110/chat",
+    "titlePresent": true,
+    "boundaryPresent": true,
+    "workspacePresent": true,
+    "embeddedPresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/chat\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n17/100\nEVENTS\nLive\nMODE GATEWAY\n21:51\nBLACKWIRE OPS / DIRECT COMMS\nDIRECT CHAT\n\nAgent and operator conversations inside the local Mission Control boundary. Session controls remain embedded in the chat workspace.\n\nLOCAL SESSION\nEMBEDDED WORKSPACE\nRECEIPT-AWARE\n△\nLOCAL CHAT BOUNDARY\nDirect chat is available for local coordination and session context. External channel sends remain blocked unless routed through an approved, audited surface.\nOPERATOR WORKSPACE\nCONVERSATION CONSOLE\nAgent Chat\n5 online\nSESSIONS\nACTIVE\nS\nstark • agent:stark:cron:8943e9f9-1db9-4663-bbe2-4a4b6fa3e185\n3m\n\nMiniMax-M2.7-highspeed • 57k/200k (29%)\n\nC\ncipher • agent:cipher:cron:dcfd712c-8439-4a6b-9fe5-5aebb707fa3f\n6m\n\nMiniMax-M2.7-highspeed • 58k/200k (29%)\n\nO\noompa-beta • agent:oompa-beta:cron:7577dfa5-c9d9-40d9-9fff-8e6c059301d8\n10m\n\nMiniMax-M2.7-highspeed • 57k/200k (28%)\n\nO\noompa-alpha • agent:oompa-alpha:cron:dcf73929-67ee-4ed7-8afb-2d5f06d4c896\n12m\n\nMiniMax-M2.7-highspeed • 59k/200k (30%)\n\nA\nariadne • agent:ariadne:cron:c11fed55-186f-4104"
+  },
+  "badResponses": [],
+  "warningMessages": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}
