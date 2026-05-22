@@ -1,0 +1,39 @@
+{
+  "baseUrl": "http://127.0.0.1:3110",
+  "dbPath": ".data/mission-control.db",
+  "outDir": "docs/outputs/mission-control-runtime-proof-2026-05-22_11-22-super-admin-hud",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "sessionCleanupCount": 0,
+  "routes": [
+    {
+      "route": "/super-admin",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_11-22-super-admin-hud/super-admin-hud.png",
+      "title": "Mission Control",
+      "textLength": 1960,
+      "headings": [
+        "Super Mission Control",
+        "Super Admin Control Rules",
+        "Mode Contract",
+        "Provisioning Ledger"
+      ],
+      "hasApplicationError": false,
+      "hasAlphaBoundary": true,
+      "hasDoubleConfirmChip": true,
+      "hasAuditChip": true,
+      "hasProvisioningLedger": true,
+      "hasModeContract": true,
+      "hasControlRules": true,
+      "hasTenantWriteGate": true,
+      "firstText": "Skip to main content Overview Group Chat Tasks Agents Approvals Command Truth Notifications Chat Memory Brain / Memory Documents Think Tank Knowledge Intake Research Command Research Intake Brainstorm Wall Content Office Asset Library Design Studio Marketing A"
+    }
+  ],
+  "consoleFindings": [],
+  "badResponses": [],
+  "passed": true
+}

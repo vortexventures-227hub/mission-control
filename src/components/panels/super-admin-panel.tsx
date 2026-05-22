@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { useMissionControl } from '@/store'
 
 type SuperTab = 'tenants' | 'jobs' | 'events'
@@ -336,6 +337,9 @@ export function SuperAdminPanel() {
     return { active, pending, errored, queuedApprovals }
   }, [tenants, jobs])
 
+  const liveJobs = useMemo(() => jobs.filter((j) => Number(j.dry_run) !== 1).length, [jobs])
+  const eventCount = selectedJobEvents.length + Object.values(localJobEvents).reduce((sum, events) => sum + events.length, 0)
+
   const createTenant = async () => {
     if (!form.slug.trim() || !form.display_name.trim()) {
       showFeedback(false, t('slugAndNameRequired'))
@@ -509,32 +513,52 @@ export function SuperAdminPanel() {
 
   if (currentUser?.role !== 'admin') {
     return (
-      <div className="p-8 text-center">
-        <div className="text-lg font-semibold text-foreground mb-2">{t('accessDenied')}</div>
-        <p className="text-sm text-muted-foreground">{t('accessDeniedDesc')}</p>
-      </div>
+      <Page
+        kicker="Blackwire Ops / Super Admin"
+        title={t('title')}
+        subtitle={t('accessDeniedDesc')}
+        badges={<Chip tone="rose">ADMIN REQUIRED</Chip>}
+      >
+        <BoundaryBanner tone="rose" title={t('accessDenied')}>
+          This surface is hidden until the active session has an admin role. No tenant or provisioning controls are rendered.
+        </BoundaryBanner>
+      </Page>
     )
   }
 
   if (loading) {
     return (
-      <div className="p-8 text-center">
-        <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse mx-auto mb-2" />
-        <span className="text-sm text-muted-foreground">{t('loading')}</span>
-      </div>
+      <Page
+        kicker="Blackwire Ops / Super Admin"
+        title={t('title')}
+        subtitle={isLocal ? t('subtitleLocal') : t('subtitleMultiTenant')}
+        badges={<Chip tone="amber" pulse>LOADING</Chip>}
+      >
+        <HudPanel>
+          <div className="flex items-center justify-center gap-3 py-8 font-mono text-xs uppercase tracking-[0.16em] text-[color:var(--mc-ink-2)]">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[color:var(--mc-teal)]" />
+            {t('loading')}
+          </div>
+        </HudPanel>
+      </Page>
     )
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-sm text-muted-foreground">
-            {isLocal ? t('subtitleLocal') : t('subtitleMultiTenant')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <Page
+      kicker="Blackwire Ops / Super Admin"
+      title={t('title')}
+      subtitle={isLocal ? t('subtitleLocal') : t('subtitleMultiTenant')}
+      badges={(
+        <>
+          <Chip tone={isLocal ? 'amber' : 'purple'} pulse>{isLocal ? 'LOCAL-ONLY' : 'MULTI-TENANT'}</Chip>
+          <Chip tone="rose">ALPHA AUTH</Chip>
+          <Chip tone="amber">DOUBLE-CONFIRM</Chip>
+          <Chip tone="neutral">AUDIT REQUIRED</Chip>
+        </>
+      )}
+      actions={(
+        <>
           <Button
             size="sm"
             onClick={() => setCreateExpanded(true)}
@@ -548,26 +572,54 @@ export function SuperAdminPanel() {
           >
             {t('refresh')}
           </Button>
-        </div>
-      </div>
+        </>
+      )}
+    >
+      <div className="mx-auto max-w-7xl space-y-5">
+        <BoundaryBanner tone="rose" title="ALPHA destructive-action boundary">
+          Tenant provisioning and decommission controls stay behind admin role checks, explicit dry-run/live choices, typed slug confirmation for live teardown, and audit-backed approval gates. LOCAL mode exposes runtime state without pretending external execution is available.
+        </BoundaryBanner>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-lg border border-border bg-card px-4 py-3">
-          <div className="text-xs text-muted-foreground">{t('activeOrgs')}</div>
-          <div className="text-xl font-semibold text-foreground mt-1">{kpis.active}</div>
-        </div>
-        <div className="rounded-lg border border-border bg-card px-4 py-3">
-          <div className="text-xs text-muted-foreground">{t('pendingInProgress')}</div>
-          <div className="text-xl font-semibold text-foreground mt-1">{kpis.pending}</div>
-        </div>
-        <div className="rounded-lg border border-border bg-card px-4 py-3">
-          <div className="text-xs text-muted-foreground">{t('erroredOrgs')}</div>
-          <div className="text-xl font-semibold text-red-400 mt-1">{kpis.errored}</div>
-        </div>
-        <div className="rounded-lg border border-border bg-card px-4 py-3">
-          <div className="text-xs text-muted-foreground">{t('queuedApprovals')}</div>
-          <div className="text-xl font-semibold text-amber-400 mt-1">{kpis.queuedApprovals}</div>
-        </div>
+        <Stat label={t('activeOrgs')} value={kpis.active} sub={isLocal ? 'local shadow row permitted' : `${tenants.length} total tenants`} accent="teal" glow />
+        <Stat label={t('pendingInProgress')} value={kpis.pending} sub="provisioning/decommissioning watched" accent="amber" />
+        <Stat label={t('erroredOrgs')} value={kpis.errored} sub={kpis.errored > 0 ? 'operator review required' : 'no error rows loaded'} accent={kpis.errored > 0 ? 'rose' : 'dim'} />
+        <Stat label={t('queuedApprovals')} value={kpis.queuedApprovals} sub={`${liveJobs} live job${liveJobs === 1 ? '' : 's'} in ledger`} accent="purple" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
+        <HudPanel kicker="Proof Gates" title="Super Admin Control Rules">
+          <div className="grid gap-2 font-mono text-[11px] text-[color:var(--mc-ink-1)] md:grid-cols-3">
+            <div className="border border-[color:var(--mc-hairline)] bg-black/15 p-3">
+              <div className="text-[color:var(--mc-rose)] font-black uppercase tracking-[0.14em]">Tenant write gate</div>
+              <div className="mt-1 leading-5">Create/decommission still calls `/api/super/*`; no new mutation path was added.</div>
+            </div>
+            <div className="border border-[color:var(--mc-hairline)] bg-black/15 p-3">
+              <div className="text-[color:var(--mc-amber)] font-black uppercase tracking-[0.14em]">Live teardown gate</div>
+              <div className="mt-1 leading-5">Live decommission remains disabled until the tenant slug is typed exactly.</div>
+            </div>
+            <div className="border border-[color:var(--mc-hairline)] bg-black/15 p-3">
+              <div className="text-[color:var(--mc-teal)] font-black uppercase tracking-[0.14em]">Evidence gate</div>
+              <div className="mt-1 leading-5">{eventCount} loaded event record{eventCount === 1 ? '' : 's'} available for the selected job context.</div>
+            </div>
+          </div>
+        </HudPanel>
+        <HudPanel kicker="Boundary" title="Mode Contract">
+          <div className="space-y-2 font-mono text-[11px] text-[color:var(--mc-ink-1)]">
+            <div className="flex items-center justify-between gap-3 border-b border-[color:var(--mc-hairline)] pb-2">
+              <span>runtime mode</span>
+              <Chip tone={isLocal ? 'amber' : 'purple'}>{isLocal ? 'LOCAL' : 'TENANT'}</Chip>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-b border-[color:var(--mc-hairline)] pb-2">
+              <span>operator role</span>
+              <Chip tone="rose">{currentUser?.role || 'unknown'}</Chip>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span>gateway source</span>
+              <Chip tone={gatewayLoadError ? 'amber' : 'teal'}>{gatewayLoadError ? 'FALLBACK' : `${gatewayOptions.length} LOADED`}</Chip>
+            </div>
+          </div>
+        </HudPanel>
       </div>
 
       {feedback && (
@@ -586,10 +638,8 @@ export function SuperAdminPanel() {
         </div>
       )}
 
-      {createExpanded && (
-      <div className="rounded-lg border border-primary/30 bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-medium text-foreground">{t('createNewWorkspace')}</h3>
+        {createExpanded && (
+      <HudPanel kicker="Alpha Queue" title={t('createNewWorkspace')} right={(
           <Button
             variant="ghost"
             size="icon-xs"
@@ -599,7 +649,7 @@ export function SuperAdminPanel() {
           >
             ×
           </Button>
-        </div>
+        )}>
           <div className="p-4 space-y-3">
             <div className="text-xs text-muted-foreground">
               {t('createWorkspaceHint')}
@@ -679,11 +729,11 @@ export function SuperAdminPanel() {
               </Button>
             </div>
           </div>
-      </div>
+      </HudPanel>
       )}
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-3 py-2 border-b border-border flex items-center gap-2">
+      <HudPanel kicker="Tenant Control" title="Provisioning Ledger" padded={false}>
+        <div className="px-3 py-2 border-b border-[color:var(--mc-hairline)] flex items-center gap-2">
           {(['tenants', 'jobs', 'events'] as SuperTab[]).map((tab) => (
             <Button
               key={tab}
@@ -1011,17 +1061,26 @@ export function SuperAdminPanel() {
             </div>
           </div>
         )}
-      </div>
+      </HudPanel>
 
       {decommissionDialog.open && decommissionDialog.tenant && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-2xl rounded-lg border border-border bg-card shadow-xl">
-            <div className="px-4 py-3 border-b border-border">
+          <div className="w-full max-w-2xl border border-[color:var(--mc-hairline-2)] bg-[color:var(--mc-bg-2)] shadow-[0_0_44px_rgba(255,85,119,0.18)]">
+            <div className="px-4 py-3 border-b border-[color:var(--mc-hairline)]">
               <h3 className="text-sm font-semibold text-foreground">{t('queueDecommissionTitle', { name: decommissionDialog.tenant.display_name })}</h3>
               <p className="text-xs text-muted-foreground mt-1">{t('reviewImpact')}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Chip tone="rose">DESTRUCTIVE</Chip>
+                <Chip tone="amber">{decommissionDialog.dryRun ? 'DRY-RUN' : 'LIVE'}</Chip>
+                <Chip tone="neutral">TYPE SLUG TO CONFIRM</Chip>
+              </div>
             </div>
 
             <div className="p-4 space-y-4">
+              <BoundaryBanner tone="rose" title="Second confirmation required">
+                Live teardown cannot queue until the tenant slug matches exactly. Use dry-run first unless the operator has external approval evidence.
+              </BoundaryBanner>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="rounded-md border border-border bg-secondary/20 p-3 text-xs text-foreground flex items-start gap-2">
                   <input
@@ -1133,6 +1192,7 @@ export function SuperAdminPanel() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
