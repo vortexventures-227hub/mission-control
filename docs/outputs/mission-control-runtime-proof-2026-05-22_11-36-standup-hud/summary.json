@@ -1,0 +1,36 @@
+{
+  "baseUrl": "http://127.0.0.1:3110",
+  "dbPath": ".data/mission-control.db",
+  "outDir": "docs/outputs/mission-control-runtime-proof-2026-05-22_11-36-standup-hud",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "sessionCleanupCount": 0,
+  "routes": [
+    {
+      "route": "/standup",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_11-36-standup-hud/standup-hud.png",
+      "title": "Mission Control",
+      "textLength": 1228,
+      "headings": [
+        "Daily Standup",
+        "Current"
+      ],
+      "hasApplicationError": false,
+      "hasDailyStandup": true,
+      "hasBoundary": true,
+      "hasNeedsGeneration": true,
+      "hasExportLocal": true,
+      "hasDailyReportPanel": true,
+      "hasGenerateAction": true,
+      "firstText": "Skip to main content Overview Group Chat Tasks Agents Approvals Command Truth Notifications Chat Memory Brain / Memory Documents Think Tank Knowledge Intake Research Command Research Intake Brainstorm Wall Content Office Asset Library Design Studio Marketing A"
+    }
+  ],
+  "consoleFindings": [],
+  "badResponses": [],
+  "passed": true
+}

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { createClientLogger } from '@/lib/client-logger'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
+import { useMissionControl } from '@/store'
 
 const log = createClientLogger('StandupPanel')
 
@@ -100,12 +102,14 @@ interface StandupHistory {
 
 export function StandupPanel() {
   const t = useTranslations('standup')
+  const { dashboardMode, currentUser } = useMissionControl()
   const [standupReport, setStandupReport] = useState<StandupReport | null>(null)
   const [standupHistory, setStandupHistory] = useState<StandupHistory[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [view, setView] = useState<'current' | 'history'>('current')
+  const isLocal = dashboardMode === 'local'
 
   // Generate standup report
   const generateStandup = async (date?: string) => {
@@ -257,29 +261,34 @@ export function StandupPanel() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
-        <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
-
-        <div className="flex items-center gap-3">
-          {/* View Toggle */}
-          <div className="flex bg-secondary rounded-lg p-1">
-            <Button
-              onClick={() => setView('current')}
-              variant={view === 'current' ? 'default' : 'ghost'}
-              size="sm"
-            >
-              {t('viewCurrent')}
-            </Button>
-            <Button
-              onClick={() => setView('history')}
-              variant={view === 'history' ? 'default' : 'ghost'}
-              size="sm"
-            >
-              {t('viewHistory')}
-            </Button>
-          </div>
+    <Page
+      kicker="Blackwire Ops / Daily Ops"
+      title={t('title')}
+      subtitle="Generate the operator standup from local task and agent state, then review blockers, overdue work, and agent-by-agent evidence."
+      badges={(
+        <>
+          <Chip tone={isLocal ? 'amber' : 'purple'} pulse>{isLocal ? 'LOCAL-ONLY' : 'AUTHENTICATED'}</Chip>
+          <Chip tone={standupReport ? 'teal' : 'amber'}>{standupReport ? 'REPORT READY' : 'NEEDS GENERATION'}</Chip>
+          <Chip tone="neutral">EXPORT LOCAL</Chip>
+          <Chip tone="dim">{currentUser?.role || 'viewer'}</Chip>
+        </>
+      )}
+      actions={(
+        <>
+          <Button
+            onClick={() => setView('current')}
+            variant={view === 'current' ? 'default' : 'ghost'}
+            size="sm"
+          >
+            {t('viewCurrent')}
+          </Button>
+          <Button
+            onClick={() => setView('history')}
+            variant={view === 'history' ? 'default' : 'ghost'}
+            size="sm"
+          >
+            {t('viewHistory')}
+          </Button>
 
           {view === 'current' && (
             <>
@@ -311,8 +320,22 @@ export function StandupPanel() {
               )}
             </>
           )}
-        </div>
-      </div>
+        </>
+      )}
+    >
+      <div className="mx-auto flex h-full max-w-7xl flex-col space-y-4">
+        <BoundaryBanner tone="amber" title="Generated-report boundary">
+          Standup is generated from the current authenticated Mission Control data snapshot. Export creates a local markdown file only; it is not a receipt, external send, or proof of completed work unless linked to evidence elsewhere.
+        </BoundaryBanner>
+
+        {standupReport && (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Stat label={t('statCompleted')} value={standupReport.summary.totalCompleted} sub={`${standupReport.summary.totalAgents} agent${standupReport.summary.totalAgents === 1 ? '' : 's'} in report`} accent="teal" glow />
+            <Stat label={t('statInProgress')} value={standupReport.summary.totalInProgress} sub={`${standupReport.summary.totalAssigned} assigned`} accent="amber" />
+            <Stat label={t('statBlocked')} value={standupReport.summary.totalBlocked} sub={standupReport.summary.totalBlocked > 0 ? 'operator unblock needed' : 'no blockers loaded'} accent={standupReport.summary.totalBlocked > 0 ? 'rose' : 'dim'} />
+            <Stat label={t('statOverdue')} value={standupReport.summary.overdue} sub={`${standupReport.summary.totalActivity} activity events`} accent={standupReport.summary.overdue > 0 ? 'rose' : 'purple'} />
+          </div>
+        )}
 
       {/* Error Display */}
       {error && (
@@ -323,6 +346,7 @@ export function StandupPanel() {
       )}
 
       {/* Content */}
+      <HudPanel kicker="Daily Report" title={view === 'current' ? t('viewCurrent') : t('viewHistory')} padded={false} className="flex-1">
       <div className="flex-1 overflow-y-auto">
         {view === 'current' ? (
           // Current Standup View
@@ -563,6 +587,8 @@ export function StandupPanel() {
           </div>
         )}
       </div>
-    </div>
+      </HudPanel>
+      </div>
+    </Page>
   )
 }
