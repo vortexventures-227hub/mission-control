@@ -1,0 +1,46 @@
+{
+  "baseUrl": "http://127.0.0.1:3110",
+  "dbPath": ".data/mission-control.db",
+  "outDir": "docs/outputs/mission-control-runtime-proof-2026-05-22_12-22-local-agents-doc-hud",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "proofMode": "local-mode branch exercised by scoped /api/status?action=capabilities route override; no database or server mode mutation performed",
+  "sessionCleanupCount": 0,
+  "routes": [
+    {
+      "route": "/agents",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_12-22-local-agents-doc-hud/local-agents-doc-hud.png",
+      "title": "Mission Control",
+      "textLength": 10846,
+      "headings": [
+        "Local AGENTS.md",
+        "Agent Squad",
+        "Roster Read Rules",
+        "Agent Org Chart",
+        "Axis",
+        "Axis",
+        "Rook",
+        "Stark",
+        "Cobb",
+        "Arthur",
+        "Ariadne",
+        "Eames"
+      ],
+      "hasApplicationError": false,
+      "hasLocalMode": true,
+      "hasLocalAgentsDoc": true,
+      "hasBoundary": true,
+      "hasReadOnlyChip": true,
+      "hasWorkspacePolicyFile": true,
+      "firstText": "Skip to main content Overview Group Chat Tasks Agents Command Truth Notifications Chat Memory Brain / Memory Documents Think Tank Knowledge Intake Research Command Research Intake Brainstorm Wall Content Office Asset Library Design Studio Marketing App Factory"
+    }
+  ],
+  "consoleFindings": [],
+  "badResponses": [],
+  "passed": true
+}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 
 interface AgentsDocResponse {
@@ -65,11 +66,22 @@ export function LocalAgentsDocPanel() {
   }
 
   return (
-    <div className="mt-4 mx-4 rounded-lg border border-border bg-card overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
+    <div className="mx-4 mt-4">
+      <HudPanel
+        kicker="Local Source"
+        title={t('title')}
+        right={(
+          <div className="flex flex-wrap justify-end gap-2">
+            <Chip tone={data?.found ? 'teal' : 'amber'}>{data?.found ? 'FOUND' : 'LOCAL CHECK'}</Chip>
+            <Chip tone="neutral">READ-ONLY</Chip>
+          </div>
+        )}
+        padded={false}
+      >
+      <div className="px-4 py-3 border-b border-[color:var(--mc-hairline)] flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-foreground">{t('title')}</h3>
-          <p className="text-2xs text-muted-foreground truncate">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[color:var(--mc-teal)]">Workspace policy file</p>
+          <p className="mt-1 text-2xs text-muted-foreground truncate">
             {data?.path || t('noPathFound')}
           </p>
         </div>
@@ -101,6 +113,12 @@ export function LocalAgentsDocPanel() {
         </div>
       </div>
 
+      <div className="px-4 pt-3">
+        <BoundaryBanner tone="amber" title="Local AGENTS.md boundary">
+          This panel displays the workspace instruction file only. It does not bulk-load Dispatch folders, edit memory, or treat instructions as proof without receipt-backed work.
+        </BoundaryBanner>
+      </div>
+
       {loading ? (
         <div className="px-4 py-4 text-xs text-muted-foreground">{t('loading')}</div>
       ) : error ? (
@@ -119,6 +137,7 @@ export function LocalAgentsDocPanel() {
           )}
         </div>
       )}
+      </HudPanel>
     </div>
   )
 }
