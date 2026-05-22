@@ -1,14 +1,16 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
+import { BoundaryBanner, Chip, Page, Stat } from '@/components/mc/hud'
 import { useMissionControl } from '@/store'
 import { createClientLogger } from '@/lib/client-logger'
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, BarChart, Bar,
+  Tooltip, Legend, BarChart, Bar,
 } from 'recharts'
 
 const log = createClientLogger('CostTracker')
@@ -73,6 +75,32 @@ interface SessionCostEntry {
 // ── Helpers ──────────────────────────────────────────
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff6b6b']
+const CHART_HEIGHT = 256
+
+function ChartFrame({ children }: { children: (size: { width: number; height: number }) => ReactNode }) {
+  const frameRef = useRef<HTMLDivElement | null>(null)
+  const [width, setWidth] = useState(0)
+
+  useEffect(() => {
+    const frame = frameRef.current
+    if (!frame) return
+
+    const updateWidth = () => setWidth(Math.max(0, Math.floor(frame.getBoundingClientRect().width)))
+    updateWidth()
+
+    const observer = new ResizeObserver(updateWidth)
+    observer.observe(frame)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div ref={frameRef} className="h-64 min-w-0">
+      {width > 0 ? children({ width, height: CHART_HEIGHT }) : (
+        <div className="flex h-full items-center justify-center font-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--mc-ink-3)]">Measuring chart frame</div>
+      )}
+    </div>
+  )
+}
 
 const formatNumber = (num: number) => {
   if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + 'M'
@@ -201,30 +229,32 @@ export function CostTrackerPanel() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="border-b border-border pb-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
-            <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* View tabs */}
-            <div className="flex rounded-lg border border-border overflow-hidden">
+    <Page
+      kicker="Blackwire Ops / Cost Telemetry"
+      title={t('title')}
+      subtitle={t('subtitle')}
+      badges={
+        <>
+          <Chip tone="teal" pulse>auto refresh</Chip>
+          <Chip tone="dim">{timeframe}</Chip>
+          <Chip tone="amber">local cost ledger</Chip>
+        </>
+      }
+      actions={
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex border border-[color:var(--mc-hairline)] bg-black/20 p-1">
               {(['overview', 'agents', 'sessions', 'tasks'] as const).map(v => (
                 <button
                   key={v}
                   onClick={() => setView(v)}
-                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                    view === v ? 'bg-primary text-primary-foreground' : 'bg-card text-muted-foreground hover:text-foreground'
+                className={`px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] transition-colors ${
+                  view === v ? 'bg-[rgba(46,230,214,0.16)] text-[color:var(--mc-teal)]' : 'text-[color:var(--mc-ink-2)] hover:text-[color:var(--mc-ink-0)]'
                   }`}
                 >
                   {v.charAt(0).toUpperCase() + v.slice(1)}
                 </button>
               ))}
             </div>
-            {/* Timeframe */}
             <div className="flex space-x-1">
               {(['hour', 'day', 'week', 'month'] as const).map(tf => (
                 <Button key={tf} onClick={() => setTimeframe(tf)} variant={timeframe === tf ? 'default' : 'secondary'} size="sm">
@@ -233,8 +263,20 @@ export function CostTrackerPanel() {
               ))}
             </div>
           </div>
-        </div>
-      </div>
+      }
+    >
+      <div className="space-y-6">
+        <BoundaryBanner tone="amber" title="Cost ledger boundary">
+          Costs are local telemetry derived from token records and attribution tables. Treat this as operator spend visibility, not accounting closeout, and do not mark savings verified without receipts.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <Stat label="Total Cost" value={summary ? formatCost(summary.totalCost) : '--'} sub={timeframe} accent="amber" glow={Boolean(summary?.totalCost)} />
+          <Stat label="Tokens" value={summary ? formatNumber(summary.totalTokens) : '--'} sub="tracked usage" />
+          <Stat label="Requests" value={summary ? formatNumber(summary.requestCount) : '--'} sub="api calls" />
+          <Stat label="Agents" value={agentSummary?.agent_count ?? '--'} sub="costed activity" accent="purple" />
+          <Stat label="Attribution" value={taskData && summary ? `${((1 - taskData.unattributed.totalCost / Math.max(summary.totalCost, 0.0001)) * 100).toFixed(0)}%` : '--'} sub="task-linked spend" accent="teal" />
+        </section>
 
       {isLoading && !usageStats ? (
         <Loader variant="panel" label={t('loadingCostData')} />
@@ -259,7 +301,8 @@ export function CostTrackerPanel() {
       ) : (
         <TasksView taskData={taskData} onRefresh={loadData} />
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 
@@ -371,19 +414,21 @@ function OverviewView({
               ))}
             </div>
           </div>
-          <div className="h-64">
+          <div>
             {trendChartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">{t('noTrendData')}</div>
+              <div className="flex h-64 items-center justify-center text-muted-foreground text-sm">{t('noTrendData')}</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendChartData}>
+              <ChartFrame>
+                {({ width, height }) => (
+                <LineChart width={width} height={height} data={trendChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="time" /><YAxis />
                   <Tooltip /><Legend />
                   <Line type="monotone" dataKey="tokens" stroke="#8884d8" strokeWidth={2} name="Tokens" />
                   <Line type="monotone" dataKey="requests" stroke="#82ca9d" strokeWidth={2} name="Requests" />
                 </LineChart>
-              </ResponsiveContainer>
+                )}
+              </ChartFrame>
             )}
           </div>
         </div>
@@ -391,18 +436,20 @@ function OverviewView({
         {/* Model bar chart */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">{t('tokenUsageByModel')}</h2>
-          <div className="h-64">
+          <div>
             {modelData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">{t('noModelData')}</div>
+              <div className="flex h-64 items-center justify-center text-muted-foreground text-sm">{t('noModelData')}</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={modelData}>
+              <ChartFrame>
+                {({ width, height }) => (
+                <BarChart width={width} height={height} data={modelData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} />
                   <YAxis /><Tooltip formatter={(v, n) => [formatNumber(Number(v)), n]} />
                   <Bar dataKey="tokens" fill="#8884d8" name="Tokens" />
                 </BarChart>
-              </ResponsiveContainer>
+                )}
+              </ChartFrame>
             )}
           </div>
         </div>
@@ -410,18 +457,20 @@ function OverviewView({
         {/* Cost pie */}
         <div className="bg-card border border-border rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">{t('costDistributionByModel')}</h2>
-          <div className="h-64">
+          <div>
             {pieData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">{t('noCostData')}</div>
+              <div className="flex h-64 items-center justify-center text-muted-foreground text-sm">{t('noCostData')}</div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
+              <ChartFrame>
+                {({ width, height }) => (
+                <PieChart width={width} height={height}>
                   <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={80} paddingAngle={5} dataKey="value">
                     {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v) => formatCost(Number(v))} /><Legend />
                 </PieChart>
-              </ResponsiveContainer>
+                )}
+              </ChartFrame>
             )}
           </div>
         </div>
@@ -535,9 +584,9 @@ function AgentsView({
       {/* Cost bar chart */}
       <div className="bg-card border border-border rounded-lg p-6">
         <h2 className="text-xl font-semibold mb-4">{t('perAgentCost')}</h2>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={agents.slice(0, 12).map(a => ({
+        <ChartFrame>
+          {({ width, height }) => (
+            <BarChart width={width} height={height} data={agents.slice(0, 12).map(a => ({
               name: a.agent.length > 12 ? a.agent.slice(0, 11) + '\u2026' : a.agent,
               cost: Number(a.total_cost.toFixed(4)),
             }))}>
@@ -546,8 +595,8 @@ function AgentsView({
               <Tooltip formatter={(v) => formatCost(Number(v))} />
               <Bar dataKey="cost" fill="#0088FE" name="Cost ($)" />
             </BarChart>
-          </ResponsiveContainer>
-        </div>
+          )}
+        </ChartFrame>
       </div>
 
       {/* Agent detail rows */}

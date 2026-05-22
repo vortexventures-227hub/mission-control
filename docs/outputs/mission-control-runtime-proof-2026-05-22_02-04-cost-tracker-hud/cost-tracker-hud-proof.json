@@ -1,0 +1,35 @@
+{
+  "capturedAt": "2026-05-22T02:04:35.779Z",
+  "proof": {
+    "route": "/cost-tracker",
+    "url": "http://127.0.0.1:3110/cost-tracker",
+    "titlePresent": true,
+    "boundaryPresent": true,
+    "autoRefreshPresent": true,
+    "statsPresent": true,
+    "tabsPresent": true,
+    "chartsPresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/cost-tracker\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n18/100\nEVENTS\nLive\nMODE GATEWAY\n22:04\nBLACKWIRE OPS / COST TELEMETRY\nCOST TRACKER\n\nToken usage, costs, and spend analysis across agents, models, and sessions\n\nAUTO REFRESH\nDAY\nLOCAL COST LEDGER\nOVERVIEW\nAGENTS\nSESSIONS\nTASKS\nHour\nDay\nWeek\nMonth\n△\nCOST LEDGER BOUNDARY\nCosts are local telemetry derived from token records and attribution tables. Treat this as operator spend visibility, not accounting closeout, and do not mark savings verified without receipts.\n$218.9272\nTOTAL COST\nday\n70.9M\nTOKENS\ntracked usage\n255\nREQUESTS\napi calls\n0\nAGENTS\ncosted activity\n0%\nATTRIBUTION\ntask-linked spend\n$218.9272\nTotal Cost (day)\n70.9M\nTotal Tokens\n255\nAPI Requests\n0\nActive Agents\n0%\nTask-Attributed\nUsage Trends\nPer-Turn\nCumulative\nRequestsTokens\n10:00 PM\n12:00 AM\n02:00 AM\n04:00 AM\n06:00 AM\n08:00 AM\n10:00 AM\n12:00 PM\n02:00 PM\n04:00 PM\n06:00 PM\n09:00 PM\n0\n1500000\n3000000\n4500000\n6000000\nToken Usage by Model\nMiniMax-M2.7-highspeed\n0\n20000000\n40000000\n60000000\n80000000\nCost Distribution by Model\nMiniMax-M2.7-highspeed\nPerfo"
+  },
+  "badResponses": [],
+  "warningMessages": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}
