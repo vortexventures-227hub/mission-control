@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import type { MouseEvent, WheelEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import Image from 'next/image'
+import { BoundaryBanner, Chip, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useMissionControl, Agent } from '@/store'
@@ -1625,30 +1626,38 @@ export function OfficePanel() {
   }, [categoryGroups, orgSegmentMode, roleGroups, statusGroups])
 
   if ((loading || (isLocalMode && localBootstrapping)) && visibleDisplayAgents.length === 0) {
-    return <Loader variant="panel" label={isLocalMode ? t('loadingLocalSessions') : t('loadingOffice')} />
+    return (
+      <Page
+        kicker="Blackwire Ops / Office"
+        title={t('title')}
+        subtitle="Loading the local operator workspace and active crew map."
+        badges={<Chip tone="dim">local roster</Chip>}
+      >
+        <Loader variant="panel" label={isLocalMode ? t('loadingLocalSessions') : t('loadingOffice')} />
+      </Page>
+    )
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="border-b border-border pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">{t('title')}</h1>
-            <p className="text-muted-foreground mt-1">{t('subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 text-xs text-muted-foreground mr-4">
-              {counts.busy > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-void-amber" />{t('activeCount', { count: counts.busy })}</span>}
-              {counts.idle > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-void-mint" />{t('standbyCount', { count: counts.idle })}</span>}
-              {counts.error > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-void-crimson" />{t('alertCount', { count: counts.error })}</span>}
-              {counts.offline > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-muted-foreground/40" />{t('offlineCount', { count: counts.offline })}</span>}
-            </div>
-            <div className="flex rounded-md overflow-hidden border border-border">
+    <Page
+      kicker="Blackwire Ops / Office"
+      title={t('title')}
+      subtitle={`${t('subtitle')} Live map, org chart, and Flight Deck links stay local/operator-gated.`}
+      badges={
+        <>
+          <Chip tone={isLocalMode ? 'teal' : 'amber'} pulse>{isLocalMode ? 'local workspace' : 'gateway workspace'}</Chip>
+          <Chip tone="purple">crew map</Chip>
+          <Chip tone="amber">actions gated</Chip>
+        </>
+      }
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex overflow-hidden border border-[color:var(--mc-hairline-2)]">
               <Button
                 variant={viewMode === 'office' ? 'default' : 'secondary'}
                 size="sm"
                 onClick={() => setViewMode('office')}
-                className="rounded-none"
+                className="rounded-none border-0 font-mono text-[10px] uppercase tracking-[0.14em]"
               >
                 {t('buttonDeck')}
               </Button>
@@ -1656,17 +1665,30 @@ export function OfficePanel() {
                 variant={viewMode === 'org-chart' ? 'default' : 'secondary'}
                 size="sm"
                 onClick={() => setViewMode('org-chart')}
-                className="rounded-none"
+                className="rounded-none border-0 font-mono text-[10px] uppercase tracking-[0.14em]"
               >
                 {t('buttonCrewChart')}
               </Button>
-            </div>
-            <Button variant="secondary" size="sm" onClick={fetchAgents}>
-              {t('refresh')}
-            </Button>
           </div>
+          <Button variant="secondary" size="sm" onClick={fetchAgents} className="font-mono text-[10px] uppercase tracking-[0.14em]">
+              {t('refresh')}
+          </Button>
         </div>
-      </div>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Office Boundary">
+          Office visualizes local crew presence, session activity, and workspace layout. It does not launch external tools,
+          move work to verified, or mutate customer-facing systems without explicit operator action and receipts.
+        </BoundaryBanner>
+
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <Stat label="visible crew" value={visibleDisplayAgents.length} sub={isLocalMode ? 'local/session blend' : 'gateway roster'} glow />
+          <Stat label="active" value={counts.busy} sub={t('legendActive')} accent="amber" />
+          <Stat label="standby" value={counts.idle} sub={t('legendStandby')} accent="teal" />
+          <Stat label="alerts" value={counts.error} sub={counts.error > 0 ? t('alertCount', { count: counts.error }) : 'clear'} accent={counts.error > 0 ? 'rose' : 'dim'} />
+          <Stat label="offline" value={counts.offline} sub={counts.offline > 0 ? t('offlineCount', { count: counts.offline }) : 'none'} accent="dim" />
+        </div>
 
       {visibleDisplayAgents.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
@@ -2561,6 +2583,7 @@ export function OfficePanel() {
           100% { opacity: 0.25; transform: scale(0.9); }
         }
       `}</style>
-    </div>
+      </div>
+    </Page>
   )
 }

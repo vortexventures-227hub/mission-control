@@ -1,0 +1,27 @@
+{
+  "route": "/office",
+  "baseUrl": "http://127.0.0.1:3110",
+  "checkedAt": "2026-05-22T04:57:57.213Z",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "passed": true,
+  "checks": {
+    "statusOk": true,
+    "hasTitle": true,
+    "hasBoundary": true,
+    "hasWorkspaceChip": true,
+    "hasCrewMapChip": true,
+    "hasGatedChip": true,
+    "hasStats": true,
+    "hasBoundaryCopy": true,
+    "hasDeckToggle": true,
+    "noApplicationError": true
+  },
+  "consoleFindings": [],
+  "badResponses": [],
+  "sessionCleanupCount": 0,
+  "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_00-57-office-hud/office-hud.png"
+}
