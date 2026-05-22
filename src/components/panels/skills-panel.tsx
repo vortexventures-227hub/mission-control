@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useTranslations } from 'next-intl'
 import { useMissionControl } from '@/store'
 import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, Page, Stat } from '@/components/mc/hud'
 
 interface SkillSummary {
   id: string
@@ -394,37 +395,53 @@ export function SkillsPanel() {
   }
 
   const securityBadge = (status?: string | null) => {
-    if (!status || status === 'unchecked') return <span className="text-2xs text-muted-foreground/50">unchecked</span>
-    if (status === 'clean') return <span className="text-2xs text-emerald-400">clean</span>
-    if (status === 'warning') return <span className="text-2xs text-amber-400">warning</span>
-    if (status === 'rejected') return <span className="text-2xs text-rose-400">rejected</span>
+    if (!status || status === 'unchecked') return <Chip tone="dim">unchecked</Chip>
+    if (status === 'clean') return <Chip tone="teal">clean</Chip>
+    if (status === 'warning') return <Chip tone="amber">warning</Chip>
+    if (status === 'rejected') return <Chip tone="rose">rejected</Chip>
     return null
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t('subtitle')} {dashboardMode === 'local' ? t('localMode') : t('gatewayMode')}.
-          </p>
-        </div>
+    <Page
+      kicker="Blackwire Ops / Skills"
+      title={t('title')}
+      subtitle={`${t('subtitle')} ${dashboardMode === 'local' ? t('localMode') : t('gatewayMode')}. Installed skills are local capability files; registry installs and edits remain explicit operator actions.`}
+      badges={
+        <>
+          <Chip tone="teal">disk sync</Chip>
+          <Chip tone={dashboardMode === 'local' ? 'amber' : 'purple'}>{dashboardMode === 'local' ? 'local mode' : 'gateway mode'}</Chip>
+          <Chip tone="amber">scan before run</Chip>
+        </>
+      }
+      actions={
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('installed')}
-            className={`px-3 py-1.5 text-xs rounded-md transition-colors ${activeTab === 'installed' ? 'bg-primary text-primary-foreground' : 'bg-secondary/50 text-muted-foreground hover:text-foreground'}`}
+            className={`border px-3 py-1.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${activeTab === 'installed' ? 'border-[color:var(--mc-teal)]/60 bg-[rgba(46,230,214,0.12)] text-[color:var(--mc-teal-soft)]' : 'border-[color:var(--mc-hairline)] bg-black/20 text-[color:var(--mc-ink-3)] hover:border-[color:var(--mc-hairline-2)] hover:text-[color:var(--mc-ink-1)]'}`}
           >
             {t('tabInstalled')}
           </button>
           <button
             onClick={() => setActiveTab('registry')}
-            className={`px-3 py-1.5 text-xs rounded-md transition-colors ${activeTab === 'registry' ? 'bg-primary text-primary-foreground' : 'bg-secondary/50 text-muted-foreground hover:text-foreground'}`}
+            className={`border px-3 py-1.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${activeTab === 'registry' ? 'border-[color:var(--mc-teal)]/60 bg-[rgba(46,230,214,0.12)] text-[color:var(--mc-teal-soft)]' : 'border-[color:var(--mc-hairline)] bg-black/20 text-[color:var(--mc-ink-3)] hover:border-[color:var(--mc-hairline-2)] hover:text-[color:var(--mc-ink-1)]'}`}
           >
             {t('tabRegistry')}
           </button>
         </div>
-      </div>
+      }
+    >
+      <div className="mx-auto max-w-6xl space-y-4">
+        <BoundaryBanner tone="amber" title="Skills boundary">
+          Skills are local capability instructions and optional registry installs. Creating, editing, deleting, installing, or scanning skills must remain explicit operator action; no skill is treated as safe to run until security status and provenance are visible.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label="installed skills" value={skillsTotal} sub="deduped local catalog" glow />
+          <Stat label="visible now" value={filtered.length} sub={activeTab} accent="neutral" />
+          <Stat label="roots" value={(skillGroups || []).length} sub="watched locations" accent="purple" />
+          <Stat label="scan state" value={scanAll?.running ? `${scanAll.done}/${scanAll.total}` : 'standby'} sub="operator-triggered" accent={scanAll?.running ? 'amber' : 'dim'} />
+        </section>
 
       {installMessage && (
         <div className={`rounded-lg border px-4 py-2 text-xs ${
@@ -890,7 +907,8 @@ export function SkillsPanel() {
         </div>,
         document.body
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 
