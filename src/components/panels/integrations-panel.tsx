@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 
 interface EnvVarInfo {
@@ -225,49 +226,60 @@ export function IntegrationsPanel() {
   // Loading state
   if (loading) {
     return (
-      <div className="p-6 flex items-center gap-2">
-        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm text-muted-foreground">{t('loading')}</span>
-      </div>
+      <Page title={t('title')} kicker="Blackwire Ops / Integration Vault" subtitle={t('loading')}>
+        <HudPanel>
+          <div className="flex min-h-48 items-center justify-center gap-3">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[color:var(--mc-teal)] border-t-transparent" />
+            <span className="font-mono text-xs uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">{t('loading')}</span>
+          </div>
+        </HudPanel>
+      </Page>
     )
   }
 
   // Error state
   if (error) {
     return (
-      <div className="p-6">
-        <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>
-      </div>
+      <Page title={t('title')} kicker="Blackwire Ops / Integration Vault" subtitle="Admin credential boundary">
+        <BoundaryBanner tone="rose" title="Integrations unavailable">
+          {error}
+        </BoundaryBanner>
+      </Page>
     )
   }
 
   const filteredIntegrations = integrations.filter(i => i.category === activeCategory)
   const connectedCount = integrations.filter(i => i.status === 'connected').length
+  const partialCount = integrations.filter(i => i.status === 'partial').length
+  const missingCount = integrations.filter(i => i.status === 'not_configured').length
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t('connectedCount', { connected: connectedCount, total: integrations.length })}
-            {envPath && <span className="ml-2 font-mono text-muted-foreground/50">{envPath}</span>}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <Page
+      kicker="Blackwire Ops / Integration Vault"
+      title={t('title')}
+      subtitle={
+        <>
+          {t('connectedCount', { connected: connectedCount, total: integrations.length })}
+          {envPath && <span className="ml-2 font-mono text-[color:var(--mc-ink-3)]">{envPath}</span>}
+        </>
+      }
+      badges={
+        <>
+          <Chip tone={opAvailable ? 'teal' : 'dim'}>{opAvailable ? '1Password CLI ready' : '1Password unavailable'}</Chip>
+          <Chip tone="amber">credential mutation boundary</Chip>
+          {hasChanges && <Chip tone="amber" pulse>{Object.keys(edits).length} unsaved</Chip>}
+        </>
+      }
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
           {opAvailable && (
             <>
-              <span className="text-2xs px-2 py-1 rounded bg-green-500/10 text-green-400 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                1P CLI
-              </span>
               <Button
                 onClick={handlePullAll}
                 disabled={pullingAll}
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-1.5"
+                className="flex items-center gap-1.5 border-[color:var(--mc-hairline-2)] font-mono text-[10px] uppercase tracking-[0.12em]"
                 title="Pull all vault-backed integrations in this category from 1Password"
               >
                 {pullingAll ? (
@@ -296,24 +308,36 @@ export function IntegrationsPanel() {
             disabled={!hasChanges || saving}
             variant={hasChanges ? 'default' : 'secondary'}
             size="sm"
-            className={!hasChanges ? 'cursor-not-allowed' : ''}
+            className={`border-[color:var(--mc-hairline-2)] font-mono text-[10px] uppercase tracking-[0.12em] ${!hasChanges ? 'cursor-not-allowed' : ''}`}
           >
             {saving ? t('saving') : t('saveChanges')}
           </Button>
         </div>
-      </div>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Credential boundary">
+          Integration values write to local environment state and may unlock external services. Test status is visibility only; credentials stay redacted unless explicitly edited.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label="Connected" value={connectedCount} sub={`${integrations.length} total`} accent={connectedCount > 0 ? 'teal' : 'dim'} glow={connectedCount > 0} />
+          <Stat label="Partial" value={partialCount} sub="needs keys" accent={partialCount > 0 ? 'amber' : 'dim'} />
+          <Stat label="Missing" value={missingCount} sub="not configured" accent={missingCount > 0 ? 'rose' : 'teal'} glow={missingCount > 0} />
+          <Stat label="Categories" value={categories.length} sub="integration groups" />
+        </section>
 
       {/* Feedback */}
       {feedback && (
-        <div className={`rounded-lg p-3 text-xs font-medium ${
-          feedback.ok ? 'bg-green-500/10 text-green-400' : 'bg-destructive/10 text-destructive'
+        <div className={`border p-3 text-xs font-medium ${
+          feedback.ok ? 'border-[color:var(--mc-teal)]/40 bg-[rgba(46,230,214,0.10)] text-[color:var(--mc-teal-soft)]' : 'border-[color:var(--mc-rose)]/40 bg-[rgba(255,85,119,0.10)] text-[color:var(--mc-rose)]'
         }`}>
           {feedback.text}
         </div>
       )}
 
       {/* Category tabs */}
-      <div className="flex gap-1 border-b border-border pb-px overflow-x-auto">
+      <div className="flex gap-1 overflow-x-auto border-b border-[color:var(--mc-hairline)] pb-px">
         {categories.map(cat => {
           const catIntegrations = integrations.filter(i => i.category === cat.id)
           const catConnected = catIntegrations.filter(i => i.status === 'connected').length
@@ -323,9 +347,9 @@ export function IntegrationsPanel() {
               onClick={() => setActiveCategory(cat.id)}
               variant="ghost"
               size="sm"
-              className={`rounded-t-md rounded-b-none relative whitespace-nowrap ${
+              className={`relative whitespace-nowrap rounded-b-none rounded-t-md font-mono text-[10px] uppercase tracking-[0.12em] ${
                 activeCategory === cat.id
-                  ? 'bg-card text-foreground border border-border border-b-card -mb-px'
+                  ? 'border border-[color:var(--mc-hairline-2)] border-b-[color:var(--mc-bg-2)] bg-[color:var(--mc-bg-2)] text-[color:var(--mc-ink-0)] -mb-px'
                   : ''
               }`}
             >
@@ -365,9 +389,11 @@ export function IntegrationsPanel() {
           />
         ))}
         {filteredIntegrations.length === 0 && (
-          <div className="text-sm text-muted-foreground text-center py-8">
-            {t('noIntegrationsInCategory')}
-          </div>
+          <HudPanel kicker="standby" title={t('noIntegrationsInCategory')}>
+            <div className="py-8 text-center text-sm text-[color:var(--mc-ink-2)]">
+              {t('noIntegrationsInCategory')}
+            </div>
+          </HudPanel>
         )}
       </div>
 
@@ -427,7 +453,8 @@ export function IntegrationsPanel() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 
@@ -469,6 +496,12 @@ function IntegrationCard({
     not_configured: 'bg-muted-foreground/30',
   }
 
+  const statusTone = {
+    connected: 'teal',
+    partial: 'amber',
+    not_configured: 'dim',
+  } as const
+
   const statusLabels = {
     connected: 'Connected',
     partial: 'Partial',
@@ -479,17 +512,14 @@ function IntegrationCard({
   const hasSetVars = Object.values(integration.envVars).some(v => v.set)
 
   return (
-    <div className={`bg-card border rounded-lg p-4 transition-colors ${
-      hasEdits ? 'border-primary/50' : 'border-border'
-    }`}>
+    <HudPanel className={hasEdits ? 'mc-bevel-glow' : ''}>
       {/* Card header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2.5">
           <span className={`w-2 h-2 rounded-full shrink-0 ${statusColors[integration.status]}`} />
-          <span className="text-sm font-medium text-foreground">{integration.name}</span>
-          <span className="text-2xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-            {statusLabels[integration.status]}
-          </span>
+          <span className="font-mono text-sm font-black uppercase tracking-[0.1em] text-[color:var(--mc-ink-0)]">{integration.name}</span>
+          <Chip tone={statusTone[integration.status]}>{statusLabels[integration.status]}</Chip>
+          {hasEdits && <Chip tone="amber" pulse>edited</Chip>}
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -653,7 +683,7 @@ function IntegrationCard({
           )}
         </div>
       )}
-    </div>
+    </HudPanel>
   )
 }
 

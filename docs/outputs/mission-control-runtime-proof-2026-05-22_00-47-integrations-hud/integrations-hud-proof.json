@@ -1,0 +1,33 @@
+{
+  "capturedAt": "2026-05-22T00:48:03.944Z",
+  "proof": {
+    "route": "/integrations",
+    "url": "http://127.0.0.1:3110/integrations",
+    "titlePresent": true,
+    "boundaryPresent": true,
+    "mutationChipPresent": true,
+    "statsPresent": true,
+    "categoryTabsPresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/integrations\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n15/100\nEVENTS\nLive\nMODE GATEWAY\n20:47\nBLACKWIRE OPS / INTEGRATION VAULT\nINTEGRATIONS\n\n2 of 16 connected/Users/vortexventures/.openclaw/.env\n\n1PASSWORD CLI READY\nCREDENTIAL MUTATION BOUNDARY\nPULL ALL\nSAVE CHANGES\n△\nCREDENTIAL BOUNDARY\nIntegration values write to local environment state and may unlock external services. Test status is visibility only; credentials stay redacted unless explicitly edited.\n2\nCONNECTED\n16 total\n0\nPARTIAL\nneeds keys\n14\nMISSING\nnot configured\n9\nCATEGORIES\nintegration groups\nAI PROVIDERS\n2\nSEARCH\nSOCIAL\nMESSAGING\nDEV TOOLS\nSECURITY\nINFRASTRUCTURE\nPRODUCTIVITY\nBROWSER AUTOMATION\nANTHROPIC\nCONNECTED\n1P\nTest\nRemove\nANTHROPIC_API_KEY\nmax (file)\nOPENAI\nCONNECTED\n1P\nTest\nRemove\nOPENAI_API_KEY\n****zbwA\nOPENROUTER\nNOT CONFIGURED\n1P\nOPENROUTER_API_KEY\nnot set\nVENICE AI\nNOT CONFIGURED\n1P\nVENICE_API_KEY\nnot set\nNVIDIA\nNOT CONFIGURED\n1P\nNVIDIA_API_KEY\nnot set\nMOONSHOT / KIMI\nNOT CONFIGURED\n1P\nMOONSHOT_API_KEY\nnot set\nOLLAMA (LOCAL)\nNOT CONFIGURED\n1P\nOLLAMA_API_KEY\nnot set\n\nBuilt with care by nyk.\n\nWelcome\nWelcome to Mission Control\n\nYour station for AI agents. When agents dock here, they gain persistent memory, task management, coordinated workflows, and full observability. We've scanned y"
+  },
+  "badResponses": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}
