@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { useMissionControl } from '@/store'
 import { useWebSocket } from '@/lib/websocket'
 import { buildGatewayWebSocketUrl } from '@/lib/gateway-url'
+import { BoundaryBanner, Chip, Page, Stat } from '@/components/mc/hud'
 
 interface Gateway {
   id: number
@@ -80,7 +81,8 @@ export function MultiGatewayPanel() {
   const [probing, setProbing] = useState<number | null>(null)
   const [healthByGatewayId, setHealthByGatewayId] = useState<Map<number, GatewayHealthProbe>>(new Map())
   const [historyByGatewayId, setHistoryByGatewayId] = useState<Record<number, GatewayHistory>>({})
-  const { connection } = useMissionControl()
+  const { connection, dashboardMode } = useMissionControl()
+  const isLocalMode = dashboardMode === 'local'
   const { connect } = useWebSocket()
 
   const fetchGateways = useCallback(async () => {
@@ -223,17 +225,24 @@ export function MultiGatewayPanel() {
     } catch { /* ignore */ }
   }
 
+  const onlineGatewayCount = gateways.filter(gw => gw.status === 'online').length
+  const primaryGateway = gateways.find(gw => gw.is_primary)
+  const activeDiscoveredCount = discoveredGateways.filter(gw => gw.active).length
+
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t('description')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <Page
+      kicker="Blackwire Ops / Gateways"
+      title={t('title')}
+      subtitle={`${t('description')} Provider and CLI gateway actions stay local and operator-triggered until connection evidence proves readiness.`}
+      badges={
+        <>
+          <Chip tone={isLocalMode ? 'teal' : 'amber'} pulse={isLocalMode}>{isLocalMode ? 'local mode' : 'remote mode'}</Chip>
+          <Chip tone="amber">connection gated</Chip>
+          <Chip tone={connection.isConnected ? 'teal' : 'dim'}>{connection.isConnected ? 'connected' : 'standby'}</Chip>
+        </>
+      }
+      actions={
+        <>
           <Button
             onClick={probeAll}
             variant="secondary"
@@ -247,8 +256,21 @@ export function MultiGatewayPanel() {
           >
             {t('addGateway')}
           </Button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <div className="mx-auto max-w-6xl space-y-6">
+        <BoundaryBanner tone="amber" title="Gateway Boundary">
+          Gateways can route agent sessions and connect external or local providers. Register, connect, set-primary, probe, delete, and CLI disconnect actions remain explicit operator actions and should not be treated as verified without health evidence.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <Stat label="gateways" value={gateways.length} sub={`${onlineGatewayCount} online`} glow />
+          <Stat label="primary" value={primaryGateway?.name || '--'} sub={primaryGateway ? `${primaryGateway.host}:${primaryGateway.port}` : 'not set'} accent={primaryGateway ? 'teal' : 'dim'} />
+          <Stat label="connection" value={connection.isConnected ? 'LIVE' : 'STANDBY'} sub={connection.latency != null ? `${connection.latency}ms` : 'no latency'} accent={connection.isConnected ? 'teal' : 'dim'} />
+          <Stat label="direct CLI" value={directConnections.length} sub="registered clients" accent={directConnections.length > 0 ? 'purple' : 'dim'} />
+          <Stat label="discovered" value={activeDiscoveredCount} sub={`${discoveredGateways.length} found`} accent={activeDiscoveredCount > 0 ? 'amber' : 'dim'} />
+        </section>
 
       {/* Current connection info (shown only for unmanaged/unknown connections). */}
       {shouldShowConnectionSummary && (
@@ -443,7 +465,8 @@ export function MultiGatewayPanel() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </Page>
   )
 }
 

@@ -1,0 +1,38 @@
+{
+  "baseUrl": "http://127.0.0.1:3110",
+  "dbPath": ".data/mission-control.db",
+  "outDir": "docs/outputs/mission-control-runtime-proof-2026-05-22_10-19-gateways-hud",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "sessionCleanupCount": 0,
+  "routes": [
+    {
+      "route": "/gateways",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_10-19-gateways-hud/gateways-hud.png",
+      "title": "Mission Control",
+      "textLength": 1539,
+      "headings": [
+        "Gateway Manager",
+        "primary",
+        "Direct CLI Connections"
+      ],
+      "hasApplicationError": false,
+      "hasGatewayBoundary": true,
+      "hasConnectionGate": true,
+      "hasGatewaysStat": true,
+      "hasPrimaryStat": true,
+      "hasConnectionStat": true,
+      "hasDirectCliStat": true,
+      "hasDiscoveredStat": true,
+      "firstText": "Skip to main content Overview Group Chat Tasks Agents Approvals Command Truth Notifications Chat Memory Brain / Memory Documents Think Tank Knowledge Intake Research Command Research Intake Brainstorm Wall Content Office Asset Library Design Studio Marketing App Factory Skills AI"
+    }
+  ],
+  "consoleFindings": [],
+  "badResponses": [],
+  "passed": true
+}
