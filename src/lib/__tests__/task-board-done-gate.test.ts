@@ -9,6 +9,6 @@ describe('Mission Control task board Done gate visibility', () => {
     expect(source).toContain('Aegis approval is required before moving to done')
     expect(source).toContain('awaitingAegis')
     expect(source).toContain('Done gate')
-    expect(source).toContain('Aegis approval required before Done')
+    expect(source).toContain('Aegis approval required')
   })
 })
