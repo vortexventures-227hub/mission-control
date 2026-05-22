@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { schemaType, normalizeSchema, extractSchemaTags } from '@/lib/config-schema-utils'
 import type { JsonSchema } from '@/lib/config-schema-utils'
+import { BoundaryBanner, Chip, Page, Stat } from '@/components/mc/hud'
 
 type FormMode = 'form' | 'json'
 
@@ -371,9 +372,35 @@ export function GatewayConfigPanel() {
   }
 
   const visibleSections = activeSection ? [activeSection] : filteredSections
+  const schemaFieldCount = schema?.properties ? Object.keys(schema.properties).length : 0
 
   return (
-    <div className="flex h-full">
+    <Page
+      kicker="Blackwire Ops / Gateway Config"
+      title="Gateway Config"
+      subtitle="Routing, provider, tool, hook, and environment configuration for the local gateway. Save, apply, and update actions must remain explicit operator actions."
+      badges={
+        <>
+          <Chip tone="amber">hot reload gated</Chip>
+          <Chip tone={hasChanges ? 'rose' : 'dim'} pulse={hasChanges}>{hasChanges ? `${mode === 'json' ? 1 : diff.length} pending` : 'clean config'}</Chip>
+          <Chip tone={schema ? 'teal' : 'dim'}>{schema ? 'schema loaded' : 'schema optional'}</Chip>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Gateway Config Boundary">
+          Gateway config changes can alter provider routing, tools, hooks, auth, cron behavior, and local update flows. Do not treat Save, Apply, or Update as proven until the gateway API returns success and an audit trail records the action.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <Stat label="sections" value={sections.length} sub={`${visibleSections.length} visible`} glow />
+          <Stat label="schema fields" value={schemaFieldCount} sub={schemaLoading ? 'loading' : 'loaded'} accent={schema ? 'teal' : 'dim'} />
+          <Stat label="mode" value={mode.toUpperCase()} sub="editor" accent="purple" />
+          <Stat label="pending" value={mode === 'json' && hasChanges ? 1 : diff.length} sub={hasChanges ? 'needs save' : 'clean'} accent={hasChanges ? 'rose' : 'dim'} />
+          <Stat label="config hash" value={configHash ? configHash.slice(0, 8) : '--'} sub="loaded version" accent="dim" />
+        </section>
+
+        <div className="flex h-[calc(100vh-330px)] min-h-[620px] overflow-hidden border border-[color:var(--mc-hairline)] bg-black/10">
       {/* Sidebar */}
       <aside className="w-52 shrink-0 border-r border-border bg-card/50 flex flex-col overflow-hidden">
         <div className="px-3 pt-4 pb-2">
@@ -602,7 +629,9 @@ export function GatewayConfigPanel() {
           )}
         </div>
       </main>
-    </div>
+        </div>
+      </div>
+    </Page>
   )
 }
 

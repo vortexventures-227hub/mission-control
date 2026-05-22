@@ -1,0 +1,37 @@
+{
+  "baseUrl": "http://127.0.0.1:3110",
+  "dbPath": ".data/mission-control.db",
+  "outDir": "docs/outputs/mission-control-runtime-proof-2026-05-22_09-20-gateway-config-hud",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "sessionCleanupCount": 0,
+  "routes": [
+    {
+      "route": "/gateway-config",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_09-20-gateway-config-hud/gateway-config-hud.png",
+      "title": "Mission Control",
+      "textLength": 4586,
+      "headings": [
+        "Gateway Config",
+        "Configuration"
+      ],
+      "hasApplicationError": false,
+      "hasGatewayConfigBoundary": true,
+      "hasHotReloadGate": true,
+      "hasSectionsStat": true,
+      "hasSchemaStat": true,
+      "hasPendingStat": true,
+      "hasConfigHashStat": true,
+      "hasConfigMissingState": false,
+      "firstText": "Skip to main content Overview Group Chat Tasks Agents Approvals Command Truth Notifications Chat Memory Brain / Memory Documents Think Tank Knowledge Intake Research Command Research Intake Brainstorm Wall Content Office Asset Library Design Studio Marketing App Factory Skills AI"
+    }
+  ],
+  "consoleFindings": [],
+  "badResponses": [],
+  "passed": true
+}

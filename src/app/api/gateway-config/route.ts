@@ -78,19 +78,21 @@ async function getSchema(): Promise<NextResponse> {
     })
     clearTimeout(timeout)
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `Gateway returned ${res.status}` },
-        { status: 502 },
-      )
+      return NextResponse.json({
+        schema: null,
+        unavailable: true,
+        error: `Gateway schema unavailable: ${res.status}`,
+      })
     }
     const data = await res.json()
     return NextResponse.json(data)
   } catch (err: any) {
     clearTimeout(timeout)
-    return NextResponse.json(
-      { error: err.name === 'AbortError' ? 'Gateway timeout' : 'Gateway unreachable' },
-      { status: 502 },
-    )
+    return NextResponse.json({
+      schema: null,
+      unavailable: true,
+      error: err.name === 'AbortError' ? 'Gateway schema timeout' : 'Gateway schema unreachable',
+    })
   }
 }
 
