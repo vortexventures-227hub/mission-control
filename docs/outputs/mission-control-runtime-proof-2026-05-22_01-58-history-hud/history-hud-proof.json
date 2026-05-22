@@ -1,0 +1,34 @@
+{
+  "capturedAt": "2026-05-22T01:59:06.082Z",
+  "proof": {
+    "route": "/history",
+    "url": "http://127.0.0.1:3110/history",
+    "titlePresent": true,
+    "boundaryPresent": true,
+    "readOnlyPresent": true,
+    "controlsPresent": true,
+    "statsPresent": true,
+    "logoLoaded": true,
+    "textSample": "Skip to main content\nOverview\nGroup Chat\nTasks\nAgents\nApprovals\nCommand Truth\nNotifications\nChat\nMemory\nBrain / Memory\nDocuments\nThink Tank\nKnowledge Intake\nResearch Command\nResearch Intake\nBrainstorm Wall\nContent\nOffice\nAsset Library\nDesign Studio\nMarketing\nApp Factory\nSkills\nAI Toolkit\nActivity\nTrading Ops\nTimeline\nCost Tracker\nMonitor\nLogs\nExpenses\nChannels\nNodes\nCron\nWebhooks\nAlerts\nGitHub\nSecurity Center\nSecurity Audit\nUsers\nAudit\nGateway\nIntegrations\nDebug\nSettings\nLP\nLocal Proof Admin\nGW\nGATEWAY\n·\n/history\nGW\nConnected\nJUMP TO PAGE, TASK, AGENT...\n⌘K\n/\nSESSIONS\n17/100\nEVENTS\nLive\nMODE GATEWAY\n21:59\nBLACKWIRE OPS / HISTORY\nHISTORICAL TIMELINE\n\nDay-grouped notes, project milestones, and session history for operator recall. This is read-only historical context, not a status source of truth.\n\nREAD ONLY\n34 DAYS\n4 PROJECTS\n0 SESSIONS\n△\nHISTORY BOUNDARY\nTimeline entries are loaded from local daily notes, project summaries, and recorded sessions. They help reconstruct context but do not mark current work verified without a receipt.\n34\nDAYS LOGGED\ndaily notes\n4\nPROJECTS\ntracked history\n0\nSESSIONS\n41 agents known\nOVERVIEW\nVIEW\ntimeline mode\nTIMELINE CONTROLS\nHISTORY VIEW\nOVERVIEW\nDAILY\nPROJECTS\nRECENT DAYS\n34 days logged\nFri\n1\n05/26\nWed\n29\n04/26\nTue\n28\n04/26\nMon\n27\n04/26\nMon\n27\n04/26\nSun\n26\n04/26\nSat\n25\n04/26\nFri\n24\n04/26\nThu\n23\n04/26\nWed\n22\n04/26\nTue\n21\n04/26\nMon\n20\n04/26\nSun\n19\n04/26\nSat\n18\n04/26\nRECENT\nPROJECTS ACTIVE RECENTLY\n🏭\nappfactory\nunknown\n📁\ndavid\nunknown\n🤖\ngekko\nunknown\n🎯\nmission-control\nunknown\nRECENT\nSESSIONS\n\nBuilt with care by nyk.\n\nWelcome\nWelcome to Missi"
+  },
+  "badResponses": [],
+  "warningMessages": [],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[PWA] Service worker registered: http://127.0.0.1:3110/"
+    },
+    {
+      "type": "log",
+      "text": "%c  Stop!   color: #fff; background: #e53e3e; font-size: 40px; font-weight: bold; padding: 4px 16px; border-radius: 4px;"
+    },
+    {
+      "type": "log",
+      "text": "%cThis is a browser feature intended for developers.\n\nIf someone told you to copy-paste something here to enable a feature or \"hack\" an account, it is a scam and will give them access to your account. font-size: 14px; color: #e2e8f0; padding: 8px 0;"
+    },
+    {
+      "type": "log",
+      "text": "%cLearn more: https://en.wikipedia.org/wiki/Self-XSS font-size: 12px; color: #718096;"
+    }
+  ]
+}

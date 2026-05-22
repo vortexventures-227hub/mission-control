@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { useMissionControl } from '@/store'
 
 interface DailyNote {
@@ -544,29 +545,47 @@ export function HistoricalTimelinePanel() {
 
   if (loading && notes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader variant="inline" label="Loading timeline..." />
-      </div>
+      <Page title="Historical Timeline" kicker="Blackwire Ops / History" subtitle="Loading day notes, project milestones, and session history.">
+        <HudPanel>
+          <div className="flex h-64 items-center justify-center">
+            <Loader variant="inline" label="Loading timeline..." />
+          </div>
+        </HudPanel>
+      </Page>
     )
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-border bg-card/50 px-4 py-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M2 4h12M2 8h8M2 12h10" strokeLinecap="round" />
-                <circle cx="14" cy="4" r="1.5" fill="currentColor" stroke="none" />
-              </svg>
-              Historical Timeline
-            </h2>
-          </div>
+    <Page
+      kicker="Blackwire Ops / History"
+      title="Historical Timeline"
+      subtitle="Day-grouped notes, project milestones, and session history for operator recall. This is read-only historical context, not a status source of truth."
+      badges={
+        <>
+          <Chip tone="teal">read only</Chip>
+          <Chip tone="dim">{noteCount} days</Chip>
+          <Chip tone="dim">{projectCount} projects</Chip>
+          <Chip tone="dim">{sessionCount} sessions</Chip>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="teal" title="History boundary">
+          Timeline entries are loaded from local daily notes, project summaries, and recorded sessions. They help reconstruct context but do not mark current work verified without a receipt.
+        </BoundaryBanner>
 
-          {/* View toggle */}
-          <div className="flex gap-1 bg-secondary rounded-lg p-1">
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Stat label="Days Logged" value={noteCount} sub="daily notes" />
+          <Stat label="Projects" value={projectCount} sub="tracked history" accent="purple" />
+          <Stat label="Sessions" value={sessionCount} sub={`${agents.length} agents known`} accent="teal" />
+          <Stat label="View" value={view.toUpperCase()} sub="timeline mode" accent="amber" glow />
+        </section>
+
+        <HudPanel
+          kicker="timeline controls"
+          title="History View"
+          right={
+            <div className="flex gap-1 border border-[color:var(--mc-hairline)] bg-black/20 p-1">
             {([
               ['overview', 'Overview'],
               ['daily', 'Daily'],
@@ -575,35 +594,21 @@ export function HistoricalTimelinePanel() {
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  view === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                    className={`px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] transition-colors ${
+                      view === v ? 'bg-[rgba(46,230,214,0.16)] text-[color:var(--mc-teal)]' : 'text-[color:var(--mc-ink-2)] hover:text-[color:var(--mc-ink-0)]'
                 }`}
               >
                 {label}
               </button>
             ))}
-          </div>
-        </div>
-
-        {/* Stats strip */}
-        <div className="flex gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-            {noteCount} days logged
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            {projectCount} projects tracked
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            {sessionCount} sessions recorded
-          </span>
-        </div>
-      </div>
+            </div>
+          }
+          padded={false}
+          glow
+        >
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden p-4">
+          <div className="max-h-[calc(100vh-22rem)] min-h-[520px] overflow-hidden p-4">
         {view === 'overview' && (
           <div className="space-y-6 h-full overflow-y-auto">
             <TimelineStrip notes={notes} selectedDate={selectedDate} onDateSelect={d => { setSelectedDate(d); setView('daily') }} />
@@ -611,8 +616,7 @@ export function HistoricalTimelinePanel() {
             {/* Recent activity summary */}
             <div className="grid lg:grid-cols-2 gap-4">
               {/* Top projects by recent activity */}
-              <div className="rounded-lg border border-border bg-card p-4">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Projects Active Recently</h3>
+                  <HudPanel kicker="recent" title="Projects Active Recently">
                 <div className="space-y-2">
                   {projects.slice(0, 6).map(p => (
                     <div key={p.name} className="flex items-center justify-between">
@@ -624,11 +628,10 @@ export function HistoricalTimelinePanel() {
                     </div>
                   ))}
                 </div>
-              </div>
+                  </HudPanel>
 
               {/* Active sessions summary */}
-              <div className="rounded-lg border border-border bg-card p-4">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Recent Sessions</h3>
+                  <HudPanel kicker="recent" title="Sessions">
                 <div className="space-y-2">
                   {sessions.slice(0, 6).map(s => (
                     <div key={s.id} className="flex items-center justify-between">
@@ -642,7 +645,7 @@ export function HistoricalTimelinePanel() {
                     </div>
                   ))}
                 </div>
-              </div>
+                  </HudPanel>
             </div>
           </div>
         )}
@@ -660,7 +663,9 @@ export function HistoricalTimelinePanel() {
         {view === 'projects' && (
           <ProjectsTimelineView projects={projects} />
         )}
+          </div>
+        </HudPanel>
       </div>
-    </div>
+    </Page>
   )
 }
