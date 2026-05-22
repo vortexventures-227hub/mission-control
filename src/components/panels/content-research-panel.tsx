@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Button } from '@/components/ui/button'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { createClientLogger } from '@/lib/client-logger'
 
 const log = createClientLogger('ContentResearchPanel')
@@ -112,139 +112,145 @@ export function ContentResearchPanel() {
     return null
   }
 
-  const getRelevanceColor = (tag?: string) => {
+  const getRelevanceTone = (tag?: string): 'teal' | 'amber' | 'dim' | 'neutral' => {
     switch (tag?.toLowerCase()) {
-      case 'high': return 'bg-green-500/20 text-green-400 border-green-500/30'
-      case 'medium': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-      case 'low': return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
-      default: return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      case 'high': return 'teal'
+      case 'medium': return 'amber'
+      case 'low': return 'dim'
+      default: return 'neutral'
     }
   }
 
+  const filterButtonClass = (active: boolean) => `border px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.14em] transition-colors ${
+    active
+      ? 'border-[color:var(--mc-teal)]/60 bg-[rgba(46,230,214,0.12)] text-[color:var(--mc-teal-soft)]'
+      : 'border-[color:var(--mc-hairline)] bg-black/20 text-[color:var(--mc-ink-3)] hover:border-[color:var(--mc-hairline-2)] hover:text-[color:var(--mc-ink-1)]'
+  }`
+
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading content research...</span>
-        </div>
-      </div>
+      <Page
+        kicker="Blackwire Ops / Content Research"
+        title="Content Research"
+        subtitle="Loading the local content digest and draft-safe research queue."
+        badges={<Chip tone="amber" pulse>loading</Chip>}
+      >
+        <HudPanel title="Loading content research" glow>
+          <div className="h-40 animate-pulse border border-[color:var(--mc-hairline)] bg-black/20" />
+        </HudPanel>
+      </Page>
     )
   }
 
+  const totalVideos = data?.videos?.length ?? 0
+  const actionableCount = data?.aggregated.actionableItems.length ?? 0
+  const toolsCount = data?.aggregated.toolsMentioned.length ?? 0
+  const highRelevanceCount = data?.videos?.filter(video => video.relevanceTag === 'high').length ?? 0
+  const lastUpdated = data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'No local digest'
+
   return (
-    <div className="h-full flex flex-col bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center text-xl">
-            📺
+    <Page
+      kicker="Blackwire Ops / Content Research"
+      title="Content Research"
+      subtitle={`Local content digest with draft-safe outputs, citation/source context, and operator review before downstream use. Showing ${filteredVideos.length} of ${totalVideos} videos.`}
+      badges={
+        <>
+          <Chip tone="teal">local digest</Chip>
+          <Chip tone="amber">draft-safe</Chip>
+          <Chip tone="purple">viewer-auth</Chip>
+          {error && <Chip tone="amber">source caveat</Chip>}
+        </>
+      }
+      actions={
+        <>
+          <button type="button" onClick={() => setShowInsightsPanel(!showInsightsPanel)} className={filterButtonClass(showInsightsPanel)}>
+            insights {showInsightsPanel ? 'on' : 'off'}
+          </button>
+          <button type="button" onClick={fetchData} className={filterButtonClass(false)}>
+            refresh
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="Content research boundary">
+          This route reads the local YouTube digest and surfaces draft-safe research only. It does not publish, send marketing, create customer messages, or write durable memory.
+        </BoundaryBanner>
+
+        {error && (
+          <BoundaryBanner tone="amber" title="Local source caveat">
+            {error}
+          </BoundaryBanner>
+        )}
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <Stat label="filtered videos" value={filteredVideos.length} sub={`${totalVideos} local total`} glow />
+          <Stat label="high relevance" value={highRelevanceCount} sub="digest tags" accent={highRelevanceCount > 0 ? 'teal' : 'dim'} />
+          <Stat label="actions" value={actionableCount} sub="draft only" accent={actionableCount > 0 ? 'amber' : 'dim'} />
+          <Stat label="tools" value={toolsCount} sub="mentioned" accent={toolsCount > 0 ? 'purple' : 'dim'} />
+          <Stat label="updated" value={<span className="text-base">{lastUpdated}</span>} sub="local file read" accent="neutral" />
+        </section>
+
+        <HudPanel kicker="filters" title="Digest Scope">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">Date</span>
+              <div className="flex flex-wrap gap-1">
+                {(['today', 'week', 'all'] as DateFilter[]).map(filter => (
+                  <button key={filter} type="button" onClick={() => setDateFilter(filter)} className={filterButtonClass(dateFilter === filter)}>
+                    {filter === 'today' ? 'today' : filter === 'week' ? 'week' : 'all'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">Relevance</span>
+              <div className="flex flex-wrap gap-1">
+                {(['all', 'high', 'medium', 'low'] as RelevanceFilter[]).map(filter => (
+                  <button key={filter} type="button" onClick={() => setRelevanceFilter(filter)} className={filterButtonClass(relevanceFilter === filter)}>
+                    {filter}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Content Research</h2>
-            <p className="text-sm text-muted-foreground">
-              YouTube Digest • {filteredVideos.length} video{filteredVideos.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowInsightsPanel(!showInsightsPanel)}
-            className={showInsightsPanel ? 'bg-primary/10' : ''}
+        </HudPanel>
+
+        <div className={`grid gap-4 ${showInsightsPanel ? 'xl:grid-cols-[minmax(0,1fr)_340px]' : ''}`}>
+          <HudPanel
+            kicker="source queue"
+            title="Video Digest"
+            right={<Chip tone={filteredVideos.length > 0 ? 'teal' : 'dim'}>{filteredVideos.length} visible</Chip>}
           >
-            💡 Insights
-          </Button>
-          <Button variant="ghost" size="sm" onClick={fetchData}>
-            ↻ Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="px-4 py-3 border-b border-border flex items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium">Date:</span>
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {(['today', 'week', 'all'] as DateFilter[]).map(filter => (
-              <button
-                key={filter}
-                onClick={() => setDateFilter(filter)}
-                className={`px-3 py-1 text-xs font-medium transition-colors ${
-                  dateFilter === filter
-                    ? 'bg-primary/15 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                } ${filter !== 'today' ? 'border-l border-border' : ''}`}
-              >
-                {filter === 'today' ? 'Today' : filter === 'week' ? 'This Week' : 'All'}
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-medium">Relevance:</span>
-          <div className="flex rounded-md border border-border overflow-hidden">
-            {(['all', 'high', 'medium', 'low'] as RelevanceFilter[]).map(filter => (
-              <button
-                key={filter}
-                onClick={() => setRelevanceFilter(filter)}
-                className={`px-3 py-1 text-xs font-medium transition-colors capitalize ${
-                  relevanceFilter === filter
-                    ? 'bg-primary/15 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
-                } ${filter !== 'all' ? 'border-l border-border' : ''}`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Video List */}
-        <div className={`flex-1 overflow-y-auto p-4 ${showInsightsPanel ? 'pr-2' : ''}`}>
-          {error && !data?.videos?.length && (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center text-3xl">
-                📭
+            {error && !data?.videos?.length && (
+              <div className="border border-dashed border-[color:var(--mc-hairline-2)] bg-black/20 p-4 text-sm text-[color:var(--mc-ink-2)]">
+                {error}
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{error}</p>
-              </div>
-            </div>
-          )}
+            )}
 
-          {filteredVideos.length === 0 && !error && (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-3xl">
-                🔍
+            {filteredVideos.length === 0 && !error && (
+              <div className="border border-dashed border-[color:var(--mc-hairline-2)] bg-black/20 p-4">
+                <p className="font-mono text-xs font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">No videos match your filters</p>
+                <p className="mt-2 text-xs text-[color:var(--mc-ink-2)]">Try adjusting date or relevance scope.</p>
               </div>
-              <div>
-                <p className="text-sm text-foreground font-medium">No videos match your filters</p>
-                <p className="text-xs text-muted-foreground mt-1">Try adjusting the date or relevance filter</p>
-              </div>
-            </div>
-          )}
+            )}
 
-          <div className="space-y-3">
-            {filteredVideos.map(video => {
+            <div className="space-y-3">
+              {filteredVideos.map(video => {
               const isExpanded = expandedVideos.has(video.id)
               const thumbnail = getYouTubeThumbnail(video.url)
               
               return (
                 <div
                   key={video.id}
-                  className="bg-surface-1 rounded-lg border border-border hover:border-border/80 transition-colors overflow-hidden"
+                  className="overflow-hidden border border-[color:var(--mc-hairline)] bg-black/20 transition-colors hover:border-[color:var(--mc-hairline-2)]"
                 >
-                  <div
-                    className="flex gap-3 p-3 cursor-pointer"
+                  <button
+                    type="button"
+                    className="flex w-full gap-3 p-3 text-left"
                     onClick={() => toggleExpanded(video.id)}
                   >
-                    {/* Thumbnail */}
                     {thumbnail && (
                       <a
                         href={video.url}
@@ -260,16 +266,15 @@ export function ContentResearchPanel() {
                             className="w-full h-full object-cover"
                           />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="text-white text-2xl">▶</span>
+                            <span className="font-mono text-xs font-black uppercase tracking-[0.14em] text-white">open</span>
                           </div>
                         </div>
                       </a>
                     )}
                     
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-medium text-foreground text-sm leading-snug line-clamp-2">
+                        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-[color:var(--mc-ink-0)]">
                           {video.title}
                         </h3>
                         <svg
@@ -288,55 +293,51 @@ export function ContentResearchPanel() {
                       </div>
                       
                       <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <span className="text-xs text-muted-foreground">{video.channel}</span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[color:var(--mc-ink-2)]">{video.channel}</span>
                         {video.views && (
                           <>
-                            <span className="text-muted-foreground/30">•</span>
-                            <span className="text-xs text-muted-foreground">{video.views} views</span>
+                            <span className="text-[color:var(--mc-ink-3)]">/</span>
+                            <span className="text-xs text-[color:var(--mc-ink-2)]">{video.views} views</span>
                           </>
                         )}
                         {video.date && (
                           <>
-                            <span className="text-muted-foreground/30">•</span>
-                            <span className="text-xs text-muted-foreground">{formatDate(video.date)}</span>
+                            <span className="text-[color:var(--mc-ink-3)]">/</span>
+                            <span className="text-xs text-[color:var(--mc-ink-2)]">{formatDate(video.date)}</span>
                           </>
                         )}
                         {video.relevanceTag && (
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${getRelevanceColor(video.relevanceTag)}`}>
-                            {video.relevanceTag}
-                          </span>
+                          <Chip tone={getRelevanceTone(video.relevanceTag)}>{video.relevanceTag}</Chip>
                         )}
                       </div>
                       
-                      {/* Quick stats */}
                       {!isExpanded && (video.insights.length > 0 || video.actionableItems.length > 0) && (
-                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
                           {video.insights.length > 0 && (
-                            <span>💡 {video.insights.length} insight{video.insights.length !== 1 ? 's' : ''}</span>
+                            <Chip tone="purple">{video.insights.length} insights</Chip>
                           )}
                           {video.actionableItems.length > 0 && (
-                            <span>✅ {video.actionableItems.length} action{video.actionableItems.length !== 1 ? 's' : ''}</span>
+                            <Chip tone="amber">{video.actionableItems.length} actions</Chip>
                           )}
                           {video.toolsMentioned.length > 0 && (
-                            <span>🔧 {video.toolsMentioned.length} tool{video.toolsMentioned.length !== 1 ? 's' : ''}</span>
+                            <Chip tone="neutral">{video.toolsMentioned.length} tools</Chip>
                           )}
                         </div>
                       )}
                     </div>
-                  </div>
+                  </button>
                   
-                  {/* Expanded Content */}
                   {isExpanded && (
-                    <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0 space-y-3">
+                    <div className="space-y-3 border-t border-[color:var(--mc-hairline)] px-3 pb-3 pt-3">
                       {video.insights.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                            💡 Key Insights
+                          <h4 className="mb-1.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-purple-soft)]">
+                            Key Insights
                           </h4>
                           <ul className="space-y-1">
                             {video.insights.map((insight, i) => (
-                              <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <span className="text-primary mt-0.5">•</span>
+                              <li key={i} className="flex items-start gap-1.5 text-xs leading-5 text-[color:var(--mc-ink-2)]">
+                                <span className="mt-0.5 text-[color:var(--mc-teal)]">-</span>
                                 <span>{insight}</span>
                               </li>
                             ))}
@@ -346,13 +347,13 @@ export function ContentResearchPanel() {
                       
                       {video.actionableItems.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                            ✅ Actionable Items
+                          <h4 className="mb-1.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-amber)]">
+                            Actionable Items
                           </h4>
                           <ul className="space-y-1">
                             {video.actionableItems.map((action, i) => (
-                              <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                                <span className="text-green-400 mt-0.5">→</span>
+                              <li key={i} className="flex items-start gap-1.5 text-xs leading-5 text-[color:var(--mc-ink-2)]">
+                                <span className="mt-0.5 text-[color:var(--mc-amber)]">-</span>
                                 <span>{action}</span>
                               </li>
                             ))}
@@ -362,30 +363,25 @@ export function ContentResearchPanel() {
                       
                       {video.toolsMentioned.length > 0 && (
                         <div>
-                          <h4 className="text-xs font-semibold text-foreground mb-1.5 flex items-center gap-1.5">
-                            🔧 Tools Mentioned
+                          <h4 className="mb-1.5 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-1)]">
+                            Tools Mentioned
                           </h4>
                           <div className="flex flex-wrap gap-1.5">
                             {video.toolsMentioned.map((tool, i) => (
-                              <span
-                                key={i}
-                                className="text-xs px-2 py-0.5 rounded bg-secondary text-foreground"
-                              >
-                                {tool}
-                              </span>
+                              <Chip key={i} tone="neutral">{tool}</Chip>
                             ))}
                           </div>
                         </div>
                       )}
                       
-                      <div className="pt-2 flex gap-2">
+                      <div className="flex gap-2 pt-2">
                         <a
                           href={video.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                          className="font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-teal-soft)] hover:underline"
                         >
-                          Watch on YouTube →
+                          Open Source
                         </a>
                       </div>
                     </div>
@@ -393,61 +389,55 @@ export function ContentResearchPanel() {
                 </div>
               )
             })}
-          </div>
-        </div>
+            </div>
+          </HudPanel>
 
-        {/* Insights Sidebar */}
-        {showInsightsPanel && data?.aggregated && (
-          <div className="w-72 border-l border-border p-4 overflow-y-auto shrink-0">
-            <h3 className="text-sm font-semibold text-foreground mb-4">📊 Aggregated Insights</h3>
+          {showInsightsPanel && data?.aggregated && (
+            <HudPanel kicker="aggregate" title="Digest Insights" right={<Chip tone="amber">draft-safe</Chip>}>
             
-            {data.aggregated.actionableItems.length > 0 && (
-              <div className="mb-6">
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Actionable Items ({data.aggregated.actionableItems.length})
-                </h4>
-                <ul className="space-y-2">
-                  {data.aggregated.actionableItems.slice(0, 10).map((item, i) => (
-                    <li key={i} className="text-xs text-foreground flex items-start gap-1.5">
-                      <span className="text-green-400 shrink-0">✓</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                {data.aggregated.actionableItems.length > 10 && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    +{data.aggregated.actionableItems.length - 10} more
-                  </p>
-                )}
-              </div>
-            )}
-            
-            {data.aggregated.toolsMentioned.length > 0 && (
-              <div>
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                  Tools Mentioned ({data.aggregated.toolsMentioned.length})
-                </h4>
-                <div className="flex flex-wrap gap-1.5">
-                  {data.aggregated.toolsMentioned.map((tool, i) => (
-                    <span
-                      key={i}
-                      className="text-xs px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20"
-                    >
-                      {tool}
-                    </span>
-                  ))}
+              {data.aggregated.actionableItems.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="mb-2 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-amber)]">
+                    Actionable Items ({data.aggregated.actionableItems.length})
+                  </h4>
+                  <ul className="space-y-2">
+                    {data.aggregated.actionableItems.slice(0, 10).map((item, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-xs leading-5 text-[color:var(--mc-ink-1)]">
+                        <span className="shrink-0 text-[color:var(--mc-amber)]">-</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {data.aggregated.actionableItems.length > 10 && (
+                    <p className="mt-2 text-xs text-[color:var(--mc-ink-3)]">
+                      +{data.aggregated.actionableItems.length - 10} more
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
+              )}
             
-            {data.aggregated.actionableItems.length === 0 && data.aggregated.toolsMentioned.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-8">
-                No aggregated insights yet. Insights will appear as videos are processed.
-              </p>
-            )}
-          </div>
-        )}
+              {data.aggregated.toolsMentioned.length > 0 && (
+                <div>
+                  <h4 className="mb-2 font-mono text-[10px] font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-1)]">
+                    Tools Mentioned ({data.aggregated.toolsMentioned.length})
+                  </h4>
+                  <div className="flex flex-wrap gap-1.5">
+                    {data.aggregated.toolsMentioned.map((tool, i) => (
+                      <Chip key={i} tone="neutral">{tool}</Chip>
+                    ))}
+                  </div>
+                </div>
+              )}
+            
+              {data.aggregated.actionableItems.length === 0 && data.aggregated.toolsMentioned.length === 0 && (
+                <p className="py-8 text-center text-xs leading-5 text-[color:var(--mc-ink-2)]">
+                  No aggregated insights yet. Draft-safe insights appear as videos are processed.
+                </p>
+              )}
+            </HudPanel>
+          )}
+        </div>
       </div>
-    </div>
+    </Page>
   )
 }
