@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useTranslations } from 'next-intl'
+import { useState, useEffect, useMemo } from 'react'
+import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 
@@ -459,9 +459,18 @@ const appFactoryApps: AppInfo[] = [
 
 type ViewMode = 'grid' | 'pipeline' | 'list'
 type FilterStage = PipelineStage | 'all'
+type McTone = 'teal' | 'purple' | 'amber' | 'rose' | 'neutral' | 'dim'
+
+function stageTone(stage: PipelineStage): McTone {
+  if (stage === 'live') return 'teal'
+  if (stage === 'ui-polish') return 'purple'
+  if (stage === 'knox-audit' || stage === 'app-store-ready' || stage === 'in-review') return 'amber'
+  if (stage === 'rejected') return 'rose'
+  if (stage === 'draft') return 'dim'
+  return 'neutral'
+}
 
 export function AppFactoryPanel() {
-  const t = useTranslations('appFactory')
   const [apps, setApps] = useState<AppInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedApp, setSelectedApp] = useState<AppInfo | null>(null)
@@ -549,133 +558,126 @@ export function AppFactoryPanel() {
   // Pipeline stages to show (in order)
   const pipelineStages: PipelineStage[] = ['built', 'ui-polish', 'knox-audit', 'app-store-ready', 'in-review', 'live']
 
+  const viewModeClass = (mode: ViewMode) =>
+    `border px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+      viewMode === mode
+        ? 'border-[color:var(--mc-teal)]/70 bg-[rgba(46,230,214,0.14)] text-[color:var(--mc-teal-soft)]'
+        : 'border-[color:var(--mc-hairline-2)] bg-white/[0.035] text-[color:var(--mc-ink-2)] hover:border-[color:var(--mc-teal)]/45 hover:text-[color:var(--mc-ink-0)]'
+    }`
+
   if (loading) {
-    return <Loader variant="panel" label="Loading App Factory..." />
+    return (
+      <Page
+        kicker="Blackwire Ops / App Factory"
+        title="App Factory"
+        subtitle="Loading the local iOS factory manifest."
+        badges={<Chip tone="dim">local manifest</Chip>}
+      >
+        <HudPanel kicker="boot" title="Loading">
+          <Loader variant="panel" label="Loading App Factory..." />
+        </HudPanel>
+      </Page>
+    )
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
-      {/* Header */}
-      <div className="border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              🏭 App Factory
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {stats.total} iOS apps in pipeline • {stats.byStage.built} built • {stats.byStage.live} live
-            </p>
+    <Page
+      kicker="Blackwire Ops / App Factory"
+      title="App Factory"
+      subtitle={`${stats.total} iOS apps in the local factory pipeline. This surface stages readiness only; App Store submission, Xcode opens, analytics, and deploy actions stay operator-gated.`}
+      badges={
+        <>
+          <Chip tone="teal" pulse>local pipeline</Chip>
+          <Chip tone="amber">store actions gated</Chip>
+          <Chip tone="purple">iOS factory</Chip>
+        </>
+      }
+      actions={
+        <div className="flex overflow-hidden border border-[color:var(--mc-hairline-2)]">
+          <button type="button" onClick={() => setViewMode('pipeline')} className={viewModeClass('pipeline')}>
+            Pipeline
+          </button>
+          <button type="button" onClick={() => setViewMode('grid')} className={viewModeClass('grid')}>
+            Grid
+          </button>
+          <button type="button" onClick={() => setViewMode('list')} className={viewModeClass('list')}>
+            List
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <BoundaryBanner tone="amber" title="App Factory Boundary">
+          This route reads and organizes the local app pipeline. It does not submit to stores, launch Xcode,
+          alter analytics, deploy builds, or mark work verified without an explicit operator action and receipt.
+        </BoundaryBanner>
+
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <Stat label="total apps" value={stats.total} sub="factory manifest" glow />
+          <Stat label="built" value={stats.byStage.built} sub="needs evidence gate" accent="teal" />
+          <Stat label="ui polish" value={stats.byStage['ui-polish']} sub="design pass" accent="purple" />
+          <Stat label="knox audit" value={stats.byStage['knox-audit']} sub="security review" accent="amber" />
+          <Stat label="store ready" value={stats.byStage['app-store-ready']} sub="approval gated" accent="amber" />
+          <Stat label="live" value={stats.byStage.live} sub="receipt required" accent="teal" />
+        </div>
+
+        <HudPanel
+          kicker="filters"
+          title="Pipeline Scope"
+          right={<Chip tone="neutral">showing {filteredApps.length}/{apps.length}</Chip>}
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="text"
+              placeholder="Search apps..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 min-w-[220px] flex-1 border border-[color:var(--mc-hairline-2)] bg-black/25 px-3 font-mono text-xs text-[color:var(--mc-ink-0)] outline-none placeholder:text-[color:var(--mc-ink-3)] focus:border-[color:var(--mc-teal)]/70"
+            />
+            <label className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
+              Stage
+              <select
+                value={filterStage}
+                onChange={(e) => setFilterStage(e.target.value as FilterStage)}
+                className="h-10 border border-[color:var(--mc-hairline-2)] bg-[color:var(--mc-bg-2)] px-3 text-xs text-[color:var(--mc-ink-0)] outline-none focus:border-[color:var(--mc-teal)]/70"
+              >
+                <option value="all">All Stages</option>
+                {Object.entries(stageConfig).map(([stage, config]) => (
+                  <option key={stage} value={stage}>
+                    {config.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
+              Category
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="h-10 border border-[color:var(--mc-hairline-2)] bg-[color:var(--mc-bg-2)] px-3 text-xs text-[color:var(--mc-ink-0)] outline-none focus:border-[color:var(--mc-teal)]/70"
+              >
+                <option value="all">All Categories</option>
+                {categories.filter(c => c !== 'all').map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-md overflow-hidden border border-border">
-              <Button
-                variant={viewMode === 'pipeline' ? 'default' : 'secondary'}
-                size="sm"
-                onClick={() => setViewMode('pipeline')}
-                className="rounded-none border-0"
-              >
-                Pipeline
-              </Button>
-              <Button
-                variant={viewMode === 'grid' ? 'default' : 'secondary'}
-                size="sm"
-                onClick={() => setViewMode('grid')}
-                className="rounded-none border-0"
-              >
-                Grid
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'default' : 'secondary'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="rounded-none border-0"
-              >
-                List
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+        </HudPanel>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-6 gap-3 p-4 border-b border-border bg-card/50">
-        <div className="rounded-lg p-3 border border-border bg-card">
-          <div className="text-2xl font-bold text-foreground">{stats.total}</div>
-          <div className="text-xs text-muted-foreground">Total Apps</div>
-        </div>
-        <div className="rounded-lg p-3 border border-cyan-500/30 bg-cyan-500/10">
-          <div className="text-2xl font-bold text-cyan-400">{stats.byStage.built}</div>
-          <div className="text-xs text-muted-foreground">Built</div>
-        </div>
-        <div className="rounded-lg p-3 border border-purple-500/30 bg-purple-500/10">
-          <div className="text-2xl font-bold text-purple-400">{stats.byStage['ui-polish']}</div>
-          <div className="text-xs text-muted-foreground">UI Polish</div>
-        </div>
-        <div className="rounded-lg p-3 border border-amber-500/30 bg-amber-500/10">
-          <div className="text-2xl font-bold text-amber-400">{stats.byStage['knox-audit']}</div>
-          <div className="text-xs text-muted-foreground">Knox Audit</div>
-        </div>
-        <div className="rounded-lg p-3 border border-green-500/30 bg-green-500/10">
-          <div className="text-2xl font-bold text-green-400">{stats.byStage['app-store-ready']}</div>
-          <div className="text-xs text-muted-foreground">Store Ready</div>
-        </div>
-        <div className="rounded-lg p-3 border border-emerald-500/30 bg-emerald-500/10">
-          <div className="text-2xl font-bold text-emerald-400">{stats.byStage.live}</div>
-          <div className="text-xs text-muted-foreground">Live</div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-4 p-4 border-b border-border">
-        <input
-          type="text"
-          placeholder="Search apps..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 max-w-xs h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Stage:</span>
-          <select
-            value={filterStage}
-            onChange={(e) => setFilterStage(e.target.value as FilterStage)}
-            className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <option value="all">All Stages</option>
-            {Object.entries(stageConfig).map(([stage, config]) => (
-              <option key={stage} value={stage}>
-                {config.icon} {config.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Category:</span>
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <option value="all">All Categories</option>
-            {categories.filter(c => c !== 'all').map((cat) => (
-              <option key={cat} value={cat}>
-                {categoryIcons[cat] || '📱'} {cat}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="ml-auto text-xs text-muted-foreground">
-          Showing {filteredApps.length} of {apps.length} apps
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+        <HudPanel
+          kicker="pipeline"
+          title="App Pipeline"
+          right={<Chip tone="amber">done requires proof</Chip>}
+          padded={false}
+        >
+      <div className="overflow-y-auto p-4">
         {filteredApps.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <div className="text-4xl mb-3">📦</div>
-            <p className="text-lg">No apps match your filters</p>
-            <p className="text-sm">Try adjusting your search or filters</p>
+          <div className="py-12 text-center text-[color:var(--mc-ink-2)]">
+            <p className="font-mono text-lg font-black uppercase tracking-[0.14em]">No apps match your filters</p>
+            <p className="mt-2 text-sm">Try adjusting search, stage, or category scope.</p>
           </div>
         ) : viewMode === 'pipeline' ? (
           // Pipeline View - Kanban-style columns
@@ -684,24 +686,21 @@ export function AppFactoryPanel() {
               const stageApps = appsByStage[stage]
               const config = stageConfig[stage]
               return (
-                <div key={stage} className="flex-shrink-0 w-72 flex flex-col">
+                <div key={stage} className="flex w-72 flex-shrink-0 flex-col">
                   {/* Column Header */}
-                  <div className={`rounded-t-lg px-3 py-2 border border-b-0 ${config.bgColor} border-border`}>
+                  <div className="border border-b-0 border-[color:var(--mc-hairline-2)] bg-white/[0.035] px-3 py-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span>{config.icon}</span>
-                        <span className={`font-medium ${config.color}`}>{config.label}</span>
+                        <Chip tone={stageTone(stage)}>{config.label}</Chip>
                       </div>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${config.bgColor} ${config.color}`}>
-                        {stageApps.length}
-                      </span>
+                      <Chip tone="dim">{stageApps.length}</Chip>
                     </div>
                   </div>
                   
                   {/* Column Content */}
-                  <div className="flex-1 bg-card/50 border border-border rounded-b-lg p-2 space-y-2 overflow-y-auto max-h-[600px]">
+                  <div className="max-h-[600px] flex-1 space-y-2 overflow-y-auto border border-[color:var(--mc-hairline-2)] bg-black/20 p-2">
                     {stageApps.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground/50 text-sm">
+                      <div className="py-8 text-center font-mono text-xs uppercase tracking-[0.14em] text-[color:var(--mc-ink-3)]">
                         No apps
                       </div>
                     ) : (
@@ -709,26 +708,26 @@ export function AppFactoryPanel() {
                         <div
                           key={app.id}
                           onClick={() => setSelectedApp(app)}
-                          className="bg-card rounded-lg p-3 border border-border hover:border-primary/50 transition-colors cursor-pointer"
+                          className="border border-[color:var(--mc-hairline)] bg-white/[0.035] p-3 transition-colors hover:border-[color:var(--mc-teal)]/50"
                         >
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-lg">
+                            <div className="grid h-8 w-8 place-items-center border border-[color:var(--mc-hairline)] bg-black/20 text-lg">
                               {app.icon}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-foreground text-sm truncate">{app.name}</h4>
-                              <p className="text-[10px] text-muted-foreground">{app.category}</p>
+                              <h4 className="truncate font-mono text-sm font-black text-[color:var(--mc-ink-0)]">{app.name}</h4>
+                              <p className="text-[10px] text-[color:var(--mc-ink-2)]">{app.category}</p>
                             </div>
                           </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                          <p className="mb-2 line-clamp-2 text-xs text-[color:var(--mc-ink-2)]">
                             {app.description}
                           </p>
                           <div className="flex items-center gap-2 text-[10px]">
                             {app.hasUIGuide && (
-                              <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">UI Guide</span>
+                              <Chip tone="purple">UI Guide</Chip>
                             )}
                             {app.hasReadme && (
-                              <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">README</span>
+                              <Chip tone="teal">README</Chip>
                             )}
                           </div>
                         </div>
@@ -747,26 +746,24 @@ export function AppFactoryPanel() {
               return (
                 <div
                   key={app.id}
-                  className="bg-card rounded-lg border border-border hover:border-primary/50 transition-colors cursor-pointer overflow-hidden"
+                  className="overflow-hidden border border-[color:var(--mc-hairline-2)] bg-white/[0.035] transition-colors hover:border-[color:var(--mc-teal)]/50"
                   onClick={() => setSelectedApp(app)}
                 >
                   {/* App Header */}
-                  <div className="p-4 border-b border-border">
+                  <div className="border-b border-[color:var(--mc-hairline)] p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center text-2xl">
+                        <div className="grid h-12 w-12 place-items-center border border-[color:var(--mc-hairline)] bg-black/20 text-2xl">
                           {app.icon}
                         </div>
                         <div>
-                          <h3 className="font-semibold text-foreground">{app.name}</h3>
-                          <p className="text-xs text-muted-foreground">{app.category}</p>
+                          <h3 className="font-mono font-black text-[color:var(--mc-ink-0)]">{app.name}</h3>
+                          <p className="text-xs text-[color:var(--mc-ink-2)]">{app.category}</p>
                         </div>
                       </div>
-                      <div className={`px-2 py-1 rounded text-xs font-medium ${config.bgColor} ${config.color}`}>
-                        {config.icon} {config.label}
-                      </div>
+                      <Chip tone={stageTone(app.stage)}>{config.label}</Chip>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-3 line-clamp-2">
+                    <p className="mt-3 line-clamp-2 text-sm text-[color:var(--mc-ink-2)]">
                       {app.description}
                     </p>
                   </div>
@@ -774,26 +771,26 @@ export function AppFactoryPanel() {
                   {/* App Info */}
                   <div className="p-4 space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Revenue Model</span>
-                      <span className="font-medium text-foreground">
+                      <span className="text-[color:var(--mc-ink-2)]">Revenue Model</span>
+                      <span className="font-medium text-[color:var(--mc-ink-0)]">
                         {revenueModelConfig[app.revenueModel].icon} {revenueModelConfig[app.revenueModel].label}
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Platform</span>
-                      <span className="font-medium text-foreground">
+                      <span className="text-[color:var(--mc-ink-2)]">Platform</span>
+                      <span className="font-medium text-[color:var(--mc-ink-0)]">
                         🍎 iOS
                       </span>
                     </div>
                     <div className="flex items-center gap-2 pt-2">
                       {app.hasUIGuide && (
-                        <span className="px-2 py-1 rounded text-[10px] bg-purple-500/20 text-purple-400">✓ UI Guide</span>
+                        <Chip tone="purple">UI Guide</Chip>
                       )}
                       {app.hasReadme && (
-                        <span className="px-2 py-1 rounded text-[10px] bg-blue-500/20 text-blue-400">✓ README</span>
+                        <Chip tone="teal">README</Chip>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground pt-2 border-t border-border">
+                    <div className="border-t border-[color:var(--mc-hairline)] pt-2 text-xs text-[color:var(--mc-ink-2)]">
                       Modified {app.lastModified}
                     </div>
                   </div>
@@ -803,10 +800,10 @@ export function AppFactoryPanel() {
           </div>
         ) : (
           // List View
-          <div className="bg-card rounded-lg border border-border overflow-hidden">
+          <div className="overflow-hidden border border-[color:var(--mc-hairline-2)] bg-black/15">
             <table className="w-full">
-              <thead className="bg-secondary/50">
-                <tr className="text-left text-xs text-muted-foreground">
+              <thead className="bg-white/[0.035]">
+                <tr className="text-left font-mono text-xs uppercase tracking-[0.14em] text-[color:var(--mc-ink-2)]">
                   <th className="px-4 py-3 font-medium">App</th>
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium">Stage</th>
@@ -815,49 +812,47 @@ export function AppFactoryPanel() {
                   <th className="px-4 py-3 font-medium">Modified</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-[color:var(--mc-hairline)]">
                 {filteredApps.map(app => {
                   const config = stageConfig[app.stage]
                   return (
                     <tr
                       key={app.id}
                       onClick={() => setSelectedApp(app)}
-                      className="hover:bg-secondary/30 cursor-pointer transition-colors"
+                      className="cursor-pointer transition-colors hover:bg-[rgba(46,230,214,0.045)]"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-lg">
+                          <div className="grid h-8 w-8 place-items-center border border-[color:var(--mc-hairline)] bg-black/20 text-lg">
                             {app.icon}
                           </div>
                           <div>
-                            <div className="font-medium text-foreground">{app.name}</div>
-                            <div className="text-xs text-muted-foreground truncate max-w-[200px]">{app.description}</div>
+                            <div className="font-mono font-black text-[color:var(--mc-ink-0)]">{app.name}</div>
+                            <div className="max-w-[200px] truncate text-xs text-[color:var(--mc-ink-2)]">{app.description}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-foreground">
+                        <span className="text-sm text-[color:var(--mc-ink-0)]">
                           {categoryIcons[app.category] || '📱'} {app.category}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${config.bgColor} ${config.color}`}>
-                          {config.icon} {config.label}
-                        </span>
+                        <Chip tone={stageTone(app.stage)}>{config.label}</Chip>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-sm text-foreground">
+                        <span className="text-sm text-[color:var(--mc-ink-0)]">
                           {revenueModelConfig[app.revenueModel].icon} {revenueModelConfig[app.revenueModel].label}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          {app.hasUIGuide && <span className="text-purple-400" title="Has UI Guide">📐</span>}
-                          {app.hasReadme && <span className="text-blue-400" title="Has README">📄</span>}
-                          {!app.hasUIGuide && !app.hasReadme && <span className="text-muted-foreground">—</span>}
+                          {app.hasUIGuide && <Chip tone="purple">UI</Chip>}
+                          {app.hasReadme && <Chip tone="teal">README</Chip>}
+                          {!app.hasUIGuide && !app.hasReadme && <span className="text-[color:var(--mc-ink-3)]">-</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                      <td className="px-4 py-3 text-sm text-[color:var(--mc-ink-2)]">
                         {app.lastModified}
                       </td>
                     </tr>
@@ -868,6 +863,7 @@ export function AppFactoryPanel() {
           </div>
         )}
       </div>
+        </HudPanel>
 
       {/* App Detail Modal */}
       {selectedApp && (
@@ -876,7 +872,7 @@ export function AppFactoryPanel() {
           onClick={() => setSelectedApp(null)}
         >
           <div 
-            className="bg-card rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto border border-border"
+            className="mc-bevel max-h-[90vh] w-full max-w-xl overflow-y-auto bg-[color:var(--mc-bg-2)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
@@ -886,10 +882,10 @@ export function AppFactoryPanel() {
                     {selectedApp.icon}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-foreground">{selectedApp.name}</h2>
-                    <p className="text-sm text-muted-foreground">{selectedApp.bundleId}</p>
-                    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium mt-2 ${stageConfig[selectedApp.stage].bgColor} ${stageConfig[selectedApp.stage].color}`}>
-                      {stageConfig[selectedApp.stage].icon} {stageConfig[selectedApp.stage].label}
+                    <h2 className="font-mono text-xl font-black text-[color:var(--mc-ink-0)]">{selectedApp.name}</h2>
+                    <p className="text-sm text-[color:var(--mc-ink-2)]">{selectedApp.bundleId}</p>
+                    <div className="mt-2">
+                      <Chip tone={stageTone(selectedApp.stage)}>{stageConfig[selectedApp.stage].label}</Chip>
                     </div>
                   </div>
                 </div>
@@ -903,7 +899,12 @@ export function AppFactoryPanel() {
                 </Button>
               </div>
 
-              <p className="text-muted-foreground mb-6">{selectedApp.description}</p>
+              <BoundaryBanner tone="amber" title="Action Boundary">
+                Pipeline buttons in this modal are staging controls only in local Mission Control. Store submission,
+                Xcode launch, analytics, and verification states require explicit approval plus a receipt.
+              </BoundaryBanner>
+
+              <p className="mb-6 mt-4 text-[color:var(--mc-ink-1)]">{selectedApp.description}</p>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-secondary/50 rounded-lg p-4">
@@ -929,7 +930,7 @@ export function AppFactoryPanel() {
               </div>
 
               <div className="mb-6">
-                <h3 className="font-semibold text-foreground mb-3">📋 Documentation Status</h3>
+                <h3 className="mb-3 font-mono text-sm font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">Documentation Status</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className={`rounded-lg p-3 border ${selectedApp.hasUIGuide ? 'border-purple-500/30 bg-purple-500/10' : 'border-border bg-secondary/30'}`}>
                     <div className="flex items-center gap-2">
@@ -955,7 +956,7 @@ export function AppFactoryPanel() {
               </div>
 
               <div className="mb-6">
-                <h3 className="font-semibold text-foreground mb-3">🔄 Pipeline Actions</h3>
+                <h3 className="mb-3 font-mono text-sm font-black uppercase tracking-[0.14em] text-[color:var(--mc-ink-0)]">Pipeline Actions</h3>
                 <div className="flex flex-wrap gap-2">
                   {selectedApp.stage === 'built' && (
                     <>
@@ -988,13 +989,14 @@ export function AppFactoryPanel() {
                 </div>
               </div>
 
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-[color:var(--mc-ink-2)]">
                 <span className="font-medium">Last modified:</span> {selectedApp.lastModified}
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </Page>
   )
 }

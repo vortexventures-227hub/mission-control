@@ -1,0 +1,28 @@
+{
+  "route": "/app-factory",
+  "baseUrl": "http://127.0.0.1:3110",
+  "checkedAt": "2026-05-22T04:50:26.723Z",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "passed": true,
+  "checks": {
+    "statusOk": true,
+    "hasTitle": true,
+    "hasBoundary": true,
+    "hasLocalPipelineChip": true,
+    "hasGatedChip": true,
+    "hasPipelineScope": true,
+    "hasAppPipeline": true,
+    "hasDoneProofBoundary": true,
+    "hasAppData": true,
+    "hasOperatorBoundaryCopy": true,
+    "noApplicationError": true
+  },
+  "consoleFindings": [],
+  "badResponses": [],
+  "sessionCleanupCount": 0,
+  "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_00-50-app-factory-hud/app-factory-hud.png"
+}
