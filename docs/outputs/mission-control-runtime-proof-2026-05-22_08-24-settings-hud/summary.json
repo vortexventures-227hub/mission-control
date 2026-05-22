@@ -1,0 +1,37 @@
+{
+  "baseUrl": "http://127.0.0.1:3110",
+  "dbPath": ".data/mission-control.db",
+  "outDir": "docs/outputs/mission-control-runtime-proof-2026-05-22_08-24-settings-hud",
+  "proofUser": {
+    "id": 1,
+    "role": "admin",
+    "username": "Chris"
+  },
+  "sessionCleanupCount": 0,
+  "routes": [
+    {
+      "route": "/settings",
+      "status": 200,
+      "ok": true,
+      "screenshot": "docs/outputs/mission-control-runtime-proof-2026-05-22_08-24-settings-hud/settings-hud.png",
+      "title": "Mission Control",
+      "textLength": 3227,
+      "headings": [
+        "Settings",
+        "Interface Mode",
+        "Account"
+      ],
+      "hasApplicationError": false,
+      "hasSettingsBoundary": true,
+      "hasMutationGate": true,
+      "hasSettingsStat": true,
+      "hasCategoriesStat": true,
+      "hasUnsavedStat": true,
+      "hasAuditBoundary": true,
+      "firstText": "Skip to main content Overview Group Chat Tasks Agents Approvals Command Truth Notifications Chat Memory Brain / Memory Documents Think Tank Knowledge Intake Research Command Research Intake Brainstorm Wall Content Office Asset Library Design Studio Marketing A"
+    }
+  ],
+  "consoleFindings": [],
+  "badResponses": [],
+  "passed": true
+}

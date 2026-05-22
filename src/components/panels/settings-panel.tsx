@@ -11,6 +11,7 @@ import { Loader } from '@/components/ui/loader'
 import { clearOnboardingDismissedThisSession, clearOnboardingReplayFromStart } from '@/lib/onboarding-session'
 import { resolveCoordinatorDeliveryTarget, type CoordinatorAgentRecord } from '@/lib/coordinator-routing'
 import type { GatewaySession } from '@/lib/sessions'
+import { BoundaryBanner, Chip, Page, Stat } from '@/components/mc/hud'
 
 interface Setting {
   key: string
@@ -399,16 +400,28 @@ export function SettingsPanel() {
   }
 
   const categories = categoryOrder.filter(c => c === 'security' || c === 'profiles' || (grouped[c]?.length > 0))
+  const changedSettingCount = Object.keys(edits).filter(key => {
+    const setting = settings.find(s => s.key === key)
+    return setting && edits[key] !== setting.value
+  }).length
+  const defaultSettingCount = settings.filter(setting => setting.is_default).length
+  const customSettingCount = settings.length - defaultSettingCount
+  const isAdmin = currentUser?.role === 'admin'
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">{t('title')}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{t('description')}</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <Page
+      kicker="Blackwire Ops / Settings"
+      title={t('title')}
+      subtitle={`${t('description')} Configuration changes are local admin actions and stay receipt-visible through the audit trail.`}
+      badges={
+        <>
+          <Chip tone={isAdmin ? 'teal' : 'amber'} pulse={isAdmin}>{isAdmin ? 'admin session' : 'operator view'}</Chip>
+          <Chip tone="amber">mutation gated</Chip>
+          <Chip tone={hasChanges ? 'rose' : 'dim'}>{changedSettingCount} unsaved</Chip>
+        </>
+      }
+      actions={
+        <>
           {hasChanges && (
             <Button
               onClick={handleDiscard}
@@ -427,8 +440,21 @@ export function SettingsPanel() {
           >
             {saving ? t('saving') : t('saveChanges')}
           </Button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <div className="mx-auto max-w-5xl space-y-6">
+        <BoundaryBanner tone="amber" title="Settings Boundary">
+          Settings can rotate API keys, change coordinator routing, adjust security profiles, run backups, and replay onboarding. Treat every change as local Mission Control configuration until an audit receipt proves the mutation.
+        </BoundaryBanner>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <Stat label="settings" value={settings.length} sub="loaded keys" glow />
+          <Stat label="categories" value={categories.length} sub={activeCategory} accent="purple" />
+          <Stat label="defaults" value={defaultSettingCount} sub="inherited values" accent="dim" />
+          <Stat label="customized" value={customSettingCount} sub="workspace values" accent={customSettingCount > 0 ? 'teal' : 'dim'} />
+          <Stat label="unsaved" value={changedSettingCount} sub={hasChanges ? 'needs save' : 'clean'} accent={hasChanges ? 'rose' : 'dim'} />
+        </section>
 
       {/* Workspace Info */}
       {currentUser?.role === 'admin' && (
@@ -997,7 +1023,8 @@ export function SettingsPanel() {
           </Button>
         </div>
       )}
-    </div>
+      </div>
+    </Page>
   )
 }
 
