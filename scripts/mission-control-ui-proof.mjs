@@ -54,11 +54,12 @@ if (!user) {
 }
 const workspace = db.prepare(`SELECT id, COALESCE(tenant_id, 1) AS tenant_id FROM workspaces WHERE id = ? LIMIT 1`).get(user.workspace_id) || { id: 1, tenant_id: 1 }
 const token = crypto.randomBytes(32).toString('hex')
+const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
 const ua = 'mission-control-cron-ui-proof'
 db.prepare(`
   INSERT INTO user_sessions (token, user_id, expires_at, ip_address, user_agent, workspace_id, tenant_id)
   VALUES (?, ?, ?, ?, ?, ?, ?)
-`).run(token, user.id, now + 1800, '127.0.0.1', ua, workspace.id, workspace.tenant_id)
+`).run(tokenHash, user.id, now + 1800, '127.0.0.1', ua, workspace.id, workspace.tenant_id)
 
 const results = []
 const consoleMessages = []
@@ -93,12 +94,18 @@ try {
     const details = await page.evaluate(() => {
       const text = document.body?.innerText || ''
       const headings = Array.from(document.querySelectorAll('h1,h2')).slice(0, 8).map(el => el.textContent?.trim()).filter(Boolean)
+      const passwordInputs = Array.from(document.querySelectorAll('input[type="password"]'))
+      const hasLoginForm = passwordInputs.some(input => {
+        const scopedText = (input.closest('form')?.innerText || input.closest('main')?.innerText || text).trim()
+        return /sign in|create admin account|password/i.test(scopedText)
+      })
       return {
         title: document.title,
         textLength: text.trim().length,
         headings,
         hasApplicationError: /Application error|Unhandled Runtime Error|Internal Server Error/i.test(text),
-        hasLoginForm: /sign in|login|password/i.test(text),
+        hasLoginForm,
+        hasPasswordInput: passwordInputs.length > 0,
         firstText: text.trim().replace(/\s+/g, ' ').slice(0, 220),
       }
     })
@@ -108,7 +115,7 @@ try {
     const statusOk = Boolean(response && response.status() >= 200 && response.status() < 400)
     const contentOk = route === '/login'
       ? details.hasLoginForm && details.textLength > 100
-      : details.textLength > 250
+      : details.textLength > 250 && !details.hasLoginForm
     results.push({
       route,
       status: response?.status() ?? null,
@@ -120,7 +127,7 @@ try {
   await browser.close()
 } finally {
   if (browser) await browser.close().catch(() => {})
-  db.prepare(`DELETE FROM user_sessions WHERE token = ? OR user_agent = ?`).run(token, ua)
+  db.prepare(`DELETE FROM user_sessions WHERE token IN (?, ?) OR user_agent = ?`).run(token, tokenHash, ua)
 }
 
 const remaining = db.prepare(`SELECT count(*) AS count FROM user_sessions WHERE user_agent = ?`).get(ua).count
