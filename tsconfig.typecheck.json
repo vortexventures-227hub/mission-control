@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts",
+    "*.ts",
+    "*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.js",
+    "scripts/**/*.mjs",
+    ".typecheck/next-types/routes.d.ts",
+    ".typecheck/next-types/validator.ts",
+    ".typecheck/next-types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".runtime-standalone",
+    ".codex-tmp",
+    "docs/outputs"
+  ]
+}
