@@ -29,6 +29,12 @@ if [[ -d "$SOURCE_PUBLIC_DIR" ]]; then
   cp -R "$SOURCE_PUBLIC_DIR" "$STANDALONE_PUBLIC_DIR"
 fi
 
+# Rebuild native modules inside the standalone runtime so local launches
+# survive Node ABI drift after installs/builds on a different Node release.
+if command -v pnpm >/dev/null 2>&1 && [[ -d "$STANDALONE_DIR/node_modules" ]]; then
+  pnpm --dir "$STANDALONE_DIR" rebuild better-sqlite3 node-pty >/dev/null
+fi
+
 cd "$STANDALONE_DIR"
 # Next.js standalone server reads HOSTNAME to decide bind address.
 # Override inherited shell hostnames so localhost and LAN access both work.
