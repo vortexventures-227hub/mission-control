@@ -31,6 +31,6 @@ fi
 
 cd "$STANDALONE_DIR"
 # Next.js standalone server reads HOSTNAME to decide bind address.
-# Default to 0.0.0.0 so the server is accessible from outside the host.
-export HOSTNAME="${HOSTNAME:-0.0.0.0}"
+# Override inherited shell hostnames so localhost and LAN access both work.
+export HOSTNAME="0.0.0.0"
 exec node server.js
