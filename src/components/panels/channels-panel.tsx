@@ -659,6 +659,33 @@ export function ChannelsPanel() {
   const [probing, setProbing] = useState<string | null>(null)
   const [actionBusy, setActionBusy] = useState(false)
 
+  const fetchChannels = useCallback(async () => {
+    try {
+      const res = await fetch('/api/channels')
+      if (res.status === 401 || res.status === 403) {
+        setError('Authentication required')
+        return
+      }
+      if (!res.ok) {
+        setError('Failed to load channels')
+        return
+      }
+      const data: ChannelsSnapshot = await res.json()
+      setSnapshot(data)
+      setError(null)
+    } catch {
+      setError('Failed to load channels')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchChannels()
+    const interval = setInterval(fetchChannels, 30000)
+    return () => clearInterval(interval)
+  }, [fetchChannels])
+
   return (
     <Page
       kicker="Blackwire Ops / External Comms"
@@ -704,33 +731,6 @@ export function ChannelsPanel() {
       </div>
     </Page>
   )
-
-  const fetchChannels = useCallback(async () => {
-    try {
-      const res = await fetch('/api/channels')
-      if (res.status === 401 || res.status === 403) {
-        setError('Authentication required')
-        return
-      }
-      if (!res.ok) {
-        setError('Failed to load channels')
-        return
-      }
-      const data: ChannelsSnapshot = await res.json()
-      setSnapshot(data)
-      setError(null)
-    } catch {
-      setError('Failed to load channels')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchChannels()
-    const interval = setInterval(fetchChannels, 30000)
-    return () => clearInterval(interval)
-  }, [fetchChannels])
 
   const handleProbe = async (channelId: string) => {
     setProbing(channelId)
