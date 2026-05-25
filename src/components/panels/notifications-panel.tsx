@@ -95,7 +95,7 @@ export function NotificationsPanel() {
     <Page
       kicker="NOTIFICATIONS / LOCAL QUEUE"
       title={t('title')}
-      subtitle="Operator notification queue for Mission Control events, delivery rows, and unread work. This is local command visibility, not email, SMS, push, or external agent delivery."
+      subtitle="Local Mission Control notification queue only. Operator notification queue for Mission Control events, delivery rows, and unread work. This is local command visibility, not email, SMS, push, or external agent delivery."
       badges={(
         <>
           <Chip tone="teal" pulse>LOCAL QUEUE</Chip>
@@ -149,7 +149,7 @@ export function NotificationsPanel() {
         </HudPanel>
 
         <BoundaryBanner tone="amber" title="Local Boundary">
-          A delivered notification row means Mission Control recorded local queue delivery. It does not prove email, SMS, push delivery, agent action, or completed work.
+          A delivered notification row means Mission Control recorded local queue delivery. No email, SMS, push, or external agent delivery is implied. It does not prove agent action or completed work.
         </BoundaryBanner>
 
         {error && (

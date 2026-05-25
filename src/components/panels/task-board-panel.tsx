@@ -868,7 +868,7 @@ export function TaskBoardPanel() {
           <Stat label="Overdue" value={taskTriage.overdue} sub="past due and not done" accent="rose" glow={taskTriage.overdue > 0} />
           <Stat label="Critical / Urgent" value={taskTriage.critical} sub="highest risk active work" accent="amber" glow={taskTriage.critical > 0} />
           <Stat label="Unassigned" value={taskTriage.unassigned} sub="needs an owner" accent="teal" />
-          <Stat label="Done Gate" value={taskTriage.awaitingAegis} sub="Aegis approval required" accent="purple" />
+          <Stat label="Done gate" value={taskTriage.awaitingAegis} sub="Aegis approval required before Done" accent="purple" />
         </div>
 
       {/* Spawn Form (collapsible) */}
