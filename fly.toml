@@ -1,0 +1,44 @@
+# Mission Control (VVCC) — standalone Next build on a real host.
+#
+# WHY A VOLUME: the SQLite database AND the auto-generated AUTH_SECRET/API_KEY
+# both live under /app/.data (docker-entrypoint.sh:21, .env.example:113). Without
+# a persistent mount every restart drops the database and rotates the auth
+# secrets, which logs every operator out and orphans the agent roster.
+#
+# WHY min_machines_running = 1: this is a control plane agents call, not a site
+# that can cold-start on demand. Scaling to zero would drop the scheduler
+# (heartbeat every 5m, agent sync every 60s).
+app = "vv-mission-control"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+  MISSION_CONTROL_DATA_DIR = "/app/.data"
+  # Set to "false" once an agent gateway is reachable from this host; until then
+  # the app runs standalone (task board, projects, agents, sessions, scheduler)
+  # and live session control is unavailable by design (README:193).
+  NEXT_PUBLIC_GATEWAY_OPTIONAL = "true"
+
+[[mounts]]
+  source = "mc_data"
+  destination = "/app/.data"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 40
+    hard_limit = 80
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"
