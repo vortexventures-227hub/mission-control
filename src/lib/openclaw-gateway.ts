@@ -63,3 +63,40 @@ export async function callOpenClawGateway<T = unknown>(
 
   return payload as T
 }
+
+
+/**
+ * Terminate a gateway session over the gateway's HTTP interface.
+ *
+ * The gateway exposes `POST /sessions/{key}/kill` (openclaw dist
+ * session-kill-http.ts). This is deliberately NOT routed through
+ * `openclaw gateway call`: there is no `sessions_kill` RPC, and shelling out
+ * put a subprocess between the route and its response — when that child hung,
+ * the HTTP handler never answered at all.
+ *
+ * AbortController bounds the request so this always settles and the caller can
+ * always write a response.
+ */
+export async function killGatewaySession(
+  sessionKey: string,
+  timeoutMs = 10000,
+): Promise<{ ok: boolean; killed?: unknown; status: number }> {
+  const host = process.env.OPENCLAW_GATEWAY_HOST || '127.0.0.1'
+  const port = process.env.OPENCLAW_GATEWAY_PORT || '18789'
+  const url = `http://${host}:${port}/sessions/${encodeURIComponent(sessionKey)}/kill`
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), Math.max(1000, timeoutMs))
+  try {
+    const res = await fetch(url, { method: 'POST', signal: controller.signal })
+    const text = await res.text()
+    let parsed: unknown = null
+    try { parsed = text ? JSON.parse(text) : null } catch { parsed = text }
+    if (!res.ok) {
+      throw new Error(`Gateway kill failed (${res.status}) for session ${sessionKey}: ${text || res.statusText}`)
+    }
+    return { ok: true, killed: parsed, status: res.status }
+  } finally {
+    clearTimeout(timer)
+  }
+}

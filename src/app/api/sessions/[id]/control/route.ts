@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireRole } from '@/lib/auth'
 import { callOpenClawGateway } from '@/lib/openclaw-gateway'
+import { killGatewaySession } from '@/lib/openclaw-gateway'
 import { db_helpers } from '@/lib/db'
 import { mutationLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
@@ -36,14 +37,29 @@ export async function POST(
       )
     }
 
+    // OpenClaw's gateway namespaces its RPCs with DOTS and identifies a session
+    // by `key`. These previously called `sessions_kill` / `sessions_send` with
+    // `sessionKey`, which the gateway rejects outright:
+    //   GatewayClientRequestError: unknown method: sessions_kill
+    // Verified against the running gateway: `sessions.abort` and `sessions.send`
+    // both exist and report `must have required property 'key'`, while
+    // `sessions_kill` reports `unknown method`. Terminate maps to sessions.abort
+    // (stop what the session is doing) — the gateway exposes no `kill`.
     let result: unknown
     if (action === 'terminate') {
-      result = await callOpenClawGateway('sessions_kill', { sessionKey: id }, 10_000)
+      // KILL is an HTTP endpoint on the gateway, not a WebSocket RPC.
+      // openclaw 2026.4.23 dist/session-kill-http.ts matches
+      // /^\/sessions\/([^/]+)\/kill$/ on POST. There is no `sessions_kill`
+      // RPC in any shipped version — the old call returned
+      // `GatewayClientRequestError: unknown method: sessions_kill`.
+      // Going over HTTP also takes the whole subprocess out of this path, so a
+      // hung CLI can no longer stop the route from answering.
+      result = await killGatewaySession(id, 10_000)
     } else {
       const message = action === 'monitor'
         ? { type: 'control', action: 'monitor' }
         : { type: 'control', action: 'pause' }
-      result = await callOpenClawGateway('sessions_send', { sessionKey: id, message }, 10_000)
+      result = await callOpenClawGateway('sessions.send', { key: id, message }, 10_000)
     }
 
     db_helpers.logActivity(
