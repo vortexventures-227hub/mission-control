@@ -610,13 +610,18 @@ async function performHealthCheck() {
 
   // Determine overall health
   const hasError = health.checks.some((check: any) => check.status === 'error')
+  // A check can report status 'unhealthy' (the Gateway probe does when the
+  // process is up but not responding). Without this the aggregate ignored it
+  // entirely and still returned top-level healthy while the control plane was
+  // wedged — the exact lie this check was added to remove.
+  const hasUnhealthy = health.checks.some((check: any) => check.status === 'unhealthy')
   const hasCritical = health.checks.some((check: any) => check.status === 'critical')
   const hasWarning = health.checks.some((check: any) => check.status === 'warning')
   const hasDegraded = health.checks.some((check: any) =>
     check.name === 'Database' && check.status === 'warning'
   )
 
-  if (hasError || hasCritical) {
+  if (hasError || hasCritical || hasUnhealthy) {
     health.status = 'unhealthy'
   } else if (hasDegraded) {
     health.status = 'degraded'

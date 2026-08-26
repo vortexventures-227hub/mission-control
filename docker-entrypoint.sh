@@ -60,28 +60,22 @@ if command -v openclaw >/dev/null 2>&1; then
   printf '[entrypoint] Starting OpenClaw gateway (loopback)\n'
   openclaw gateway run --bind loopback --auth none --allow-unconfigured \
     >>"${OPENCLAW_HOME:-/app/.data/openclaw}/gateway.log" 2>&1 &
-  # FAIL OPEN. This probe previously ran with no timeout at all, so a gateway
-  # that never answered blocked the entrypoint forever and `exec node server.js`
-  # was never reached — the app never bound :3000 and Fly served 502 while the
-  # container looked alive. An optional dependency must never gate the HTTP
-  # server starting.
+  # FULLY ASYNCHRONOUS. Do not probe here at all.
   #
-  # Two independent bounds: --timeout on the CLI, and `timeout` around it in
-  # case the CLI itself fails to honour its own flag. Total wait is capped, and
-  # the server starts regardless of the outcome. /api/status reports real
-  # gateway responsiveness, so degraded-but-serving is visible rather than silent.
-  gateway_ready=no
-  for _ in 1 2 3 4 5 6 7 8 9 10; do
-    if timeout 4 openclaw gateway health --timeout 3000 >/dev/null 2>&1; then
-      gateway_ready=yes; break
-    fi
-    sleep 1
-  done
-  if [ "$gateway_ready" = yes ]; then
-    printf '[entrypoint] Gateway healthy\n'
-  else
-    printf '[entrypoint] WARN gateway did not report healthy; starting server anyway (degraded)\n'
-  fi
+  # The first attempt at this blocked on an unbounded `openclaw gateway health`
+  # and took the app down for ~12 minutes: the entrypoint never reached
+  # `exec node server.js`, so :3000 was never bound. The second attempt bounded
+  # the probe but still waited up to 10 x (timeout 4 + sleep 1) ~= 50s against a
+  # 10s health start period — bounded, but still fail-SLOW and still capable of
+  # failing a rollout.
+  #
+  # The gateway is an OPTIONAL dependency of the HTTP server. It is started in
+  # the background and the server binds immediately; readiness is reported by
+  # /api/status, which performs a real bounded gateway call and now drives the
+  # aggregate health status. Degraded-but-serving is visible and correct;
+  # dead-and-silent is not.
+  printf '[entrypoint] Gateway starting in background; server will not wait on it\n'
+
 else
   printf '[entrypoint] WARN openclaw not installed; session control will fail\n'
 fi
