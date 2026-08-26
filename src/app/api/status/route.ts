@@ -14,6 +14,7 @@ import { detectProviderSubscriptions, getPrimarySubscription } from '@/lib/provi
 import { APP_VERSION } from '@/lib/version'
 import { isHermesInstalled, scanHermesSessions } from '@/lib/hermes-sessions'
 import { registerMcAsDashboard } from '@/lib/gateway-runtime'
+import { callOpenClawGateway } from '@/lib/openclaw-gateway'
 
 export async function GET(request: NextRequest) {
   // Docker/Kubernetes health probes must work without auth/cookies.
@@ -530,11 +531,33 @@ async function performHealthCheck() {
   // Check gateway connection
   try {
     const gatewayStatus = await getGatewayStatus()
-    health.checks.push({
-      name: 'Gateway',
-      status: gatewayStatus.running ? 'healthy' : 'unhealthy',
-      message: gatewayStatus.running ? 'Gateway is running' : 'Gateway is not running'
-    })
+    if (!gatewayStatus.running) {
+      health.checks.push({
+        name: 'Gateway',
+        status: 'unhealthy',
+        message: 'Gateway is not running'
+      })
+    } else {
+      // `running` is LIVENESS ONLY — it never talks to the gateway. A gateway
+      // whose request handling is wedged still reports running, so this check
+      // reported "Gateway is running" while every gateway call timed out. An
+      // operator reading that would believe the control plane was fine while
+      // nothing worked. Probe it for real, bounded, and say what happened.
+      try {
+        await callOpenClawGateway('sessions.list', {}, 5_000)
+        health.checks.push({
+          name: 'Gateway',
+          status: 'healthy',
+          message: 'Gateway is running and responding'
+        })
+      } catch (probeError: any) {
+        health.checks.push({
+          name: 'Gateway',
+          status: 'unhealthy',
+          message: `Gateway process is up but not responding: ${probeError?.message || 'no response'}`
+        })
+      }
+    }
   } catch (error) {
     health.checks.push({
       name: 'Gateway',

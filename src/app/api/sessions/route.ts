@@ -20,6 +20,34 @@ export async function GET(request: NextRequest) {
     const gatewaySessions = getAllGatewaySessions()
     const mappedGatewaySessions = mapGatewaySessions(gatewaySessions)
 
+    // getAllGatewaySessions() reads per-agent session-store INDEX FILES. A
+    // session created through the gateway is live immediately but does not
+    // appear in those files, so a freshly spawned session (runStarted:true)
+    // was invisible here — GET /api/sessions returned [] while the gateway
+    // itself listed it. Ask the gateway for its live view as well.
+    //
+    // Deliberately fail-soft and bounded: if the gateway is slow or
+    // unresponsive this endpoint must still answer from the file index rather
+    // than hang. A wedged gateway should degrade the listing, not the API.
+    let liveGatewaySessions: ReturnType<typeof mapGatewaySessions> = []
+    try {
+      const live: any = await callOpenClawGateway('sessions.list', {}, 5_000)
+      const rows: any[] = Array.isArray(live?.sessions) ? live.sessions : []
+      liveGatewaySessions = rows
+        .filter((r) => typeof r?.key === 'string' && r.key)
+        .map((r) => ({
+          id: String(r.key),
+          key: String(r.key),
+          sessionId: r.sessionId ? String(r.sessionId) : '',
+          agent: r.agentId ? String(r.agentId) : 'gateway',
+          label: r.label ? String(r.label) : null,
+          source: 'gateway-live',
+          updatedAt: typeof r.updatedAt === 'number' ? r.updatedAt : Date.now(),
+        })) as unknown as ReturnType<typeof mapGatewaySessions>
+    } catch (gatewayError) {
+      logger.warn({ err: gatewayError }, 'Live gateway session list unavailable; using file index only')
+    }
+
     // Always include local sessions alongside gateway sessions
     await syncClaudeSessions()
     const claudeSessions = getLocalClaudeSessions()
@@ -28,11 +56,11 @@ export async function GET(request: NextRequest) {
     const opencodeSessions = getLocalOpenCodeSessions()
     const localMerged = mergeLocalSessions(claudeSessions, codexSessions, hermesSessions, opencodeSessions)
 
-    if (mappedGatewaySessions.length === 0 && localMerged.length === 0) {
+    if (mappedGatewaySessions.length === 0 && liveGatewaySessions.length === 0 && localMerged.length === 0) {
       return NextResponse.json({ sessions: [] })
     }
 
-    const merged = dedupeAndSortSessions([...mappedGatewaySessions, ...localMerged])
+    const merged = dedupeAndSortSessions([...liveGatewaySessions, ...mappedGatewaySessions, ...localMerged])
     return NextResponse.json({ sessions: merged })
   } catch (error) {
     logger.error({ err: error }, 'Sessions API error')
