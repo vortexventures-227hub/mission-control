@@ -1,4 +1,4 @@
-import { runOpenClaw } from './command'
+import { gatewayWsCall } from './gateway-ws'
 
 export function parseGatewayJsonOutput(raw: string): unknown | null {
   const trimmed = String(raw || '').trim()
@@ -37,33 +37,25 @@ export function parseGatewayJsonOutput(raw: string): unknown | null {
   }
 }
 
+/**
+ * Call a gateway RPC method.
+ *
+ * This used to shell out to `openclaw gateway call`. On openclaw 2026.7 that
+ * CLI never returns — the gateway answers in 162-454ms and logs the response,
+ * but the wrapper neither prints it nor exits, so every caller hung until its
+ * own timeout and some routes never wrote an HTTP response at all.
+ *
+ * The signature and timeout semantics are unchanged, so every existing caller
+ * (spawn, session list, monitor/pause, transcript, channels, nodes, chat,
+ * task-dispatch) moves off the CLI without touching its own code.
+ */
 export async function callOpenClawGateway<T = unknown>(
   method: string,
   params: unknown,
   timeoutMs = 10000,
 ): Promise<T> {
-  const result = await runOpenClaw(
-    [
-      'gateway',
-      'call',
-      method,
-      '--timeout',
-      String(Math.max(1000, Math.floor(timeoutMs))),
-      '--params',
-      JSON.stringify(params ?? {}),
-      '--json',
-    ],
-    { timeoutMs: timeoutMs + 2000 },
-  )
-
-  const payload = parseGatewayJsonOutput(result.stdout)
-  if (payload == null) {
-    throw new Error(`Invalid JSON response from gateway method ${method}`)
-  }
-
-  return payload as T
+  return await gatewayWsCall<T>(method, params, timeoutMs)
 }
-
 
 /**
  * Terminate a gateway session over the gateway's HTTP interface.
