@@ -1,4 +1,4 @@
-FROM node:22.22.0-slim AS base
+FROM node:22.22.3-slim AS base
 # Pinned, not @latest. An unpinned image resolved a newer pnpm that did not
 # apply this repo's build-script allowlist, so better-sqlite3 / node-pty never
 # ran their native build steps and the install died on ERR_PNPM_IGNORED_BUILDS.
@@ -29,7 +29,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN pnpm build
 
-FROM node:22.22.0-slim AS runtime
+FROM node:22.22.3-slim AS runtime
 
 ARG MC_VERSION=dev
 LABEL org.opencontainers.image.source="https://github.com/builderz-labs/mission-control"
@@ -50,13 +50,16 @@ RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 # Pinned deliberately: an unpinned agent runtime is the same trap that
 # `corepack prepare pnpm@latest` just cost us on this image.
 #
-# 2026.4.23 specifically, not npm latest. latest (2026.7.1-2) requires node
-# >=22.22.3 and this image is pinned to 22.22.0, so it installs and then fails
-# `openclaw --version` with EBADENGINE. 2026.4.23 needs only >=22.14.0 AND is
-# the version the fleet actually runs today, so the host matches the laptop
-# instead of introducing a second skew. `--version` runs here as a build-time
-# gate: a broken CLI fails the image rather than surfacing as a 500 at runtime.
-RUN npm install -g openclaw@2026.4.23 && openclaw --version
+# 2026.7.1-2 (npm `latest`) with node bumped to 22.22.3 to satisfy its engine
+# range. Ryu authorised this bump specifically to find out whether a newer
+# gateway can terminate a LIVE session: on 2026.4.23 both the HTTP kill endpoint
+# and the sessions.abort RPC hang indefinitely against a session that exists
+# (60s with zero bytes; 83s wall for a 15s-budgeted RPC), while a nonexistent
+# key returns a clean 404 in 0.24s. That hang is upstream of Mission Control.
+# `--version` runs here as a build-time gate: a CLI that cannot start fails the
+# image rather than surfacing as a runtime 500 — it is what caught the earlier
+# EBADENGINE instead of shipping it.
+RUN npm install -g openclaw@2026.7.1-2 && openclaw --version
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
