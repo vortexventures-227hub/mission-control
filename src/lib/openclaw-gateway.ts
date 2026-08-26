@@ -100,3 +100,29 @@ export async function killGatewaySession(
     clearTimeout(timer)
   }
 }
+
+
+/**
+ * Gateway liveness over its own HTTP interface.
+ *
+ * Deliberately NOT `openclaw gateway call`. On openclaw 2026.7 the gateway
+ * answers correctly — its log records sessions.list responses in 162-454ms —
+ * but the CLI client never returns them, so anything routed through the CLI
+ * hangs regardless of gateway health. The gateway serves plain JSON on
+ * /healthz, which is a real end-to-end check with no subprocess involved.
+ */
+export async function gatewayHttpHealth(
+  timeoutMs = 4000,
+): Promise<{ ok: boolean; status: number; body: string }> {
+  const host = process.env.OPENCLAW_GATEWAY_HOST || '127.0.0.1'
+  const port = process.env.OPENCLAW_GATEWAY_PORT || '18789'
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), Math.max(500, timeoutMs))
+  try {
+    const res = await fetch(`http://${host}:${port}/healthz`, { signal: controller.signal })
+    const body = (await res.text()).slice(0, 200)
+    return { ok: res.ok, status: res.status, body }
+  } finally {
+    clearTimeout(timer)
+  }
+}

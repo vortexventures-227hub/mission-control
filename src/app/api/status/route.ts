@@ -14,7 +14,7 @@ import { detectProviderSubscriptions, getPrimarySubscription } from '@/lib/provi
 import { APP_VERSION } from '@/lib/version'
 import { isHermesInstalled, scanHermesSessions } from '@/lib/hermes-sessions'
 import { registerMcAsDashboard } from '@/lib/gateway-runtime'
-import { callOpenClawGateway } from '@/lib/openclaw-gateway'
+import { callOpenClawGateway, gatewayHttpHealth } from '@/lib/openclaw-gateway'
 
 export async function GET(request: NextRequest) {
   // Docker/Kubernetes health probes must work without auth/cookies.
@@ -544,7 +544,12 @@ async function performHealthCheck() {
       // operator reading that would believe the control plane was fine while
       // nothing worked. Probe it for real, bounded, and say what happened.
       try {
-        await callOpenClawGateway('sessions.list', {}, 5_000)
+        // Probe over the gateway's own HTTP interface, NOT `openclaw gateway
+        // call`. On openclaw 2026.7 the gateway answers correctly but the CLI
+        // client never returns, so a CLI-based probe reports a healthy gateway
+        // as unhealthy — measuring the wrapper instead of the thing.
+        const probe = await gatewayHttpHealth(4_000)
+        if (!probe.ok) throw new Error(`/healthz returned ${probe.status}`)
         health.checks.push({
           name: 'Gateway',
           status: 'healthy',
