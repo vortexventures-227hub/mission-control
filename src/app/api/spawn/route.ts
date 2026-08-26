@@ -50,8 +50,13 @@ export async function POST(request: NextRequest) {
     // Generate spawn ID
     const spawnId = `spawn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
-    // Construct the spawn command
-    // Using OpenClaw's sessions_spawn function via clawdbot CLI
+    // OpenClaw's gateway method is `sessions.create`. `sessions_spawn` is an
+    // AGENT TOOL name, not a gateway RPC — it appears in the dist only inside
+    // tool-description strings ("use `sessions_spawn(...)` to start delegated
+    // work"), and `"sessions_spawn":` is registered as a handler key exactly
+    // zero times. Calling it returned
+    // `GatewayClientRequestError: unknown method: sessions_spawn`.
+    // Verified against the running gateway: `sessions.create` answers `ok:true`.
     const spawnPayload = {
       task,
       label,
@@ -63,12 +68,12 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      // Call gateway sessions_spawn directly. Try with tools.profile first,
+      // Call gateway sessions.create directly. Try with tools.profile first,
       // fall back without it for older gateways that don't support the field.
       let result: any
       let compatibilityFallbackUsed = false
       try {
-        result = await callOpenClawGateway('sessions_spawn', spawnPayload, 15_000)
+        result = await callOpenClawGateway('sessions.create', spawnPayload, 15_000)
       } catch (firstError: any) {
         const rawErr = String(firstError?.message || '').toLowerCase()
         const isToolsSchemaError =
@@ -78,7 +83,7 @@ export async function POST(request: NextRequest) {
 
         const fallbackPayload = { ...spawnPayload }
         delete (fallbackPayload as any).tools
-        result = await callOpenClawGateway('sessions_spawn', fallbackPayload, 15_000)
+        result = await callOpenClawGateway('sessions.create', fallbackPayload, 15_000)
         compatibilityFallbackUsed = true
       }
 
@@ -181,7 +186,9 @@ export async function GET(request: NextRequest) {
         const content = await readFile(log.fullPath, 'utf-8')
         const matched = content
           .split('\n')
-          .filter((line) => line.includes('sessions_spawn'))
+          // Match both: new spawns log sessions.create, historical logs on
+          // this host still carry the old sessions_spawn string.
+          .filter((line) => line.includes('sessions.create') || line.includes('sessions_spawn'))
         lines.push(...matched)
       }
 

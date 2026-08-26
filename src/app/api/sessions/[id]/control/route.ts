@@ -6,8 +6,15 @@ import { db_helpers } from '@/lib/db'
 import { mutationLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 
-// Only allow alphanumeric, hyphens, and underscores in session IDs
-const SESSION_ID_RE = /^[a-zA-Z0-9_-]+$/
+// Real OpenClaw session keys are colon-delimited, e.g.
+// `agent:main:dashboard:899bed28-96bc-4f7c-af8a-7f6fc96e5e87`.
+// The previous pattern (alphanumeric, hyphen, underscore only) rejected every
+// genuine key with 400 "Invalid session ID format", so no real session could
+// ever be controlled — the fix to the gateway transport alone would still have
+// been unreachable. Colons and dots are allowed; slashes, whitespace and
+// path-traversal characters are still excluded, and the key is URL-encoded
+// before it reaches the gateway.
+const SESSION_ID_RE = /^[a-zA-Z0-9_:.-]+$/
 
 export async function POST(
   request: NextRequest,
