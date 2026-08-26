@@ -1,11 +1,20 @@
 FROM node:22.22.0-slim AS base
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Pinned, not @latest. An unpinned image resolved a newer pnpm that did not
+# apply this repo's build-script allowlist, so better-sqlite3 / node-pty never
+# ran their native build steps and the install died on ERR_PNPM_IGNORED_BUILDS.
+# 10.32.1 is the version this repo is verified against end to end (install,
+# build, boot, SQLite migrations). Bump deliberately, not implicitly.
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
 WORKDIR /app
 
 FROM base AS deps
 # Copy only dependency manifests first for better layer caching
 COPY package.json ./
 COPY pnpm-lock.yaml* ./
+# .npmrc carries ignore-scripts=false. It is tracked in the repo but was
+# never copied into this stage, so the container installed with pnpm
+# defaults while local installs used the repo settings.
+COPY .npmrc ./
 # better-sqlite3 requires native compilation tools
 RUN apt-get update && apt-get install -y python3 make g++ --no-install-recommends && rm -rf /var/lib/apt/lists/*
 RUN if [ -f pnpm-lock.yaml ]; then \
