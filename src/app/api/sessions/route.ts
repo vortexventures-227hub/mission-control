@@ -172,7 +172,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid session key' }, { status: 400 })
     }
 
-    const result = await callOpenClawGateway('session_delete', { sessionKey }, 10_000)
+    // `session_delete` is not a gateway RPC — same defect class as the old
+    // `sessions_kill` and `sessions_spawn`. The real method is `sessions.delete`
+    // and it takes `key`, not `sessionKey`. Verified against the running
+    // gateway: it returns {ok:true, key, deleted:true, archived:[...]} and the
+    // session disappears from sessions.list.
+    const result = await callOpenClawGateway('sessions.delete', { key: sessionKey }, 10_000)
 
     db_helpers.logActivity(
       'session_control',
