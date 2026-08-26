@@ -531,13 +531,13 @@ async function performHealthCheck() {
   // Check gateway connection
   try {
     const gatewayStatus = await getGatewayStatus()
-    if (!gatewayStatus.running) {
-      health.checks.push({
-        name: 'Gateway',
-        status: 'unhealthy',
-        message: 'Gateway is not running'
-      })
-    } else {
+    // Do NOT gate the probe on gatewayStatus.running. That flag is a process
+    // scan, and inside the container it read false while the gateway was
+    // demonstrably serving (/healthz 200 {"ok":true,"status":"live"}) — so the
+    // health endpoint reported "Gateway is not running" about a working
+    // gateway. Answering the socket is the authoritative signal; `running` is
+    // only used to explain a failure.
+    {
       // `running` is LIVENESS ONLY — it never talks to the gateway. A gateway
       // whose request handling is wedged still reports running, so this check
       // reported "Gateway is running" while every gateway call timed out. An
@@ -559,7 +559,9 @@ async function performHealthCheck() {
         health.checks.push({
           name: 'Gateway',
           status: 'unhealthy',
-          message: `Gateway process is up but not responding: ${probeError?.message || 'no response'}`
+          message: gatewayStatus.running
+            ? `Gateway process is up but not responding: ${probeError?.message || 'no response'}`
+            : `Gateway is not running: ${probeError?.message || 'no response'}`
         })
       }
     }

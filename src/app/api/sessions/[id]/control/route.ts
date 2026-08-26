@@ -61,7 +61,17 @@ export async function POST(
       // `GatewayClientRequestError: unknown method: sessions_kill`.
       // Going over HTTP also takes the whole subprocess out of this path, so a
       // hung CLI can no longer stop the route from answering.
-      result = await killGatewaySession(id, 10_000)
+      // Terminate is TWO gateway operations, because one is not enough.
+      //
+      // The HTTP kill endpoint stops a running turn. It does NOT remove the
+      // session: observed live, kill returned {ok:true,killed:false} on a
+      // session whose run had already finished, and the session stayed in
+      // sessions.list afterwards. An operator who presses terminate expects the
+      // session to be gone, so the session is then deleted, which the gateway
+      // archives rather than destroys (it returns the archived transcript path).
+      const killed = await killGatewaySession(id, 10_000)
+      const deleted = await callOpenClawGateway('sessions.delete', { key: id }, 10_000)
+      result = { killed, deleted }
     } else {
       const message = action === 'monitor'
         ? { type: 'control', action: 'monitor' }
