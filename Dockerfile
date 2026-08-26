@@ -43,6 +43,20 @@ ENV NODE_ENV=production
 # procps provides `ps` and `uptime` used by system-monitor APIs
 RUN apt-get update && apt-get install -y curl ca-certificates python3 git make g++ procps --no-install-recommends && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+
+# OpenClaw CLI. src/lib/openclaw-gateway.ts does NOT open a socket — it shells
+# out (runOpenClaw -> spawn(openclawBin)), so without this binary every session
+# control call fails with `spawn openclaw ENOENT` and KILL is unreachable.
+# Pinned deliberately: an unpinned agent runtime is the same trap that
+# `corepack prepare pnpm@latest` just cost us on this image.
+#
+# 2026.4.23 specifically, not npm latest. latest (2026.7.1-2) requires node
+# >=22.22.3 and this image is pinned to 22.22.0, so it installs and then fails
+# `openclaw --version` with EBADENGINE. 2026.4.23 needs only >=22.14.0 AND is
+# the version the fleet actually runs today, so the host matches the laptop
+# instead of introducing a second skew. `--version` runs here as a build-time
+# gate: a broken CLI fails the image rather than surfacing as a 500 at runtime.
+RUN npm install -g openclaw@2026.4.23 && openclaw --version
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
@@ -52,6 +66,8 @@ COPY --from=build /app/src/lib/schema.sql ./src/lib/schema.sql
 COPY --from=deps /app/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty ./node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty
 # Create data directory with correct ownership for SQLite
 RUN mkdir -p .data && chown nextjs:nodejs .data
+ENV OPENCLAW_HOME=/app/.data/openclaw
+RUN mkdir -p /app/.data/openclaw && chown -R nextjs:nodejs /app/.data
 RUN echo 'const http=require("http");const r=http.get("http://localhost:"+(process.env.PORT||3000)+"/api/status?action=health",s=>{process.exit(s.statusCode===200?0:1)});r.on("error",()=>process.exit(1));r.setTimeout(4000,()=>{r.destroy();process.exit(1)})' > /app/healthcheck.js
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod 755 /app/docker-entrypoint.sh && \

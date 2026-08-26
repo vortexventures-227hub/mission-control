@@ -49,5 +49,26 @@ if [ -z "$API_KEY" ] || [ "$API_KEY" = "generate-a-random-key" ]; then
   export API_KEY
 fi
 
+# --- OpenClaw gateway -------------------------------------------------------
+# MC reaches the gateway by spawning `openclaw gateway call`, which talks to a
+# gateway on this host. Bind LOOPBACK and auth none on purpose: the gateway is
+# reachable only from inside this container. Fly publishes just the HTTP port,
+# and loopback keeps it off the .internal private network too, so there is no
+# unauthenticated control plane exposed to anything.
+if command -v openclaw >/dev/null 2>&1; then
+  mkdir -p "${OPENCLAW_HOME:-/app/.data/openclaw}"
+  printf '[entrypoint] Starting OpenClaw gateway (loopback)\n'
+  openclaw gateway run --bind loopback --auth none --allow-unconfigured \
+    >>"${OPENCLAW_HOME:-/app/.data/openclaw}/gateway.log" 2>&1 &
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    if openclaw gateway health >/dev/null 2>&1; then
+      printf '[entrypoint] Gateway healthy\n'; break
+    fi
+    sleep 1
+  done
+else
+  printf '[entrypoint] WARN openclaw not installed; session control will fail\n'
+fi
+
 printf '[entrypoint] Starting server\n'
 exec node server.js
