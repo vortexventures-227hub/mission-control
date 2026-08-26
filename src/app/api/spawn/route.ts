@@ -57,35 +57,24 @@ export async function POST(request: NextRequest) {
     // zero times. Calling it returned
     // `GatewayClientRequestError: unknown method: sessions_spawn`.
     // Verified against the running gateway: `sessions.create` answers `ok:true`.
+    // SessionsCreateParamsSchema is additionalProperties:false and accepts only
+    // key, agentId, label, model, parentSessionKey, task, message. The live
+    // gateway rejects anything else outright:
+    //   invalid sessions.create params: at root: unexpected property
+    //   'runTimeoutSeconds'; at root: unexpected property 'tools'
+    // `timeout` stays a local concern — it bounds our own call and is reported
+    // back as response metadata — it is NOT a gateway property.
     const spawnPayload = {
       task,
       label,
       ...(model ? { model } : {}),
-      runTimeoutSeconds: timeout,
-      tools: {
-        profile: getPreferredToolsProfile(),
-      },
     }
 
     try {
-      // Call gateway sessions.create directly. Try with tools.profile first,
-      // fall back without it for older gateways that don't support the field.
-      let result: any
-      let compatibilityFallbackUsed = false
-      try {
-        result = await callOpenClawGateway('sessions.create', spawnPayload, 15_000)
-      } catch (firstError: any) {
-        const rawErr = String(firstError?.message || '').toLowerCase()
-        const isToolsSchemaError =
-          (rawErr.includes('unknown field') || rawErr.includes('unknown key') || rawErr.includes('invalid argument')) &&
-          (rawErr.includes('tools') || rawErr.includes('profile'))
-        if (!isToolsSchemaError) throw firstError
-
-        const fallbackPayload = { ...spawnPayload }
-        delete (fallbackPayload as any).tools
-        result = await callOpenClawGateway('sessions.create', fallbackPayload, 15_000)
-        compatibilityFallbackUsed = true
-      }
+      // Single call. The previous tools-profile fallback existed to retry
+      // without `tools` when a gateway rejected that field; `tools` is no longer
+      // sent at all, so there is nothing left to fall back from.
+      const result: any = await callOpenClawGateway('sessions.create', spawnPayload, 15_000)
 
       const sessionInfo = result?.sessionId || result?.session_id || null
 
@@ -100,7 +89,6 @@ export async function POST(request: NextRequest) {
           label,
           task_summary: task.length > 120 ? task.slice(0, 120) + '...' : task,
           toolsProfile: getPreferredToolsProfile(),
-          compatibilityFallbackUsed,
         },
         ip_address: ipAddress,
       })
@@ -117,7 +105,6 @@ export async function POST(request: NextRequest) {
         result,
         compatibility: {
           toolsProfile: getPreferredToolsProfile(),
-          fallbackUsed: compatibilityFallbackUsed,
         },
       })
 
