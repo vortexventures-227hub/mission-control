@@ -4,6 +4,40 @@ import { logAuditEvent, needsFirstTimeSetup } from '@/lib/db'
 import { getMcSessionCookieName, getMcSessionCookieOptions, isRequestSecure } from '@/lib/session-cookie'
 import { loginLimiter } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
+import {
+  authenticateVortexThreePlIdentity,
+  normalizeVortexEmail,
+  resolveOrProvisionThreePlUser,
+  type ThreePlAuthFailureCode,
+} from '@/lib/threepl-auth'
+
+function threePlLoginError(code: ThreePlAuthFailureCode): { status: number; error: string; code: string } {
+  switch (code) {
+    case 'two_factor_required':
+      return {
+        status: 403,
+        error: 'This 3PL Connect account requires two-factor authentication. Complete sign-in in 3PL Connect first.',
+        code: 'THREEPL_TWO_FACTOR_REQUIRED',
+      }
+    case 'account_unavailable':
+      return {
+        status: 403,
+        error: 'This 3PL Connect account is not currently available for Mission Control access.',
+        code: 'THREEPL_ACCOUNT_UNAVAILABLE',
+      }
+    case 'upstream_unavailable':
+      return {
+        status: 503,
+        error: '3PL Connect sign-in is temporarily unavailable. Try again.',
+        code: 'THREEPL_AUTH_UNAVAILABLE',
+      }
+    case 'not_vortex_identity':
+    case 'identity_mismatch':
+    case 'invalid_credentials':
+    default:
+      return { status: 401, error: 'Invalid credentials', code: 'INVALID_CREDENTIALS' }
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -19,7 +53,26 @@ export async function POST(request: Request) {
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
     const userAgent = request.headers.get('user-agent') || undefined
 
-    const user = authenticateUser(username, password)
+    const vortexEmail = normalizeVortexEmail(username)
+    let user
+    let auditAction = 'login'
+
+    if (vortexEmail) {
+      const threePlResult = await authenticateVortexThreePlIdentity({
+        email: vortexEmail,
+        password,
+      })
+      if (!threePlResult.ok) {
+        const failure = threePlLoginError(threePlResult.code)
+        logAuditEvent({ action: 'login_failed', actor: vortexEmail, ip_address: ipAddress, user_agent: userAgent })
+        return NextResponse.json({ error: failure.error, code: failure.code }, { status: failure.status })
+      }
+      user = resolveOrProvisionThreePlUser(threePlResult.identity)
+      auditAction = 'login_3pl_connect'
+    } else {
+      user = authenticateUser(username, password)
+    }
+
     if (!user) {
       logAuditEvent({ action: 'login_failed', actor: username, ip_address: ipAddress, user_agent: userAgent })
 
@@ -40,7 +93,7 @@ export async function POST(request: Request) {
 
     const { token, expiresAt } = createSession(user.id, ipAddress, userAgent, user.workspace_id)
 
-    logAuditEvent({ action: 'login', actor: user.username, actor_id: user.id, ip_address: ipAddress, user_agent: userAgent })
+    logAuditEvent({ action: auditAction, actor: user.username, actor_id: user.id, ip_address: ipAddress, user_agent: userAgent })
 
     const response = NextResponse.json({
       user: {

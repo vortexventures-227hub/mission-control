@@ -313,6 +313,7 @@ export default function LoginPage() {
             </div>
             <h1 className="text-3xl font-semibold tracking-[-0.04em] text-[#f7f8f8] sm:text-4xl">{t('missionControl')}</h1>
             <p className="mt-3 max-w-xs text-sm leading-6 text-slate-400">Human-supervised AI operations, approvals, receipts, and source-to-wiki command truth.</p>
+            <p className="mt-2 max-w-xs text-xs leading-5 text-cyan-100/70">Use the same Vortex Ventures email and password you use for 3PL Connect.</p>
           </div>
 
           {pendingApproval && (
@@ -497,14 +498,14 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className={`space-y-5 ${pendingApproval ? 'opacity-50 pointer-events-none' : ''}`}>
           <div>
-            <label htmlFor="username" className="mb-2 block text-sm font-medium text-slate-200">{t('username')}</label>
+            <label htmlFor="username" className="mb-2 block text-sm font-medium text-slate-200">Vortex Ventures email</label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.045] px-4 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] placeholder:text-slate-500 transition-all duration-200 focus:border-cyan-300/70 focus:outline-none focus:ring-4 focus:ring-cyan-300/10"
-              placeholder={t('enterUsername')}
+              placeholder="you@vortexventures.ai"
               autoComplete="username"
               autoFocus
               required

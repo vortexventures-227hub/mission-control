@@ -60,7 +60,7 @@ export interface User {
   role: 'admin' | 'operator' | 'viewer'
   workspace_id: number
   tenant_id: number
-  provider?: 'local' | 'google' | 'proxy'
+  provider?: 'local' | 'google' | 'proxy' | 'threepl'
   email?: string | null
   avatar_url?: string | null
   is_approved?: number
@@ -88,7 +88,7 @@ interface SessionQueryRow {
   username: string
   display_name: string
   role: 'admin' | 'operator' | 'viewer'
-  provider: 'local' | 'google' | null
+  provider: 'local' | 'google' | 'threepl' | null
   email: string | null
   avatar_url: string | null
   is_approved: number
@@ -105,7 +105,7 @@ interface UserQueryRow {
   username: string
   display_name: string
   role: 'admin' | 'operator' | 'viewer'
-  provider: 'local' | 'google' | null
+  provider: 'local' | 'google' | 'threepl' | null
   email: string | null
   avatar_url: string | null
   is_approved: number
@@ -639,4 +639,3 @@ export function requireRole(
   }
   return { user }
 }
-
