@@ -102,6 +102,7 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
   const receipts = selectedRoom ? listGroupChatDecisionReceipts(selectedRoom.id, workspaceId) : []
   const queuedAlerts = selectedRoom ? listGroupChatQueuedAlerts(selectedRoom.id, workspaceId) : []
   const agents = listGroupChatAgentProfiles(workspaceId)
+  const registeredAgents = safeCount(`SELECT COUNT(*) as count FROM agents WHERE workspace_id = ? AND hidden = 0`, workspaceId)
   const projects = safeCount(`SELECT COUNT(*) as count FROM projects WHERE workspace_id = ? AND status = 'active'`, workspaceId)
   const tasks = safeCount(`SELECT COUNT(*) as count FROM tasks WHERE workspace_id = ?`, workspaceId)
   const doneWithEvidence = safeCount(`SELECT COUNT(*) as count FROM group_chat_assignment_tracker_items WHERE workspace_id = ? AND status = 'done' AND evidence IS NOT NULL AND TRIM(evidence) != ''`, workspaceId)
@@ -274,7 +275,7 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
     { id: 'blackwire-room', label: 'Blackwire Room', status: selectedRoom ? 'live' : 'partial', detail: selectedRoom ? `${selectedRoom.name}: ${messages.length} messages, ${messageDeliveryStates.join(' / ') || 'no delivery states yet'}` : 'No room seeded yet.', href: '/group-chat' },
     { id: 'assignment-boards', label: 'Assignment Tracker Boards', status: assignments.length ? 'live' : 'partial', detail: `${assignments.length} Blackwire board items; ${doneWithEvidence} Done with evidence.`, href: '/group-chat' },
     { id: 'approvals', label: 'Approvals', status: 'live', detail: `${receipts.length} group-chat receipts; ${approvalsPending} exec approvals pending.`, href: '/exec-approvals' },
-    { id: 'agent-registry', label: 'Agent Registry / Cards', status: agents.length ? 'live' : 'partial', detail: `${agents.length} agent cards with status/current assignment/proof.`, href: '/agents' },
+    { id: 'agent-registry', label: 'Agent Registry / Cards', status: registeredAgents ? 'live' : 'partial', detail: `${registeredAgents} visible registered agents; group-chat delivery profiles are tracked separately.`, href: '/agents' },
     { id: 'receipts-evidence-search', label: 'Receipts / Evidence / Search', status: 'live', detail: 'Group Chat search covers messages, task evidence, assignees, and decision receipts.', href: '/group-chat' },
     { id: 'notifications-queues', label: 'Notifications / Queues', status: queuedAlerts.length ? 'live' : 'partial', detail: `${queuedAlerts.length} queued agent alerts for offline or unproven recipients.`, href: '/group-chat' },
     { id: 'metrics-cockpit', label: 'Metrics Cockpit', status: 'live', detail: `${projects} active projects, ${tasks} tasks, ${messages.length} Blackwire messages, ${agents.filter((a) => a.status === 'online_proven').length} online-proven agents.`, href: '/command-truth' },
@@ -290,12 +291,16 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
     { id: 'canonical-roots', label: 'Canonical Roots / Legacy Rollback', status: 'live', detail: 'Active path: /Desktop/Vortex Ventures/VVMissionControlOps/mission-control. Legacy rollback: git history + existing origin/main ahead state.' },
   ]
 
+  const hostedApp = String(process.env.FLY_APP_NAME || '').trim()
+  const isHosted = Boolean(hostedApp)
+
   return {
     generatedAt: Date.now(),
     canonical: {
-      activePath: '/Users/vortexventures/Desktop/Vortex Ventures/VVMissionControlOps/mission-control',
+      activePath: isHosted ? `fly://${hostedApp}` : '/Users/vortexventures/Desktop/Vortex Ventures/VVMissionControlOps/mission-control',
       legacyRollback: 'git history / origin/main rollback; no external deploy touched',
-      sourceOfTruth: 'Mission Control local SQLite + canonical repo UI',
+      sourceOfTruth: isHosted ? 'Mission Control production SQLite volume + deployed runtime' : 'Mission Control local SQLite + canonical repo UI',
+      runtime: isHosted ? 'hosted' as const : 'local' as const,
     },
     metrics: {
       rooms: rooms.length,
@@ -303,7 +308,7 @@ export function getMissionControlMvpSnapshot(workspaceId = 1) {
       assignments: assignments.length,
       receipts: receipts.length,
       queuedAlerts: queuedAlerts.length,
-      agents: agents.length,
+      agents: registeredAgents,
       projects,
       tasks,
       doneWithEvidence,

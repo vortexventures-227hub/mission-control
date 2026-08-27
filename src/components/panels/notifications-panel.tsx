@@ -6,6 +6,7 @@ import { BoundaryBanner, Chip, HudPanel, Page, Stat } from '@/components/mc/hud'
 import { Button } from '@/components/ui/button'
 import { Loader } from '@/components/ui/loader'
 import { useSmartPoll } from '@/lib/use-smart-poll'
+import { useMissionControl } from '@/store'
 
 interface Notification {
   id: number
@@ -22,6 +23,8 @@ interface Notification {
 
 export function NotificationsPanel() {
   const t = useTranslations('notifications')
+  const { dashboardMode } = useMissionControl()
+  const isHosted = dashboardMode === 'full'
   const [recipient, setRecipient] = useState<string>(() => {
     if (typeof window === 'undefined') return ''
     return window.localStorage.getItem('mc.notifications.recipient') || 'operator'
@@ -93,12 +96,12 @@ export function NotificationsPanel() {
 
   return (
     <Page
-      kicker="NOTIFICATIONS / LOCAL QUEUE"
+      kicker={isHosted ? 'NOTIFICATIONS / PRODUCTION QUEUE' : 'NOTIFICATIONS / LOCAL QUEUE'}
       title={t('title')}
-      subtitle="Local Mission Control notification queue only. Operator notification queue for Mission Control events, delivery rows, and unread work. This is local command visibility, not email, SMS, push, or external agent delivery."
+      subtitle={`${isHosted ? 'Deployed Mission Control notification queue on the persistent production data volume.' : 'Local Mission Control notification queue only.'} Operator notification queue for Mission Control events, delivery rows, and unread work. This is command visibility, not email, SMS, push, or external agent delivery.`}
       badges={(
         <>
-          <Chip tone="teal" pulse>LOCAL QUEUE</Chip>
+          <Chip tone="teal" pulse>{isHosted ? 'PRODUCTION QUEUE' : 'LOCAL QUEUE'}</Chip>
           <Chip tone="amber">DELIVERY ROW IS NOT RECEIPT</Chip>
           <Chip tone="rose">NO EXTERNAL SEND IMPLIED</Chip>
         </>
@@ -148,8 +151,8 @@ export function NotificationsPanel() {
           </div>
         </HudPanel>
 
-        <BoundaryBanner tone="amber" title="Local Boundary">
-          A delivered notification row means Mission Control recorded local queue delivery. No email, SMS, push, or external agent delivery is implied. It does not prove agent action or completed work.
+        <BoundaryBanner tone="amber" title={isHosted ? 'Production Queue Boundary' : 'Local Boundary'}>
+          A delivered notification row means Mission Control recorded queue delivery in this runtime. No email, SMS, push, or external agent delivery is implied. It does not prove agent action or completed work.
         </BoundaryBanner>
 
         {error && (

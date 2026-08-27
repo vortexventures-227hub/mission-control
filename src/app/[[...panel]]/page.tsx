@@ -527,7 +527,7 @@ export default function Home() {
 }
 
 const ESSENTIAL_PANELS = new Set([
-  'overview', 'mission-control', 'command-truth', 'agents', 'tasks', 'group-chat', 'rooms/blackwire-ops', 'tracker', 'knowledge-intake', 'exec-approvals', 'expenses', 'ledger', 'brain-memory', 'research-command', 'asset-library', 'security-command', 'chat', 'activity', 'logs', 'settings',
+  'overview', 'mission-control', 'command-truth', 'agents', 'tasks', 'group-chat', 'rooms/blackwire-ops', 'tracker', 'notifications', 'exec-approvals', 'documents', 'knowledge-intake', 'expenses', 'ledger', 'brain-memory', 'research-command', 'asset-library', 'security-command', 'chat', 'activity', 'logs', 'settings',
 ])
 
 function ContentRouter({ tab }: { tab: string }) {

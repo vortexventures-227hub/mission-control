@@ -8,6 +8,7 @@ vi.mock('../db', () => ({
       get: () => {
         if (sql.includes('projects')) return { count: 2 }
         if (sql.includes('tasks')) return { count: 8 }
+        if (sql.includes('FROM agents')) return { count: 2 }
         if (sql.includes("status = 'done' AND evidence IS NOT NULL")) return { count: 1 }
         if (sql.includes("status = 'done' AND (evidence IS NULL")) return { count: 0 }
         if (sql.includes('group_chat_assignment_tracker_items')) return { count: 1 }
@@ -32,7 +33,13 @@ vi.mock('../group-chat', () => ({
   getGroupChatRoomBySlug: (slug: string) => slug === 'blackwire-ops'
     ? { id: 10, slug: 'blackwire-ops', name: 'Blackwire Ops', kind: 'project' }
     : { id: 11, slug: 'command', name: 'Command', kind: 'command' },
-  listGroupChatAgentProfiles: () => [{ id: 1, status: 'online_proven' }, { id: 2, status: 'offline' }],
+  listGroupChatAgentProfiles: () => [
+    { id: 1, status: 'online_proven' },
+    { id: 2, status: 'offline' },
+    { id: 3, status: 'offline' },
+    { id: 4, status: 'offline' },
+    { id: 5, status: 'offline' },
+  ],
   listGroupChatAssignments: () => [{ id: 1, status: 'done', evidence: '/receipt.md' }],
   listGroupChatDecisionReceipts: () => [{ id: 1 }],
   listGroupChatMessages: (slug: string) => slug === 'blackwire-ops'
@@ -71,6 +78,22 @@ import { getCommandTruthRouteContract } from '../command-truth-route-contract'
 import { getMissionControlMvpSnapshot } from '../mission-control-mvp'
 
 describe('Mission Control MVP snapshot', () => {
+  it('uses the visible registered-agent count and identifies hosted runtime truth', () => {
+    const previousApp = process.env.FLY_APP_NAME
+    process.env.FLY_APP_NAME = 'vv-mission-control'
+    try {
+      const snapshot = getMissionControlMvpSnapshot(1)
+      expect(snapshot.metrics.agents).toBe(2)
+      expect(snapshot.canonical.runtime).toBe('hosted')
+      expect(snapshot.canonical.activePath).toBe('fly://vv-mission-control')
+      expect(snapshot.canonical.sourceOfTruth).toContain('production SQLite volume')
+      expect(snapshot.surfaces.find((surface) => surface.id === 'agent-registry')?.detail).toContain('2 visible registered agents')
+    } finally {
+      if (previousApp === undefined) delete process.env.FLY_APP_NAME
+      else process.env.FLY_APP_NAME = previousApp
+    }
+  })
+
   it('surfaces the DB-backed MVP command surfaces in Command Truth without fake green execution', () => {
     const snapshot = getMissionControlMvpSnapshot(1)
     const byId = Object.fromEntries(snapshot.surfaces.map((surface) => [surface.id, surface]))

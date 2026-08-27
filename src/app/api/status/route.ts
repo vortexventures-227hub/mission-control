@@ -153,7 +153,7 @@ function getDbStats(workspaceId: number) {
 
     // Agent breakdown
     const agentStats = db.prepare(`
-      SELECT status, COUNT(*) as count FROM agents WHERE workspace_id = ? GROUP BY status
+      SELECT status, COUNT(*) as count FROM agents WHERE workspace_id = ? AND hidden = 0 GROUP BY status
     `).all(workspaceId) as Array<{ status: string; count: number }>
     const agentsByStatus: Record<string, number> = {}
     let totalAgents = 0

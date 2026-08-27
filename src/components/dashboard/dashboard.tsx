@@ -18,6 +18,7 @@ export function Dashboard() {
     setSessions,
     connection,
     dashboardMode,
+    gatewayAvailable,
     subscription,
     logs,
     agents,
@@ -203,7 +204,7 @@ export function Dashboard() {
     .slice(0, 10)
 
   const recentErrorLogs = mergedRecentLogs.filter((log) => log.level === 'error').length
-  const gatewayHealthStatus = connection.isConnected ? 'good' as const : 'bad' as const
+  const gatewayHealthStatus = connection.isConnected || gatewayAvailable ? 'good' as const : 'bad' as const
 
   const openSession = useCallback((session: any) => {
     const kind = String(session?.kind || '')
@@ -322,6 +323,7 @@ interface HqSnapshot {
   canonical: {
     activePath: string
     sourceOfTruth: string
+    runtime: 'hosted' | 'local'
   }
   metrics: Record<string, number>
   surfaces: HqSurface[]
@@ -384,9 +386,16 @@ function BlackwireHqOverview() {
     }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    load()
+    const timer = window.setInterval(load, 15_000)
+    return () => window.clearInterval(timer)
+  }, [load])
 
   const metrics = snapshot?.metrics || {}
+  const runtime = snapshot?.canonical.runtime || 'unknown'
+  const isHosted = runtime === 'hosted'
+  const isLocal = runtime === 'local'
   const priorityGates = [
     ...(snapshot?.blackwireDoneGates || []),
     ...(snapshot?.truthGates || []),
@@ -413,15 +422,15 @@ function BlackwireHqOverview() {
             <div className="max-w-4xl">
               <div className="flex flex-wrap gap-2">
                 <Chip tone="teal" pulse>Blackwire Ops HQ</Chip>
-                <Chip tone="purple">Local daily-driver</Chip>
+                <Chip tone="purple">{isHosted ? 'Production operations' : isLocal ? 'Local daily-driver' : 'Runtime verifying'}</Chip>
                 <Chip tone="amber">Evidence before Done</Chip>
               </div>
               <h1 className="mc-title-glitch mt-3 font-mono text-2xl font-black uppercase tracking-[0.06em] text-white md:text-3xl">Mission Control ground-zero command center</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-                Source-of-truth view for rooms, tasks, agents, approvals, receipts, expenses, knowledge intake, and read-only memory boundaries. This is local Mission Control proof, not a production deploy or external delivery claim.
+                Source-of-truth view for rooms, tasks, agents, approvals, receipts, expenses, knowledge intake, and read-only memory boundaries. {isHosted ? 'This is the deployed Mission Control operator runtime; external actions still require their own explicit receipts.' : isLocal ? 'This is local Mission Control proof, not a production deploy or external delivery claim.' : 'Runtime identity is loading; Mission Control will not silently label an unverified runtime as local or production.'}
               </p>
               <p className="mt-2 break-all text-[11px] text-slate-500">
-                {snapshot?.canonical.sourceOfTruth || 'Loading Mission Control local snapshot...'} · {snapshot?.canonical.activePath || 'canonical path pending'}
+                {snapshot?.canonical.sourceOfTruth || 'Loading Mission Control snapshot...'} · {snapshot?.canonical.activePath || 'canonical path pending'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -434,8 +443,8 @@ function BlackwireHqOverview() {
           {error && <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>}
 
           <div className="mt-4">
-            <BoundaryBanner tone="amber" title="Local mode">
-              Runtime is bound to the local gateway. No external mutations, no external sends, and no provider-side state changes are claimed from this HQ screen.
+            <BoundaryBanner tone="amber" title={isHosted ? 'Production runtime' : isLocal ? 'Local mode' : 'Runtime identity pending'}>
+              {isHosted ? 'Runtime is deployed with a persistent data volume and server-side gateway. External mutations, sends, spend, and provider-side changes still require explicit authority and receipts.' : isLocal ? 'Runtime is bound to the local gateway. No external mutations, no external sends, and no provider-side state changes are claimed from this HQ screen.' : 'The runtime identity request has not completed. Automatic retry is active; no local or production label is asserted until it succeeds.'}
             </BoundaryBanner>
           </div>
 

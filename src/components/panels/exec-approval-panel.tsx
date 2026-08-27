@@ -39,8 +39,9 @@ function timeAgo(timestamp: number): string {
 
 export function ExecApprovalPanel() {
   const t = useTranslations('execApproval')
-  const { execApprovals, setExecApprovals, updateExecApproval } = useMissionControl()
+  const { execApprovals, setExecApprovals, updateExecApproval, dashboardMode } = useMissionControl()
   const { sendMessage } = useWebSocket()
+  const isHosted = dashboardMode === 'full'
   const [filter, setFilter] = useState<FilterTab>('pending')
   const [view, setView] = useState<PanelView>('approvals')
   const [approvalSource, setApprovalSource] = useState<'gateway' | 'local-read-only' | 'empty'>('empty')
@@ -110,7 +111,7 @@ export function ExecApprovalPanel() {
     <Page
       kicker="APPROVALS / EXECUTION GATE"
       title={t('title')}
-      subtitle="Approval and receipt truth for commands that may cross a boundary. Local rows remain proof/read-only unless the execution gateway is reachable and the operator approves."
+      subtitle={`Approval and receipt truth for commands that may cross a boundary. ${isHosted ? 'This deployed runtime resolves gateway-backed requests when available; fallback rows remain read-only.' : 'Local rows remain proof/read-only unless the execution gateway is reachable and the operator approves.'}`}
       badges={(
         <>
           <Chip tone={approvalSource === 'local-read-only' ? 'amber' : 'teal'}>{approvalSource === 'local-read-only' ? 'LOCAL READ-ONLY' : t('realtimeLabel')}</Chip>
@@ -127,8 +128,8 @@ export function ExecApprovalPanel() {
         <Stat label="View" value={view.toUpperCase()} accent="teal" />
       </div>
 
-      <BoundaryBanner tone={loadError ? 'rose' : 'amber'} title="Local MVP boundary">
-        This panel is visible in local mode for approval/receipt truth. Gateway approvals can be resolved only when the execution gateway is reachable; local rows are proof/read-only and do not trigger external execution.
+      <BoundaryBanner tone={loadError ? 'rose' : 'amber'} title={isHosted ? 'Production Approval Boundary' : 'Local MVP boundary'}>
+        {isHosted ? 'This production surface reads the deployed gateway first and falls back to durable read-only receipts when the gateway has no approval endpoint.' : 'This panel is visible in local mode for approval/receipt truth. Gateway approvals can be resolved only when the execution gateway is reachable; local rows are proof/read-only and do not trigger external execution.'}
         {loadError ? ` Load warning: ${loadError}` : ''}
       </BoundaryBanner>
 

@@ -57,9 +57,20 @@ fi
 # unauthenticated control plane exposed to anything.
 if command -v openclaw >/dev/null 2>&1; then
   mkdir -p "${OPENCLAW_HOME:-/app/.data/openclaw}"
-  printf '[entrypoint] Starting OpenClaw gateway (loopback)\n'
-  openclaw gateway run --bind loopback --auth none --allow-unconfigured \
-    >>"${OPENCLAW_HOME:-/app/.data/openclaw}/gateway.log" 2>&1 &
+  gateway_log="${OPENCLAW_HOME:-/app/.data/openclaw}/gateway.log"
+  gateway_supervisor() {
+    while true; do
+      printf '[entrypoint] Starting OpenClaw gateway (loopback)\n'
+      set +e
+      openclaw gateway run --bind loopback --auth none --allow-unconfigured \
+        >>"$gateway_log" 2>&1
+      gateway_exit=$?
+      set -e
+      printf '[entrypoint] OpenClaw gateway exited (%s); restarting in 2s\n' "$gateway_exit"
+      sleep 2
+    done
+  }
+  gateway_supervisor &
   # FULLY ASYNCHRONOUS. Do not probe here at all.
   #
   # The first attempt at this blocked on an unbounded `openclaw gateway health`

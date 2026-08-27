@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         email: vortexEmail,
         password,
       })
-      if (!threePlResult.ok) {
+      if (threePlResult.ok === false) {
         const failure = threePlLoginError(threePlResult.code)
         logAuditEvent({ action: 'login_failed', actor: vortexEmail, ip_address: ipAddress, user_agent: userAgent })
         return NextResponse.json({ error: failure.error, code: failure.code }, { status: failure.status })

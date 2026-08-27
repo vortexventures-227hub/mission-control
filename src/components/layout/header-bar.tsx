@@ -44,7 +44,7 @@ const QUICK_NAV_COMMANDS: Array<{ panel: string; titleKey: string; title: string
 ]
 
 export function HeaderBar() {
-  const { activeTab, connection, sessions, unreadNotificationCount, activeTenant, activeProject, dashboardMode } = useMissionControl()
+  const { activeTab, connection, sessions, unreadNotificationCount, activeTenant, activeProject, dashboardMode, gatewayAvailable, setGatewayAvailable } = useMissionControl()
   const { isConnected, reconnect } = useWebSocket()
   const navigateToPanel = useNavigateToPanel()
   const prefetchPanel = usePrefetchPanel()
@@ -67,6 +67,28 @@ export function HeaderBar() {
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (dashboardMode === 'local') return
+
+    let cancelled = false
+    const refreshGatewayHealth = async () => {
+      try {
+        const response = await fetch('/api/status?action=gateway')
+        const status = response.ok ? await response.json() : null
+        if (!cancelled) setGatewayAvailable(status?.port_listening === true)
+      } catch {
+        if (!cancelled) setGatewayAvailable(false)
+      }
+    }
+
+    refreshGatewayHealth()
+    const timer = window.setInterval(refreshGatewayHealth, 15_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [dashboardMode, setGatewayAvailable])
 
   const getQuickNavResults = useCallback((q: string): SearchResult[] => {
     const normalized = q.trim().toLowerCase()
@@ -340,7 +362,7 @@ export function HeaderBar() {
             </div>
           ) : null}
 
-          <ModeBadge connection={connection} onReconnect={reconnect} />
+          <ModeBadge connection={connection} gatewayAvailable={gatewayAvailable} onReconnect={reconnect} />
         </div>
 
         {/* Center: wide command search (desktop) */}
@@ -480,9 +502,11 @@ export function HeaderBar() {
 /** Top-left mode + connection badge — visible on all screen sizes. */
 function ModeBadge({
   connection,
+  gatewayAvailable,
   onReconnect,
 }: {
   connection: ConnectionStatus
+  gatewayAvailable: boolean
   onReconnect: () => void
 }) {
   const { dashboardMode } = useMissionControl()
@@ -500,18 +524,19 @@ function ModeBadge({
   }
 
   const isConnected = connection.isConnected
-  const isReconnecting = !isConnected && connection.reconnectAttempts > 0
+  const isOperational = isConnected || gatewayAvailable
+  const isReconnecting = !isOperational && connection.reconnectAttempts > 0
 
   let dotClass: string
   let borderClass: string
   let textClass: string
   let statusLabel: string
 
-  if (isConnected) {
+  if (isOperational) {
     dotClass = 'bg-green-500'
     borderClass = 'border-green-500/25 bg-green-500/10'
     textClass = 'text-green-400'
-    statusLabel = connection.latency != null ? `${connection.latency}ms` : th('connected')
+    statusLabel = isConnected && connection.latency != null ? `${connection.latency}ms` : 'ONLINE'
   } else if (isReconnecting) {
     dotClass = 'bg-amber-500 animate-pulse'
     borderClass = 'border-amber-500/25 bg-amber-500/10'
@@ -533,9 +558,9 @@ function ModeBadge({
       onMouseLeave={() => setShowTooltip(false)}
     >
       <button
-        onClick={!isConnected ? onReconnect : undefined}
+        onClick={!isOperational ? onReconnect : undefined}
         className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-2xs border ${borderClass} ${
-          !isConnected ? 'cursor-pointer hover:brightness-125' : 'cursor-default'
+          !isOperational ? 'cursor-pointer hover:brightness-125' : 'cursor-default'
         } transition-all`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
@@ -549,8 +574,8 @@ function ModeBadge({
           <div className="space-y-1.5 text-muted-foreground">
             <div className="flex justify-between">
               <span>{th('status')}</span>
-              <span className={isConnected ? 'text-green-400' : isReconnecting ? 'text-amber-400' : 'text-red-400'}>
-                {isConnected ? th('connected') : isReconnecting ? th('reconnecting') : th('disconnected')}
+              <span className={isOperational ? 'text-green-400' : isReconnecting ? 'text-amber-400' : 'text-red-400'}>
+                {isConnected ? th('connected') : gatewayAvailable ? 'Online via server' : isReconnecting ? th('reconnecting') : th('disconnected')}
               </span>
             </div>
             <div className="flex justify-between">
@@ -575,14 +600,14 @@ function ModeBadge({
                 {connection.sseConnected ? th('live') : th('off')}
               </span>
             </div>
-            {!isConnected && connection.reconnectAttempts > 0 && (
+            {!isOperational && connection.reconnectAttempts > 0 && (
               <div className="flex justify-between">
                 <span>{th('retries')}</span>
                 <span className="text-amber-400">{connection.reconnectAttempts}</span>
               </div>
             )}
           </div>
-          {!isConnected && (
+          {!isOperational && (
             <div className="mt-2 pt-2 border-t border-border/40 text-muted-foreground/60 text-[10px]">
               {th('clickToReconnect')}
             </div>

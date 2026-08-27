@@ -8,6 +8,7 @@ describe('Mission Control notifications local queue', () => {
 
     expect(source).toContain("window.localStorage.getItem('mc.notifications.recipient') || 'operator'")
     expect(source).toContain('Operator notification queue for Mission Control events, delivery rows, and unread work.')
+    expect(source).toContain('PRODUCTION QUEUE')
     expect(source).toContain('not email, SMS, push, or external agent delivery')
     expect(source).toContain("['operator', 'Chris', 'koda', 'herm']")
     expect(source).toContain('Delivered Rows')

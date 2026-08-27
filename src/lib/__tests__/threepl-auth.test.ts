@@ -193,7 +193,7 @@ describe('3PL Connect Mission Control user provisioning', () => {
       providerUserId: '3pl-user-ryu',
       email: 'ryu@vortexventures.ai',
       displayName: 'Ryu',
-    }, { db, env: {} })
+    }, { db, env: { NODE_ENV: 'test' } })
 
     expect(user).toMatchObject({
       username: 'ryu@vortexventures.ai',
@@ -226,7 +226,7 @@ describe('3PL Connect Mission Control user provisioning', () => {
       providerUserId: '3pl-user-ryu',
       email: 'ryu@vortexventures.ai',
       displayName: 'Ryu',
-    }, { db, env: { MC_THREEPL_DEFAULT_ROLE: 'viewer' } })
+    }, { db, env: { NODE_ENV: 'test', MC_THREEPL_DEFAULT_ROLE: 'viewer' } })
 
     expect(user).toMatchObject({
       username: 'ryu@vortexventures.ai',
@@ -250,7 +250,7 @@ describe('3PL Connect Mission Control user provisioning', () => {
       providerUserId: '3pl-user-ryu',
       email: 'ryu@vortexventures.ai',
       displayName: 'Ryu',
-    }, { db, env: {} })
+    }, { db, env: { NODE_ENV: 'test' } })
 
     expect(user).toBeNull()
   })

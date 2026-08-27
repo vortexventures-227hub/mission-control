@@ -32,7 +32,7 @@ const navGroups: NavGroup[] = [
       { id: 'group-chat', label: 'Group Chat', icon: <ChatIcon />, priority: true, essential: true },
       { id: 'tasks', label: 'Boards', icon: <TasksIcon />, priority: true, essential: true },
       { id: 'agents', label: 'Agents', icon: <AgentsIcon />, priority: true, essential: true },
-      { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false },
+      { id: 'exec-approvals', label: 'Approvals', icon: <ApprovalsIcon />, priority: false, essential: true },
       { id: 'command-truth', label: 'Command Truth', icon: <DispatchIcon />, priority: true, essential: true },
       { id: 'notifications', label: 'Notifications', icon: <AlertIcon />, priority: false, essential: true },
       { id: 'chat', label: 'Direct Chat', icon: <ChatIcon />, priority: false, essential: true },
@@ -44,7 +44,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: 'memory', label: 'Memory', icon: <MemoryIcon />, priority: false },
       { id: 'brain-memory', label: 'Brain / Memory', icon: <MemoryIcon />, priority: false },
-      { id: 'documents', label: 'Receipts & Search', icon: <ContentIcon />, priority: false },
+      { id: 'documents', label: 'Receipts & Search', icon: <ContentIcon />, priority: false, essential: true },
       { id: 'think-tank', label: 'Think Tank', icon: <ResearchIcon />, priority: false },
       { id: 'knowledge-intake', label: 'Knowledge Intake', icon: <ResearchIcon />, priority: false },
       { id: 'research-command', label: 'Research Command', icon: <ResearchIcon />, priority: false },
@@ -172,7 +172,7 @@ const gatewayOnlyPanels = new Set([
 const adminOnlyPanels = new Set<string>([])
 
 export function NavRail() {
-  const { activeTab, connection, dashboardMode, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
+  const { activeTab, connection, dashboardMode, gatewayAvailable, currentUser, activeTenant, tenants, osUsers, setActiveTenant, fetchTenants, fetchOsUsers, activeProject, projects, setActiveProject, fetchProjects, sidebarExpanded, collapsedGroups, toggleSidebar, toggleGroup, defaultOrgName, interfaceMode, setInterfaceMode } = useMissionControl()
   const navigateToPanel = useNavigateToPanel()
   const prefetchPanel = usePrefetchPanel()
   const tn = useTranslations('nav')
@@ -513,7 +513,7 @@ export function NavRail() {
           currentUser={currentUser}
           isAdmin={isAdmin}
           isLocal={isLocal}
-          isConnected={connection.isConnected}
+          isConnected={connection.isConnected || gatewayAvailable}
           tenants={tenants}
           osUsers={osUsers}
           activeTenant={activeTenant}
